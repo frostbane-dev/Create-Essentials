@@ -29,7 +29,7 @@ import java.util.List;
 public class RotationalMagnetItem extends BlockItem {
 
     public static final int BAR_COLOR = 0xFFFFFF;
-    public static final int FILTER_SLOTS = 5;
+    public static final int FILTER_SLOTS = 3;
 
     private final MagnetTier tier;
 

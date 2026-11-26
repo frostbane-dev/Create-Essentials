@@ -30,13 +30,12 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
     public static final int FILTER_SLOTS = MagneticBackpackItem.FILTER_SLOTS;
     public static final int PLAYER_SLOT_START = STORAGE_SLOTS + FILTER_SLOTS;
 
-    private static final int PANEL_WIDTH = 30;
-    private static final int STORAGE_X = 8 + PANEL_WIDTH;
-    private static final int FILTER_X = 6;
+    private static final int STORAGE_X = 8;
+    private static final int FILTER_X = -21;
     private static final int FILTER_Y = 18;
     private static final int STORAGE_Y = 18;
-    private static final int PLAYER_Y = 85;
-    private static final int HOTBAR_Y = 143;
+    private static final int PLAYER_Y = 84;
+    private static final int HOTBAR_Y = 142;
 
     private final Inventory playerInventory;
     private final IItemHandler storageInventory;

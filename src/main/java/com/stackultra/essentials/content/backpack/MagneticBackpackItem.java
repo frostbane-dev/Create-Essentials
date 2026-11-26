@@ -34,7 +34,7 @@ import java.util.List;
 public class MagneticBackpackItem extends BlockItem implements Equipable {
 
     public static final int BAR_COLOR = 0xFFFFFF;
-    public static final int FILTER_SLOTS = 5;
+    public static final int FILTER_SLOTS = 3;
 
     public MagneticBackpackItem(Block block, Properties properties) {
         super(block, properties);

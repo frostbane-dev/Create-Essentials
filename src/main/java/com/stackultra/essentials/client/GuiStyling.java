@@ -1,15 +1,17 @@
 package com.stackultra.essentials.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public final class GuiStyling {
 
-    public static final int COLOR_BORDER = 0xFF2A2A2A;
-    public static final int COLOR_BEVEL_LIGHT = 0xFFEDEDED;
-    public static final int COLOR_BEVEL_DARK = 0xFF8B8B8B;
+    public static final int COLOR_BORDER = 0xFF373737;
+    public static final int COLOR_BEVEL_LIGHT = 0xFFFFFFFF;
+    public static final int COLOR_BEVEL_DARK = 0xFF555555;
     public static final int COLOR_PANEL = 0xFFC6C6C6;
     public static final int COLOR_INSET = 0xFFB4B4B4;
     public static final int COLOR_TEXT = 0xFF3F3F3F;
@@ -34,5 +36,17 @@ public final class GuiStyling {
     public static void drawDivider(GuiGraphics graphics, int x, int y, int w) {
         graphics.fill(x, y, x + w, y + 1, COLOR_BEVEL_DARK);
         graphics.fill(x, y + 1, x + w, y + 2, COLOR_BEVEL_LIGHT);
+    }
+
+    public static void drawGhostItem(GuiGraphics graphics, ItemStack stack, int x, int y) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 200);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.35F);
+        graphics.renderItem(stack, x, y);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.disableBlend();
+        graphics.pose().popPose();
     }
 }
