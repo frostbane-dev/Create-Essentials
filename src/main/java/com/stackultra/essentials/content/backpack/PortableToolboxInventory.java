@@ -3,19 +3,30 @@ package com.stackultra.essentials.content.backpack;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+
 /**
  * Codec-safe 8-compartment portable Create Toolbox inventory.
  * <p>
- * Each compartment stores up to {@value #STACKS_PER_COMPARTMENT} separate backing {@link ItemStack}s
- * (up to 256 items for 64-stack items, 64 for 16-stack items, 4 for unstackables) plus 1 reserved
- * filter {@link ItemStack}. No individual backing stack ever exceeds its item's {@code maxStackSize},
- * completely avoiding Minecraft 1.21.1's {@code ItemStack.CODEC} count-99 serialization limit.
+ * Each compartment stores physically present items only (no phantom empty reservations):
+ * <ul>
+ *   <li>Non-stackable items ({@code maxStackSize == 1}): strict compartment capacity = <b>1</b>.</li>
+ *   <li>Stackable items ({@code maxStackSize > 1}): strict compartment capacity = <b>4 * maxStackSize</b>
+ *       (256 for 64-stack items, 64 for 16-stack items, scaling proportionally for modded stack sizes).</li>
+ * </ul>
+ * Every individual backing {@link ItemStack} stays {@code <= maxStackSize}, avoiding Minecraft 1.21.1's
+ * {@code ItemStack.CODEC} count-99 serialization limit.
  */
 public class PortableToolboxInventory implements IItemHandlerModifiable {
 
@@ -25,7 +36,6 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
     public static final int EQUIP_TARGET_COUNT = 32;
 
     private final NonNullList<ItemStack> stacks = NonNullList.withSize(BACKING_SLOTS, ItemStack.EMPTY);
-    private final NonNullList<ItemStack> filters = NonNullList.withSize(COMPARTMENTS, ItemStack.EMPTY);
 
     private final ItemStack boundStack;
     private final Runnable onChanged;
@@ -53,11 +63,22 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         return new PortableToolboxInventory(stack, onChanged);
     }
 
+    public static int maxStacksForItem(ItemStack stack) {
+        if (stack == null || stack.isEmpty())
+            return STACKS_PER_COMPARTMENT;
+        return stack.getMaxStackSize() <= 1 ? 1 : STACKS_PER_COMPARTMENT;
+    }
+
+    public static int maxCapacityForItem(ItemStack stack) {
+        if (stack == null || stack.isEmpty())
+            return 0;
+        int maxStack = Math.max(1, stack.getMaxStackSize());
+        return maxStack == 1 ? 1 : maxStack * STACKS_PER_COMPARTMENT;
+    }
+
     public void load(ItemStack stack) {
         for (int i = 0; i < BACKING_SLOTS; i++)
             stacks.set(i, ItemStack.EMPTY);
-        for (int i = 0; i < COMPARTMENTS; i++)
-            filters.set(i, ItemStack.EMPTY);
 
         if (stack == null || stack.isEmpty())
             return;
@@ -66,19 +87,8 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         if (contents != null)
             contents.copyInto(stacks);
 
-        ItemContainerContents filterContents = stack.get(ExtraDataComponents.TOOLBOX_FILTERS);
-        if (filterContents != null)
-            filterContents.copyInto(filters);
-
-        // Enforce filter consistency: any populated compartment must have a matching filter
         for (int c = 0; c < COMPARTMENTS; c++) {
             settleSilent(c);
-            ItemStack first = stacks.get(c * STACKS_PER_COMPARTMENT);
-            if (!first.isEmpty() && filters.get(c).isEmpty()) {
-                filters.set(c, first.copyWithCount(1));
-            } else if (!filters.get(c).isEmpty() && filters.get(c).getCount() != 1) {
-                filters.set(c, filters.get(c).copyWithCount(1));
-            }
         }
     }
 
@@ -86,7 +96,8 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         if (stack == null || stack.isEmpty())
             return;
         stack.set(ExtraDataComponents.TOOLBOX_CONTENTS, ItemContainerContents.fromItems(stacks));
-        stack.set(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.fromItems(filters));
+        // Remove any legacy phantom reservation filter component
+        stack.remove(ExtraDataComponents.TOOLBOX_FILTERS);
     }
 
     public CompoundTag serializeNBT(HolderLookup.Provider registries) {
@@ -94,55 +105,37 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         CompoundTag itemsTag = new CompoundTag();
         ContainerHelper.saveAllItems(itemsTag, stacks, registries);
         tag.put("Items", itemsTag);
-
-        CompoundTag filtersTag = new CompoundTag();
-        ContainerHelper.saveAllItems(filtersTag, filters, registries);
-        tag.put("Filters", filtersTag);
         return tag;
     }
 
     public void deserializeNBT(HolderLookup.Provider registries, CompoundTag tag) {
         for (int i = 0; i < BACKING_SLOTS; i++)
             stacks.set(i, ItemStack.EMPTY);
-        for (int i = 0; i < COMPARTMENTS; i++)
-            filters.set(i, ItemStack.EMPTY);
 
         if (tag == null)
             return;
         if (tag.contains("Items"))
             ContainerHelper.loadAllItems(tag.getCompound("Items"), stacks, registries);
-        if (tag.contains("Filters"))
-            ContainerHelper.loadAllItems(tag.getCompound("Filters"), filters, registries);
 
         for (int c = 0; c < COMPARTMENTS; c++) {
             settleSilent(c);
-            ItemStack first = stacks.get(c * STACKS_PER_COMPARTMENT);
-            if (!first.isEmpty() && filters.get(c).isEmpty())
-                filters.set(c, first.copyWithCount(1));
         }
     }
 
-    public ItemContainerContents getFiltersComponent() {
-        return ItemContainerContents.fromItems(filters);
-    }
-
-    public void applyClientFilters(ItemContainerContents filterContents) {
-        for (int i = 0; i < COMPARTMENTS; i++)
-            filters.set(i, ItemStack.EMPTY);
-        if (filterContents != null)
-            filterContents.copyInto(filters);
-    }
-
-    public ItemStack getFilter(int compartment) {
+    /**
+     * Returns a 1-count copy of the physically stored item in {@code compartment},
+     * or {@link ItemStack#EMPTY} if the compartment is empty.
+     */
+    public ItemStack getTemplate(int compartment) {
         if (compartment < 0 || compartment >= COMPARTMENTS)
             return ItemStack.EMPTY;
-        return filters.get(compartment);
-    }
-
-    public boolean isReservedEmpty(int compartment) {
-        return compartment >= 0 && compartment < COMPARTMENTS
-                && !filters.get(compartment).isEmpty()
-                && getTotalCount(compartment) == 0;
+        int base = compartment * STACKS_PER_COMPARTMENT;
+        for (int i = 0; i < STACKS_PER_COMPARTMENT; i++) {
+            ItemStack sub = stacks.get(base + i);
+            if (!sub.isEmpty())
+                return sub.copyWithCount(1);
+        }
+        return ItemStack.EMPTY;
     }
 
     public int getTotalCount(int compartment) {
@@ -159,8 +152,7 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
     }
 
     public int getMaxCapacity(int compartment, ItemStack template) {
-        int maxStack = template.isEmpty() ? 64 : Math.max(1, template.getMaxStackSize());
-        return maxStack * STACKS_PER_COMPARTMENT;
+        return maxCapacityForItem(template);
     }
 
     public boolean canAccept(int compartment, ItemStack stack) {
@@ -170,10 +162,13 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
             return false;
         if (BackpackHelper.isNestedContainer(stack))
             return false;
-        ItemStack filter = filters.get(compartment);
-        if (filter.isEmpty())
-            return getTotalCount(compartment) == 0;
-        return ItemStack.isSameItemSameComponents(filter, stack);
+        int total = getTotalCount(compartment);
+        if (total <= 0)
+            return true;
+        ItemStack existing = getTemplate(compartment);
+        if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, stack))
+            return false;
+        return total < maxCapacityForItem(existing);
     }
 
     public ItemStack insertIntoCompartment(int compartment, ItemStack stack, boolean simulate) {
@@ -184,10 +179,11 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         int original = remaining.getCount();
         int base = compartment * STACKS_PER_COMPARTMENT;
         int maxStack = Math.max(1, remaining.getMaxStackSize());
+        int allowedSubSlots = maxStacksForItem(remaining);
 
-        // Pass 1: fill existing non-full sub-stacks
+        // Pass 1: fill existing non-full sub-stacks (only for stackables)
         if (remaining.isStackable()) {
-            for (int i = 0; i < STACKS_PER_COMPARTMENT && !remaining.isEmpty(); i++) {
+            for (int i = 0; i < allowedSubSlots && !remaining.isEmpty(); i++) {
                 ItemStack existing = stacks.get(base + i);
                 if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, remaining))
                     continue;
@@ -201,8 +197,8 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
             }
         }
 
-        // Pass 2: fill empty sub-slots
-        for (int i = 0; i < STACKS_PER_COMPARTMENT && !remaining.isEmpty(); i++) {
+        // Pass 2: fill empty sub-slots up to strict per-item sub-slot cap (1 for unstackables, 4 for stackables)
+        for (int i = 0; i < allowedSubSlots && !remaining.isEmpty(); i++) {
             if (!stacks.get(base + i).isEmpty())
                 continue;
             int move = Math.min(maxStack, remaining.getCount());
@@ -212,8 +208,6 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         }
 
         if (!simulate && remaining.getCount() != original) {
-            if (filters.get(compartment).isEmpty())
-                filters.set(compartment, stack.copyWithCount(1));
             settleSilent(compartment);
             notifyChanged();
         }
@@ -222,19 +216,22 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
     }
 
     /**
-     * Inserts into compartments that already have a matching filter (populated OR empty reserved).
-     * Never claims unreserved empty compartments.
+     * Inserts into compartments that physically contain a matching item (count &gt; 0).
+     * Never claims empty compartments and strictly enforces per-item capacity caps.
      */
     public ItemStack insertIntoMatchingCompartment(ItemStack stack, boolean simulate) {
         if (stack == null || stack.isEmpty() || BackpackHelper.isNestedContainer(stack))
             return stack;
+        // Unstackables have strict capacity 1, so an already-populated matching compartment cannot accept more
+        if (stack.getMaxStackSize() <= 1)
+            return stack;
 
         ItemStack remaining = stack.copy();
         for (int c = 0; c < COMPARTMENTS && !remaining.isEmpty(); c++) {
-            ItemStack filter = filters.get(c);
-            if (filter.isEmpty())
+            if (getTotalCount(c) <= 0)
                 continue;
-            if (!ItemStack.isSameItemSameComponents(filter, remaining))
+            ItemStack template = getTemplate(c);
+            if (template.isEmpty() || !ItemStack.isSameItemSameComponents(template, remaining))
                 continue;
             remaining = insertIntoCompartment(c, remaining, simulate);
         }
@@ -242,21 +239,17 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
     }
 
     /**
-     * Extracts up to {@code maxAmount} items (clamped to item's {@code maxStackSize}) from a compartment.
-     * Preserves the compartment's reserved filter even when count reaches 0.
+     * Extracts up to {@code maxAmount} items (strictly clamped to {@code maxStackSize}) from a compartment.
+     * When the compartment reaches 0, it becomes completely empty (no phantom reservation).
      */
     public ItemStack extractFromCompartment(int compartment, int maxAmount, boolean simulate) {
         if (compartment < 0 || compartment >= COMPARTMENTS || maxAmount <= 0)
             return ItemStack.EMPTY;
 
         int base = compartment * STACKS_PER_COMPARTMENT;
-        ItemStack template = ItemStack.EMPTY;
-        for (int i = 0; i < STACKS_PER_COMPARTMENT; i++) {
-            if (!stacks.get(base + i).isEmpty()) {
-                template = stacks.get(base + i);
-                break;
-            }
-        }
+        // CRITICAL: copy template BEFORE shrinking any sub-slot so shrinking sub-slot 0 to 0
+        // never mutates template into ItemStack.EMPTY!
+        ItemStack template = getTemplate(compartment);
         if (template.isEmpty())
             return ItemStack.EMPTY;
 
@@ -288,33 +281,173 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         return result;
     }
 
-    public boolean clearReservation(int compartment) {
+    /**
+     * Atomically replaces the entire contents of a compartment with a single valid stack (used for swaps).
+     */
+    public void replaceCompartment(int compartment, ItemStack stack) {
         if (compartment < 0 || compartment >= COMPARTMENTS)
-            return false;
-        if (getTotalCount(compartment) > 0 || filters.get(compartment).isEmpty())
-            return false;
-        filters.set(compartment, ItemStack.EMPTY);
+            return;
+        int base = compartment * STACKS_PER_COMPARTMENT;
+        for (int i = 0; i < STACKS_PER_COMPARTMENT; i++)
+            stacks.set(base + i, ItemStack.EMPTY);
+        if (stack != null && !stack.isEmpty() && !BackpackHelper.isNestedContainer(stack)) {
+            int cap = Math.min(stack.getCount(), maxCapacityForItem(stack));
+            int maxStack = Math.max(1, stack.getMaxStackSize());
+            int remaining = cap;
+            int allowed = maxStacksForItem(stack);
+            for (int i = 0; i < allowed && remaining > 0; i++) {
+                int chunk = Math.min(maxStack, remaining);
+                stacks.set(base + i, stack.copyWithCount(chunk));
+                remaining -= chunk;
+            }
+        }
         notifyChanged();
-        return true;
     }
 
     public int findMatchingCompartment(ItemStack stack) {
         if (stack == null || stack.isEmpty())
             return -1;
         for (int c = 0; c < COMPARTMENTS; c++) {
-            ItemStack filter = filters.get(c);
-            if (!filter.isEmpty() && ItemStack.isSameItemSameComponents(filter, stack))
+            if (getTotalCount(c) <= 0)
+                continue;
+            ItemStack template = getTemplate(c);
+            if (!template.isEmpty() && ItemStack.isSameItemSameComponents(template, stack))
                 return c;
         }
         return -1;
     }
 
-    public boolean hasAnyContentsOrFilters() {
+    public boolean hasAnyContents() {
         for (int c = 0; c < COMPARTMENTS; c++) {
-            if (!filters.get(c).isEmpty() || getTotalCount(c) > 0)
+            if (getTotalCount(c) > 0)
                 return true;
         }
         return false;
+    }
+
+    /**
+     * Consolidates and sorts all 8 toolbox compartments deterministically within strict per-item
+     * compartment caps (1 for unstackables, 4 * maxStackSize for stackables), preserving exact item counts.
+     */
+    public boolean sortCompartments(SortMode mode) {
+        record Entry(ItemStack template, int count) {
+        }
+
+        List<Entry> beforeSnapshot = new ArrayList<>(COMPARTMENTS);
+        List<Entry> raw = new ArrayList<>(COMPARTMENTS);
+        int totalBefore = 0;
+        for (int c = 0; c < COMPARTMENTS; c++) {
+            int count = getTotalCount(c);
+            ItemStack template = getTemplate(c);
+            if (count > 0 && !template.isEmpty()) {
+                Entry entry = new Entry(template, count);
+                beforeSnapshot.add(entry);
+                raw.add(entry);
+                totalBefore += count;
+            } else {
+                beforeSnapshot.add(new Entry(ItemStack.EMPTY, 0));
+            }
+        }
+        if (raw.isEmpty())
+            return false;
+
+        // Consolidate matching stackable compartments up to each compartment's strict maxCapacityForItem
+        List<ItemStack> consolidatedTemplates = new ArrayList<>(COMPARTMENTS);
+        List<Integer> consolidatedCounts = new ArrayList<>(COMPARTMENTS);
+
+        for (Entry entry : raw) {
+            ItemStack template = entry.template();
+            int remaining = entry.count();
+            int maxCap = maxCapacityForItem(template);
+
+            if (template.getMaxStackSize() > 1) {
+                for (int i = 0; i < consolidatedTemplates.size() && remaining > 0; i++) {
+                    ItemStack existing = consolidatedTemplates.get(i);
+                    if (!ItemStack.isSameItemSameComponents(existing, template))
+                        continue;
+                    int existingCount = consolidatedCounts.get(i);
+                    int space = maxCap - existingCount;
+                    if (space <= 0)
+                        continue;
+                    int move = Math.min(space, remaining);
+                    consolidatedCounts.set(i, existingCount + move);
+                    remaining -= move;
+                }
+            }
+
+            while (remaining > 0) {
+                int chunk = Math.min(maxCap, remaining);
+                consolidatedTemplates.add(template.copyWithCount(1));
+                consolidatedCounts.add(chunk);
+                remaining -= chunk;
+            }
+        }
+
+        int totalAfter = 0;
+        for (int c : consolidatedCounts)
+            totalAfter += c;
+
+        // Safety invariant: never drop, truncate, over-cap, or duplicate items
+        if (totalAfter != totalBefore || consolidatedTemplates.size() > COMPARTMENTS)
+            return false;
+
+        List<Entry> sorted = new ArrayList<>(consolidatedTemplates.size());
+        for (int i = 0; i < consolidatedTemplates.size(); i++) {
+            sorted.add(new Entry(consolidatedTemplates.get(i), consolidatedCounts.get(i)));
+        }
+
+        Comparator<Entry> comp = switch (mode) {
+            case NAME -> Comparator
+                    .comparing((Entry e) -> e.template().getHoverName().getString().toLowerCase(Locale.ROOT))
+                    .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.template().getItem()).toString())
+                    .thenComparing(Comparator.comparingInt(Entry::count).reversed())
+                    .thenComparing(e -> e.template().getComponents().toString());
+            case MOD -> Comparator
+                    .comparing((Entry e) -> BuiltInRegistries.ITEM.getKey(e.template().getItem()).getNamespace())
+                    .thenComparing(e -> e.template().getHoverName().getString().toLowerCase(Locale.ROOT))
+                    .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.template().getItem()).getPath())
+                    .thenComparing(Comparator.comparingInt(Entry::count).reversed())
+                    .thenComparing(e -> e.template().getComponents().toString());
+            case COUNT -> Comparator
+                    .comparingInt(Entry::count).reversed()
+                    .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.template().getItem()).getNamespace())
+                    .thenComparing(e -> e.template().getHoverName().getString().toLowerCase(Locale.ROOT))
+                    .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.template().getItem()).getPath())
+                    .thenComparing(e -> e.template().getComponents().toString());
+        };
+        sorted.sort(comp);
+
+        boolean changed = false;
+        for (int c = 0; c < COMPARTMENTS; c++) {
+            Entry prev = beforeSnapshot.get(c);
+            Entry next = c < sorted.size() ? sorted.get(c) : new Entry(ItemStack.EMPTY, 0);
+            if (prev.count() != next.count()
+                    || !ItemStack.isSameItemSameComponents(prev.template(), next.template())) {
+                changed = true;
+                break;
+            }
+        }
+        if (!changed)
+            return false;
+
+        for (int i = 0; i < BACKING_SLOTS; i++)
+            stacks.set(i, ItemStack.EMPTY);
+
+        for (int c = 0; c < sorted.size(); c++) {
+            Entry e = sorted.get(c);
+            int base = c * STACKS_PER_COMPARTMENT;
+            int maxStack = Math.max(1, e.template().getMaxStackSize());
+            int allowed = maxStacksForItem(e.template());
+            int rem = e.count();
+            for (int i = 0; i < allowed && rem > 0; i++) {
+                int chunk = Math.min(maxStack, rem);
+                stacks.set(base + i, e.template().copyWithCount(chunk));
+                rem -= chunk;
+            }
+        }
+
+        notifyChanged();
+        return true;
     }
 
     public static int equipTargetCount(ItemStack template) {
@@ -330,9 +463,12 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         for (int i = 0; i < STACKS_PER_COMPARTMENT; i++) {
             ItemStack sub = stacks.get(base + i);
             if (!sub.isEmpty()) {
-                if (template.isEmpty())
+                if (template.isEmpty()) {
                     template = sub.copyWithCount(1);
-                total += sub.getCount();
+                    total += sub.getCount();
+                } else if (ItemStack.isSameItemSameComponents(template, sub)) {
+                    total += sub.getCount();
+                }
             }
         }
         for (int i = 0; i < STACKS_PER_COMPARTMENT; i++)
@@ -342,8 +478,10 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
             return;
 
         int maxStack = Math.max(1, template.getMaxStackSize());
-        int remaining = total;
-        for (int i = 0; i < STACKS_PER_COMPARTMENT && remaining > 0; i++) {
+        int allowed = maxStacksForItem(template);
+        int maxCap = maxCapacityForItem(template);
+        int remaining = Math.min(total, maxCap);
+        for (int i = 0; i < allowed && remaining > 0; i++) {
             int count = Math.min(maxStack, remaining);
             stacks.set(base + i, template.copyWithCount(count));
             remaining -= count;
@@ -379,17 +517,7 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
 
     @Override
     public void setStackInSlot(int slot, ItemStack stack) {
-        if (slot < 0 || slot >= COMPARTMENTS)
-            return;
-        int base = slot * STACKS_PER_COMPARTMENT;
-        for (int i = 0; i < STACKS_PER_COMPARTMENT; i++)
-            stacks.set(base + i, ItemStack.EMPTY);
-        if (stack != null && !stack.isEmpty() && !BackpackHelper.isNestedContainer(stack)) {
-            int maxStack = Math.max(1, stack.getMaxStackSize());
-            stacks.set(base, stack.copyWithCount(Math.min(maxStack, stack.getCount())));
-            filters.set(slot, stack.copyWithCount(1));
-        }
-        notifyChanged();
+        replaceCompartment(slot, stack);
     }
 
     @Override

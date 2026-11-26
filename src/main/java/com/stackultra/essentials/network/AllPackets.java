@@ -8,6 +8,7 @@ import com.stackultra.essentials.content.backpack.MagneticBackpackEquipment;
 import com.stackultra.essentials.content.backpack.MagneticBackpackItem;
 import com.stackultra.essentials.content.backpack.MagneticBackpackMenu;
 import com.stackultra.essentials.content.backpack.MechanicalBackpackItem;
+import com.stackultra.essentials.content.backpack.PortableToolboxInventory;
 import com.stackultra.essentials.content.magnet.MagnetEquipment;
 import com.stackultra.essentials.content.magnet.RotationalMagnetBlockEntity;
 import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
@@ -58,9 +59,9 @@ public class AllPackets {
                 BackpackToolboxPayload.STREAM_CODEC,
                 BackpackToolboxPayload::handle);
         registrar.playToClient(
-                SyncToolboxFiltersPayload.TYPE,
-                SyncToolboxFiltersPayload.STREAM_CODEC,
-                SyncToolboxFiltersPayload::handle);
+                SyncToolboxLinksPayload.TYPE,
+                SyncToolboxLinksPayload.STREAM_CODEC,
+                SyncToolboxLinksPayload::handle);
     }
 
     private static void handleToggle(RotationalMagnetTogglePayload payload, IPayloadContext context) {
@@ -214,6 +215,7 @@ public class AllPackets {
             ItemStack magnetic = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
             if (!magnetic.isEmpty()) {
                 MagneticBackpackItem magneticItem = (MagneticBackpackItem) magnetic.getItem();
+                PortableToolboxInventory tb = PortableToolboxInventory.forStack(magnetic);
                 player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> MagneticBackpackMenu.create(id, inv, magnetic),
                                 magnetic.getHoverName()),
@@ -224,8 +226,8 @@ public class AllPackets {
                             buf.writeBoolean(magnetic.getOrDefault(AllDataComponents.ENABLED, true));
                             buf.writeVarInt(magneticItem.getCharge(magnetic));
                             buf.writeVarInt(magneticItem.getMaxCharge(magnetic));
-                            ItemContainerContents.STREAM_CODEC.encode(buf,
-                                    magnetic.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
+                            for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
+                                buf.writeVarInt(tb.getTotalCount(c));
                         });
                 return;
             }
@@ -234,13 +236,14 @@ public class AllPackets {
             if (backpack.isEmpty())
                 return;
 
+            PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
                             backpack.getHoverName()),
                     buf -> {
                         buf.writeBoolean(false);
-                        ItemContainerContents.STREAM_CODEC.encode(buf,
-                                backpack.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
+                        for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
+                            buf.writeVarInt(tb.getTotalCount(c));
                     });
         });
     }

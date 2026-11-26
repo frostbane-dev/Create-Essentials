@@ -19,8 +19,7 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
     public enum Action {
         EQUIP_COMPARTMENT,
         RETURN_HELD,
-        TOGGLE_RESTOCK,
-        CLEAR_SLOT;
+        TOGGLE_RESTOCK;
 
         private static final Action[] VALUES = values();
 
@@ -54,10 +53,6 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
         return new BackpackToolboxPayload(Action.TOGGLE_RESTOCK.ordinal(), 0, 0);
     }
 
-    public static BackpackToolboxPayload clearSlot(int compartment) {
-        return new BackpackToolboxPayload(Action.CLEAR_SLOT.ordinal(), compartment, 0);
-    }
-
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
@@ -85,15 +80,6 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
                     if (!player.containerMenu.stillValid(player))
                         return;
                     menu.setRestockEnabled(!menu.isRestockEnabled(), player);
-                }
-                case CLEAR_SLOT -> {
-                    if (!(player.containerMenu instanceof IBackpackMenu menu))
-                        return;
-                    if (!player.containerMenu.stillValid(player))
-                        return;
-                    if (payload.compartment() < 0 || payload.compartment() >= PortableToolboxInventory.COMPARTMENTS)
-                        return;
-                    menu.clearToolboxSlot(payload.compartment(), player);
                 }
             }
         });

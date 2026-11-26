@@ -99,7 +99,7 @@ public class MagneticBackpackTickHandler {
 
                     ItemStack remaining = itemEntity.getItem().copy();
 
-                    // Priority 1: matching / reserved 8-slot portable toolbox compartments
+                    // Priority 1: matching physically populated 8-slot portable toolbox compartments
                     int beforeToolbox = remaining.getCount();
                     remaining = toolbox.insertIntoMatchingCompartment(remaining, false);
                     if (remaining.getCount() != beforeToolbox)
@@ -136,8 +136,6 @@ public class MagneticBackpackTickHandler {
 
                 if (pulledIntoToolbox || pulledIntoBackpack || pulledIntoPlayer) {
                     player.containerMenu.broadcastChanges();
-                    if (openMenu != null && pulledIntoToolbox)
-                        openMenu.syncToolboxFiltersToClient(player);
                 }
 
                 if (!charging) {

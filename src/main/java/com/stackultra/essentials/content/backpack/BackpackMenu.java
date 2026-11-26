@@ -1,6 +1,5 @@
 package com.stackultra.essentials.content.backpack;
 
-import com.stackultra.essentials.network.SyncToolboxFiltersPayload;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.Minecraft;
@@ -16,11 +15,10 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import javax.annotation.Nullable;
 
@@ -31,12 +29,14 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     public static final int TOOLBOX_SLOT_START = BACKPACK_SLOTS;
     public static final int PLAYER_SLOT_START = BACKPACK_SLOTS + TOOLBOX_SLOTS;
 
-    public static final int TOOLBOX_X = 180;
-    public static final int TOOLBOX_Y = 37;
+    // 8x1 horizontal bottom toolbox bar centered beneath the 176x167 main window
+    public static final int TOOLBOX_X = 17;
+    public static final int TOOLBOX_Y = 186;
 
     private final Inventory playerInventory;
     private final IItemHandler backpackInventory;
     private final PortableToolboxInventory toolboxInventory;
+    private final IItemHandler toolboxSlotBacking;
     @Nullable
     private final MechanicalBackpackBlockEntity blockEntity;
     private final ItemStack backpackStack;
@@ -50,7 +50,7 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         this.playerInventory = inv;
         boolean fromBlockEntity = extraData.readBoolean();
         MechanicalBackpackBlockEntity found = null;
-        ItemContainerContents clientToolboxFilters = ItemContainerContents.EMPTY;
+        int[] initialCounts = new int[TOOLBOX_SLOTS];
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
@@ -62,22 +62,35 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
                     found = backpack;
                 }
             }
+            if (found != null) {
+                for (int c = 0; c < TOOLBOX_SLOTS; c++)
+                    initialCounts[c] = found.getToolboxInventory().getTotalCount(c);
+            }
         } else {
-            clientToolboxFilters = ItemContainerContents.STREAM_CODEC.decode(extraData);
+            for (int c = 0; c < TOOLBOX_SLOTS; c++)
+                initialCounts[c] = Math.max(0, extraData.readVarInt());
         }
         this.blockEntity = found;
         this.backpackStack = ItemStack.EMPTY;
         this.backpackInventory = found != null ? found.getItemHandler() : new BackpackInventory();
+
+        // Client-side toolbox slots use a dedicated display handler so vanilla ClientboundContainerSetSlotPacket
+        // (which clamps ItemStack counts to maxStackSize) NEVER overwrites a placed BlockEntity's 4-stack backing!
+        ItemStackHandler displayHandler = new ItemStackHandler(TOOLBOX_SLOTS);
         if (found != null) {
             this.toolboxInventory = found.getToolboxInventory();
             this.sortMode = found.getSortMode();
             this.restockEnabled = found.isRestockEnabled();
+            for (int c = 0; c < TOOLBOX_SLOTS; c++)
+                displayHandler.setStackInSlot(c, found.getToolboxInventory().getStackInSlot(c));
         } else {
             this.toolboxInventory = PortableToolboxInventory.empty();
-            this.toolboxInventory.applyClientFilters(clientToolboxFilters);
             this.sortMode = SortMode.NAME;
             this.restockEnabled = true;
         }
+        this.toolboxSlotBacking = displayHandler;
+        System.arraycopy(initialCounts, 0, this.syncedToolboxCounts, 0, TOOLBOX_SLOTS);
+
         addBackpackSlots();
         addToolboxSlots();
         addPlayerSlots();
@@ -91,8 +104,11 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         this.backpackStack = ItemStack.EMPTY;
         this.backpackInventory = be.getItemHandler();
         this.toolboxInventory = be.getToolboxInventory();
+        this.toolboxSlotBacking = this.toolboxInventory;
         this.sortMode = be.getSortMode();
         this.restockEnabled = be.isRestockEnabled();
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
         addBackpackSlots();
         addToolboxSlots();
         addPlayerSlots();
@@ -108,8 +124,11 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
                 () -> BackpackEquipment.syncBackpack(inv.player, stack));
         this.toolboxInventory = PortableToolboxInventory.forStack(stack,
                 () -> BackpackEquipment.syncBackpack(inv.player, stack));
+        this.toolboxSlotBacking = this.toolboxInventory;
         this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
         this.restockEnabled = stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
         addBackpackSlots();
         addToolboxSlots();
         addPlayerSlots();
@@ -182,9 +201,7 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
 
     private void addToolboxSlots() {
         for (int c = 0; c < TOOLBOX_SLOTS; c++) {
-            int col = c % 2;
-            int row = c / 2;
-            addSlot(new SlotItemHandler(toolboxInventory, c, TOOLBOX_X + col * 18, TOOLBOX_Y + row * 18));
+            addSlot(new SlotItemHandler(toolboxSlotBacking, c, TOOLBOX_X + c * 18, TOOLBOX_Y));
         }
     }
 
@@ -207,7 +224,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
 
     @Override
     public SortMode getSortMode() {
-        return blockEntity != null ? blockEntity.getSortMode() : sortMode;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.getSortMode() : sortMode;
     }
 
     @Override
@@ -225,7 +243,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
 
     @Override
     public boolean isRestockEnabled() {
-        return blockEntity != null ? blockEntity.isRestockEnabled() : restockEnabled;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.isRestockEnabled() : restockEnabled;
     }
 
     @Override
@@ -236,6 +255,9 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         } else if (!backpackStack.isEmpty()) {
             backpackStack.set(ExtraDataComponents.TOOLBOX_RESTOCK, enabled);
             BackpackEquipment.syncBackpack(player, backpackStack);
+            if (player instanceof ServerPlayer serverPlayer) {
+                PortableToolboxHandler.notifyRestockToggled(serverPlayer, backpackStack);
+            }
         }
         broadcastChanges();
     }
@@ -244,26 +266,9 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     public int getToolboxCount(int compartment) {
         if (compartment < 0 || compartment >= TOOLBOX_SLOTS)
             return 0;
-        if (blockEntity != null)
-            return blockEntity.getToolboxInventory().getTotalCount(compartment);
-        return syncedToolboxCounts[compartment];
-    }
-
-    @Override
-    public ItemStack getToolboxFilter(int compartment) {
-        return toolboxInventory.getFilter(compartment);
-    }
-
-    @Override
-    public void clearToolboxSlot(int compartment, Player player) {
-        if (toolboxInventory.clearReservation(compartment)) {
-            syncToolbox(player);
-        }
-    }
-
-    @Override
-    public void applyClientToolboxFilters(ItemContainerContents filters) {
-        toolboxInventory.applyClientFilters(filters);
+        if (playerInventory.player.level().isClientSide())
+            return syncedToolboxCounts[compartment];
+        return toolboxInventory.getTotalCount(compartment);
     }
 
     @Override
@@ -280,23 +285,10 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         return backpackStack;
     }
 
-    public void syncToolboxFiltersToClient(Player player) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer,
-                    new SyncToolboxFiltersPayload(this.containerId, toolboxInventory.getFiltersComponent()));
-        }
-    }
-
-    private void syncToolbox(Player player) {
-        syncBacking(player);
-        syncToolboxFiltersToClient(player);
-    }
-
     @Override
     public void transferMatchingToStorage(Player player) {
-        // Strictly scoped to 27 main storage slots [0..27) and player slots [35..71)
         if (BackpackInventoryOps.transferMatchingToStorage(
-                this, 0, BACKPACK_SLOTS, PLAYER_SLOT_START, this.slots.size(),
+                this, toolboxInventory, 0, BACKPACK_SLOTS, PLAYER_SLOT_START, this.slots.size(),
                 player, backpackStack.isEmpty() ? null : backpackStack)) {
             syncBacking(player);
         }
@@ -305,14 +297,14 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     @Override
     public void transferMatchingToInventory(Player player) {
         if (BackpackInventoryOps.transferMatchingToInventory(
-                this, 0, BACKPACK_SLOTS, PLAYER_SLOT_START, this.slots.size(), player)) {
+                this, toolboxInventory, 0, BACKPACK_SLOTS, PLAYER_SLOT_START, this.slots.size(), player)) {
             syncBacking(player);
         }
     }
 
     @Override
     public void sortStorage(Player player) {
-        if (BackpackInventoryOps.sortStorage(this, 0, BACKPACK_SLOTS, getSortMode())) {
+        if (BackpackInventoryOps.sortStorage(this, toolboxInventory, 0, BACKPACK_SLOTS, getSortMode())) {
             syncBacking(player);
         }
     }
@@ -329,12 +321,18 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
         if (isToolboxSlot(slotId)) {
+            // Allow drag-split state machine to finish cleanly without touching toolbox slots (canDragTo is false)
+            if (clickType == ClickType.QUICK_CRAFT) {
+                super.clicked(slotId, dragType, clickType, player);
+                return;
+            }
             if (!player.level().isClientSide()) {
                 int compartment = slotId - TOOLBOX_SLOT_START;
                 if (BackpackInventoryOps.handleToolboxSlotClick(
                         this, toolboxInventory, compartment, dragType, clickType, player,
-                        PLAYER_SLOT_START, this.slots.size())) {
-                    syncToolbox(player);
+                        PLAYER_SLOT_START, this.slots.size(),
+                        backpackStack.isEmpty() ? null : backpackStack)) {
+                    syncBacking(player);
                 }
             }
             return;

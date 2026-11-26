@@ -8,6 +8,7 @@ import com.stackultra.essentials.network.BackpackActionPayload;
 import com.stackultra.essentials.network.BackpackToolboxPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -25,19 +26,18 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
 
     private static final int WINDOW_WIDTH = 176;
     private static final int WINDOW_HEIGHT = 167;
+    private static final int BOTTOM_TAB_HEIGHT = 42;
 
     private static final int UTILITY_BTN_SIZE = 12;
     private static final int UTILITY_BTN_GAP = 1;
     private static final int UTILITY_BTN_Y = 4;
     private static final int UTILITY_START_X = 169 - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
 
-    private static final int RIGHT_TAB_WIDTH = 44;
-    private static final int RIGHT_TAB_TOP = 16;
-    private static final int RIGHT_TAB_HEIGHT = 96;
-
-    private static final int RESTOCK_BTN_X = 179;
-    private static final int RESTOCK_BTN_Y = 20;
-    private static final int RESTOCK_BTN_W = 36;
+    private static final int TOOLBOX_TITLE_X = 8;
+    private static final int TOOLBOX_TITLE_Y = WINDOW_HEIGHT + 5;
+    private static final int RESTOCK_BTN_X = 92;
+    private static final int RESTOCK_BTN_Y = WINDOW_HEIGHT + 2;
+    private static final int RESTOCK_BTN_W = 76;
     private static final int RESTOCK_BTN_H = 14;
 
     private final List<DarkIconButton> utilityButtons = new ArrayList<>(4);
@@ -51,6 +51,8 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
     protected void init() {
         setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         super.init();
+        // Center main window + bottom toolbox bar cleanly on screen
+        this.topPos = Math.max(4, (this.height - (WINDOW_HEIGHT + BOTTOM_TAB_HEIGHT)) / 2);
 
         utilityButtons.clear();
         int step = UTILITY_BTN_SIZE + UTILITY_BTN_GAP;
@@ -101,40 +103,35 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
 
         restockButton = new DarkTextButton(
                 leftPos + RESTOCK_BTN_X, topPos + RESTOCK_BTN_Y, RESTOCK_BTN_W, RESTOCK_BTN_H,
-                () -> Component.translatable(menu.isRestockEnabled()
-                        ? "createessentials.gui.restock_short_on"
-                        : "createessentials.gui.restock_short_off"),
-                () -> menu.isRestockEnabled() ? 0xFF55FF55 : 0xFFFF5555,
+                () -> {
+                    boolean on = menu.isRestockEnabled();
+                    return Component.translatable("createessentials.gui.restock_btn",
+                            Component.translatable(on ? "createessentials.gui.on" : "createessentials.gui.off")
+                                    .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED));
+                },
+                () -> DarkGuiStyling.COLOR_TEXT,
                 () -> PacketDistributor.sendToServer(BackpackToolboxPayload.toggleRestock()));
         addRenderableWidget(restockButton);
     }
 
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
-        boolean inRightTab = mouseX >= guiLeft + imageWidth && mouseX < guiLeft + imageWidth + RIGHT_TAB_WIDTH
-                && mouseY >= guiTop + RIGHT_TAB_TOP && mouseY < guiTop + RIGHT_TAB_TOP + RIGHT_TAB_HEIGHT;
-        return !inRightTab && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
+        boolean inBottomTab = mouseX >= guiLeft && mouseX < guiLeft + imageWidth
+                && mouseY >= guiTop + imageHeight && mouseY < guiTop + imageHeight + BOTTOM_TAB_HEIGHT;
+        return !inBottomTab && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
+    }
+
+    @Override
+    public List<Rect2i> getExtraAreas() {
+        return List.of(new Rect2i(leftPos, topPos + imageHeight, imageWidth, BOTTOM_TAB_HEIGHT));
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
-        DarkGuiStyling.drawPanelWithRightTab(graphics, leftPos, topPos, imageWidth, imageHeight,
-                RIGHT_TAB_WIDTH, RIGHT_TAB_TOP, RIGHT_TAB_HEIGHT);
+        DarkGuiStyling.drawPanelWithBottomTab(graphics, leftPos, topPos, imageWidth, imageHeight, BOTTOM_TAB_HEIGHT);
 
         for (Slot slot : menu.slots)
             DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
-
-        // Render ghost reserved filter icons for empty toolbox compartments
-        for (int c = 0; c < BackpackMenu.TOOLBOX_SLOTS; c++) {
-            Slot slot = menu.slots.get(BackpackMenu.TOOLBOX_SLOT_START + c);
-            if (menu.getToolboxCount(c) > 0)
-                continue;
-            ItemStack filter = menu.getToolboxFilter(c);
-            if (!filter.isEmpty()) {
-                DarkGuiStyling.drawGhostItem(graphics, filter, leftPos + slot.x, topPos + slot.y, 0.35F);
-                DarkGuiStyling.drawReservedMarker(graphics, leftPos + slot.x, topPos + slot.y);
-            }
-        }
     }
 
     @Override
@@ -164,26 +161,14 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
         graphics.drawString(font, playerInventoryTitle, leftPos + 8, topPos + playerY - 11,
                 DarkGuiStyling.COLOR_TEXT_DIM, true);
 
+        graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
+                leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
+
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int x, int y) {
-        if (menu.getCarried().isEmpty() && hoveredSlot != null && menu.isToolboxSlot(hoveredSlot.index)) {
-            int c = hoveredSlot.index - BackpackMenu.TOOLBOX_SLOT_START;
-            int total = menu.getToolboxCount(c);
-            ItemStack filter = menu.getToolboxFilter(c);
-            if (total == 0 && !filter.isEmpty()) {
-                graphics.renderComponentTooltip(font, List.of(
-                        filter.getHoverName().copy().withStyle(ChatFormatting.YELLOW),
-                        Component.translatable("createessentials.gui.toolbox_reserved_empty")
-                                .withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createessentials.gui.toolbox_clear_hint")
-                                .withStyle(ChatFormatting.DARK_GRAY)), x, y);
-                return;
-            }
-        }
-
         super.renderTooltip(graphics, x, y);
         if (!menu.getCarried().isEmpty())
             return;

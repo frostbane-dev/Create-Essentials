@@ -47,57 +47,60 @@ public final class DarkGuiStyling {
         int ty = my + tabTopOffset;
         int tb = ty + tabHeight;
 
+        // Main & tab interior fills
         g.fill(mx, my, mx + mw, my + mh, COLOR_PANEL);
         g.fill(tx, ty, mx, tb, COLOR_PANEL);
 
+        // Dark bottom/right inner bevels
         g.fill(mx + mw - 2, my + 1, mx + mw - 1, my + mh - 1, COLOR_BEVEL_DARK);
         g.fill(mx + 1, my + mh - 2, mx + mw - 1, my + mh - 1, COLOR_BEVEL_DARK);
         g.fill(tx + 1, tb - 2, mx + 1, tb - 1, COLOR_BEVEL_DARK);
 
-        g.fill(mx + 1, my + 1, mx + mw - 1, my + 2, COLOR_BEVEL_LIGHT);
-        g.fill(mx + 1, my + 1, mx + 2, ty + 2, COLOR_BEVEL_LIGHT);
-        g.fill(tx + 1, ty + 1, mx + 2, ty + 2, COLOR_BEVEL_LIGHT);
-        g.fill(tx + 1, ty + 1, tx + 2, tb - 2, COLOR_BEVEL_LIGHT);
-        g.fill(mx + 1, tb - 1, mx + 2, my + mh - 2, COLOR_BEVEL_LIGHT);
+        // Light top/left inner bevels
+        if (tabTopOffset == 0) {
+            // Flush top-left alignment: continuous top bevel across left tab + main panel
+            g.fill(tx + 1, my + 1, mx + mw - 1, my + 2, COLOR_BEVEL_LIGHT);
+            g.fill(tx + 1, ty + 1, tx + 2, tb - 2, COLOR_BEVEL_LIGHT);
+            g.fill(mx + 1, tb - 1, mx + 2, my + mh - 2, COLOR_BEVEL_LIGHT);
+        } else {
+            g.fill(mx + 1, my + 1, mx + mw - 1, my + 2, COLOR_BEVEL_LIGHT);
+            g.fill(mx + 1, my + 1, mx + 2, ty + 2, COLOR_BEVEL_LIGHT);
+            g.fill(tx + 1, ty + 1, mx + 2, ty + 2, COLOR_BEVEL_LIGHT);
+            g.fill(tx + 1, ty + 1, tx + 2, tb - 2, COLOR_BEVEL_LIGHT);
+            g.fill(mx + 1, tb - 1, mx + 2, my + mh - 2, COLOR_BEVEL_LIGHT);
+        }
 
-        g.fill(mx, my, mx + mw, my + 1, COLOR_BORDER_DARK);
+        // Outer 1px dark borders
+        if (tabTopOffset == 0) {
+            g.fill(tx, my, mx + mw, my + 1, COLOR_BORDER_DARK);
+        } else {
+            g.fill(mx, my, mx + mw, my + 1, COLOR_BORDER_DARK);
+            g.fill(mx, my, mx + 1, ty + 1, COLOR_BORDER_DARK);
+            g.fill(tx, ty, mx + 1, ty + 1, COLOR_BORDER_DARK);
+        }
         g.fill(mx + mw - 1, my, mx + mw, my + mh, COLOR_BORDER_DARK);
         g.fill(mx, my + mh - 1, mx + mw, my + mh, COLOR_BORDER_DARK);
-        g.fill(mx, my, mx + 1, ty + 1, COLOR_BORDER_DARK);
         g.fill(mx, tb - 1, mx + 1, my + mh, COLOR_BORDER_DARK);
-        g.fill(tx, ty, mx + 1, ty + 1, COLOR_BORDER_DARK);
         g.fill(tx, ty, tx + 1, tb, COLOR_BORDER_DARK);
         g.fill(tx, tb - 1, mx + 1, tb, COLOR_BORDER_DARK);
     }
 
-    public static void drawPanelWithRightTab(GuiGraphics g, int mx, int my, int mw, int mh,
-                                             int rightTabW, int rightTabTop, int rightTabH) {
-        drawPanel(g, mx, my, mw, mh);
-        drawAttachedRightTab(g, mx + mw, my + rightTabTop, rightTabW, rightTabH);
+    /**
+     * Draws a main panel seamlessly extended downward with an attached horizontal Toolbox bar.
+     */
+    public static void drawPanelWithBottomTab(GuiGraphics g, int mx, int my, int mw, int mh, int bottomTabH) {
+        drawPanel(g, mx, my, mw, mh + bottomTabH);
+        drawDivider(g, mx + 6, my + mh - 2, mw - 12);
     }
 
-    public static void drawPanelWithBothTabs(GuiGraphics g, int mx, int my, int mw, int mh,
-                                             int leftTabW, int leftTabTop, int leftTabH,
-                                             int rightTabW, int rightTabTop, int rightTabH) {
-        drawPanelWithLeftTab(g, mx, my, mw, mh, leftTabW, leftTabTop, leftTabH);
-        drawAttachedRightTab(g, mx + mw, my + rightTabTop, rightTabW, rightTabH);
-    }
-
-    private static void drawAttachedRightTab(GuiGraphics g, int rx, int ry, int rw, int rh) {
-        int rb = ry + rh;
-        // Fill across seam (rx - 2 .. rx + rw - 1) so right tab joins main panel seamlessly
-        g.fill(rx - 2, ry + 2, rx + rw - 2, rb - 2, COLOR_PANEL);
-
-        // Top highlight bevel
-        g.fill(rx - 2, ry + 1, rx + rw - 1, ry + 2, COLOR_BEVEL_LIGHT);
-        // Bottom & right dark bevel
-        g.fill(rx - 2, rb - 2, rx + rw - 1, rb - 1, COLOR_BEVEL_DARK);
-        g.fill(rx + rw - 2, ry + 1, rx + rw - 1, rb - 1, COLOR_BEVEL_DARK);
-
-        // Outer 1px border
-        g.fill(rx - 1, ry, rx + rw, ry + 1, COLOR_BORDER_DARK);
-        g.fill(rx - 1, rb - 1, rx + rw, rb, COLOR_BORDER_DARK);
-        g.fill(rx + rw - 1, ry, rx + rw, rb, COLOR_BORDER_DARK);
+    /**
+     * Draws a main panel with a flush-top left tab AND an attached horizontal bottom Toolbox bar.
+     */
+    public static void drawPanelWithLeftAndBottomTabs(GuiGraphics g, int mx, int my, int mw, int mh,
+                                                      int leftTabW, int leftTabTop, int leftTabH,
+                                                      int bottomTabH) {
+        drawPanelWithLeftTab(g, mx, my, mw, mh + bottomTabH, leftTabW, leftTabTop, leftTabH);
+        drawDivider(g, mx + 6, my + mh - 2, mw - 12);
     }
 
     public static void drawSlot(GuiGraphics graphics, int itemX, int itemY) {
@@ -155,14 +158,6 @@ public final class DarkGuiStyling {
             int drawY = itemY + 9;
             graphics.drawString(font, text, drawX, drawY, 0xFFFFFFFF, true);
         }
-        graphics.pose().popPose();
-    }
-
-    public static void drawReservedMarker(GuiGraphics graphics, int itemX, int itemY) {
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 210);
-        graphics.fill(itemX + 12, itemY + 1, itemX + 15, itemY + 4, 0xFF1A1A1A);
-        graphics.fill(itemX + 13, itemY + 2, itemX + 14, itemY + 3, COLOR_TITLE);
         graphics.pose().popPose();
     }
 }

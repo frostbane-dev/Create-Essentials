@@ -36,13 +36,14 @@ public class MechanicalBackpackItem extends BlockItem implements Equipable {
             if (level.isClientSide)
                 return InteractionResultHolder.success(stack);
 
+            PortableToolboxInventory tb = PortableToolboxInventory.forStack(stack);
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> BackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
                     buf -> {
                         buf.writeBoolean(false);
-                        ItemContainerContents.STREAM_CODEC.encode(buf,
-                                stack.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
+                        for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
+                            buf.writeVarInt(tb.getTotalCount(c));
                     });
             return InteractionResultHolder.consume(stack);
         }

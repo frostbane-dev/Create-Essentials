@@ -50,6 +50,7 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
             if (level.isClientSide)
                 return InteractionResultHolder.success(stack);
 
+            PortableToolboxInventory tb = PortableToolboxInventory.forStack(stack);
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> MagneticBackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
@@ -60,8 +61,8 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
                         buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
                         buf.writeVarInt(getCharge(stack));
                         buf.writeVarInt(getMaxCharge(stack));
-                        ItemContainerContents.STREAM_CODEC.encode(buf,
-                                stack.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
+                        for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
+                            buf.writeVarInt(tb.getTotalCount(c));
                     });
             return InteractionResultHolder.consume(stack);
         }

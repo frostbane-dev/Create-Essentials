@@ -21,9 +21,8 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 /**
- * Create-style 8-slot radial toolbox menu for the portable backpack toolbox.
- * Supports hold-and-release Alt (AllKeys.TOOLBELT), click selection, scroll-wheel cycling,
- * center Return action, and clean handoff to nearby placed Create Toolboxes.
+ * Clean Create-style 8-slot radial toolbox wheel for the portable backpack toolbox.
+ * Renders directly over the live game view with no rectangular backdrop fill.
  */
 @OnlyIn(Dist.CLIENT)
 public class PortableToolboxRadialScreen extends Screen {
@@ -37,7 +36,6 @@ public class PortableToolboxRadialScreen extends Screen {
     private static final int SLOT_BOX_SIZE = 24;
 
     private final List<ToolboxBlockEntity> nearbyWorldToolboxes;
-    private final ItemStack backpackStack;
     private final PortableToolboxInventory snapshot;
     private final BackpackTooltipPalette palette;
 
@@ -48,7 +46,6 @@ public class PortableToolboxRadialScreen extends Screen {
 
     public PortableToolboxRadialScreen(ItemStack backpackStack, List<ToolboxBlockEntity> nearbyWorldToolboxes) {
         super(backpackStack.getHoverName());
-        this.backpackStack = backpackStack;
         this.nearbyWorldToolboxes = nearbyWorldToolboxes;
         this.snapshot = PortableToolboxInventory.forStack(backpackStack);
         BackpackTooltipPalette resolved = BackpackTooltipPalette.resolveForStack(backpackStack);
@@ -90,7 +87,7 @@ public class PortableToolboxRadialScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Keep world clearly visible behind the radial wheel (matching Create's RadialToolboxMenu)
+        // Intentionally empty: render only the clean radial wheel over the live world view
     }
 
     @Override
@@ -104,12 +101,8 @@ public class PortableToolboxRadialScreen extends Screen {
             hoveredSelection = scrollSlot;
         }
 
-        // Subtle dark backdrop behind wheel
-        graphics.fill(cx - WHEEL_RADIUS - 26, cy - WHEEL_RADIUS - 26,
-                cx + WHEEL_RADIUS + 26, cy + WHEEL_RADIUS + 26, 0x55121216);
-
         // Title above wheel
-        graphics.drawCenteredString(font, title, cx, cy - WHEEL_RADIUS - 36, DarkGuiStyling.COLOR_TITLE);
+        graphics.drawCenteredString(font, title, cx, cy - WHEEL_RADIUS - 28, DarkGuiStyling.COLOR_TITLE);
 
         // Render 8 radial compartment nodes
         for (int c = 0; c < COMPARTMENTS; c++) {
@@ -149,14 +142,11 @@ public class PortableToolboxRadialScreen extends Screen {
         DarkGuiStyling.drawSlot(g, itemX, itemY);
 
         int count = snapshot.getTotalCount(compartment);
-        ItemStack filter = snapshot.getFilter(compartment);
-        if (count > 0 && !filter.isEmpty()) {
-            g.renderItem(filter, itemX, itemY);
-            g.renderItemDecorations(font, filter, itemX, itemY, "");
+        ItemStack template = snapshot.getTemplate(compartment);
+        if (count > 0 && !template.isEmpty()) {
+            g.renderItem(template, itemX, itemY);
+            g.renderItemDecorations(font, template, itemX, itemY, "");
             DarkGuiStyling.drawCompactCount(g, font, count, itemX, itemY);
-        } else if (!filter.isEmpty()) {
-            DarkGuiStyling.drawGhostItem(g, filter, itemX, itemY, 0.35F);
-            DarkGuiStyling.drawReservedMarker(g, itemX, itemY);
         }
     }
 
@@ -179,11 +169,11 @@ public class PortableToolboxRadialScreen extends Screen {
                     .withStyle(ChatFormatting.GRAY);
         }
         if (selection >= 0 && selection < COMPARTMENTS) {
-            ItemStack filter = snapshot.getFilter(selection);
             int count = snapshot.getTotalCount(selection);
-            if (!filter.isEmpty()) {
-                return Component.literal(filter.getHoverName().getString() + " (" + count + ")")
-                        .withStyle(count > 0 ? ChatFormatting.WHITE : ChatFormatting.YELLOW);
+            ItemStack template = snapshot.getTemplate(selection);
+            if (count > 0 && !template.isEmpty()) {
+                return Component.literal(template.getHoverName().getString() + " (" + count + ")")
+                        .withStyle(ChatFormatting.WHITE);
             }
             return Component.translatable("createessentials.tooltip.backpack_empty")
                     .withStyle(ChatFormatting.DARK_GRAY);
@@ -192,7 +182,6 @@ public class PortableToolboxRadialScreen extends Screen {
     }
 
     private int resolveHover(int mouseX, int mouseY, int cx, int cy) {
-        // Ignore hover when hovering the World Toolboxes button below the wheel
         if (!nearbyWorldToolboxes.isEmpty() && mouseY > cy + WHEEL_RADIUS + 20)
             return NO_SELECTION;
 
@@ -222,7 +211,7 @@ public class PortableToolboxRadialScreen extends Screen {
         if (hoveredSelection == RETURN_SELECTION) {
             PacketDistributor.sendToServer(BackpackToolboxPayload.returnHeld(hotbarSlot));
         } else if (hoveredSelection >= 0 && hoveredSelection < COMPARTMENTS) {
-            if (!snapshot.getFilter(hoveredSelection).isEmpty()) {
+            if (snapshot.getTotalCount(hoveredSelection) > 0) {
                 PacketDistributor.sendToServer(BackpackToolboxPayload.equip(hoveredSelection, hotbarSlot));
             }
         }

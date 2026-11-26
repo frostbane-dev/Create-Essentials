@@ -2,6 +2,8 @@ package com.stackultra.essentials.content.backpack;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
@@ -19,13 +21,20 @@ public final class BackpackInventoryOps {
     private BackpackInventoryOps() {
     }
 
+    /**
+     * Green Arrow: Transfers matching items from player inventory into matching physically populated
+     * toolbox compartments FIRST (respecting anti-nesting and strict per-item caps: 1 for unstackables,
+     * 4 * maxStackSize for stackables), then into matching/empty slots among the 27 main storage slots.
+     */
     public static boolean transferMatchingToStorage(AbstractContainerMenu menu,
+                                                    @Nullable PortableToolboxInventory toolbox,
                                                     int storageStart, int storageEnd,
                                                     int playerStart, int playerEnd,
                                                     Player player,
                                                     @Nullable ItemStack openBackpackStack) {
         List<ItemStack> storageSnapshot = snapshotNonEmpty(menu, storageStart, storageEnd);
-        if (storageSnapshot.isEmpty())
+        boolean hasToolboxItems = toolbox != null && toolbox.hasAnyContents();
+        if (storageSnapshot.isEmpty() && !hasToolboxItems)
             return false;
 
         boolean movedAny = false;
@@ -38,16 +47,36 @@ public final class BackpackInventoryOps {
                 continue;
             if (BackpackHelper.isNestedContainer(source))
                 continue;
-            if (!matchesAny(source, storageSnapshot))
-                continue;
 
-            if (moveStackToRange(menu, sourceSlot, storageStart, storageEnd))
-                movedAny = true;
+            // Priority 1: matching physically populated toolbox compartments
+            if (hasToolboxItems) {
+                int beforeToolbox = source.getCount();
+                ItemStack remaining = toolbox.insertIntoMatchingCompartment(source, false);
+                if (remaining.getCount() != beforeToolbox || remaining.isEmpty()) {
+                    sourceSlot.set(remaining);
+                    sourceSlot.setChanged();
+                    movedAny = true;
+                }
+            }
+
+            // Priority 2: 27 main storage slots (for items matching main storage snapshot)
+            ItemStack afterToolbox = sourceSlot.getItem();
+            if (!afterToolbox.isEmpty() && !storageSnapshot.isEmpty()
+                    && matchesAny(afterToolbox, storageSnapshot)) {
+                if (moveStackToRange(menu, sourceSlot, storageStart, storageEnd))
+                    movedAny = true;
+            }
         }
         return movedAny;
     }
 
+    /**
+     * Red Arrow: Transfers matching items from BOTH the 8 toolbox compartments (splitting > maxStackSize
+     * stacks cleanly into valid <= maxStackSize player stacks without losing remainders) AND the 27 main
+     * storage slots into the player's inventory.
+     */
     public static boolean transferMatchingToInventory(AbstractContainerMenu menu,
+                                                      @Nullable PortableToolboxInventory toolbox,
                                                       int storageStart, int storageEnd,
                                                       int playerStart, int playerEnd,
                                                       Player player) {
@@ -56,6 +85,35 @@ public final class BackpackInventoryOps {
             return false;
 
         boolean movedAny = false;
+
+        // Step 1: matching items from the 8 toolbox compartments
+        if (toolbox != null) {
+            for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++) {
+                if (toolbox.getTotalCount(c) <= 0)
+                    continue;
+                ItemStack template = toolbox.getTemplate(c);
+                if (template.isEmpty() || !matchesAny(template, playerSnapshot))
+                    continue;
+
+                int maxStack = Math.max(1, template.getMaxStackSize());
+                while (toolbox.getTotalCount(c) > 0) {
+                    ItemStack extracted = toolbox.extractFromCompartment(c, maxStack, false);
+                    if (extracted.isEmpty())
+                        break;
+                    ItemStack remainder = insertIntoPlayerSlots(menu, extracted, playerStart, playerEnd);
+                    if (remainder.getCount() != extracted.getCount() || remainder.isEmpty()) {
+                        movedAny = true;
+                    }
+                    if (!remainder.isEmpty()) {
+                        // Player inventory full for this item -> restore untransferred remainder safely
+                        toolbox.insertIntoCompartment(c, remainder, false);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Step 2: matching items from the 27 main storage slots
         for (int i = storageStart; i < storageEnd; i++) {
             Slot sourceSlot = menu.getSlot(i);
             ItemStack source = sourceSlot.getItem();
@@ -70,9 +128,22 @@ public final class BackpackInventoryOps {
         return movedAny;
     }
 
+    /**
+     * Consolidates and sorts both the 27 main storage slots and the 8 toolbox compartments
+     * cleanly within their respective capacity rules, never touching Magnetic Backpack's 3 filter slots.
+     */
     public static boolean sortStorage(AbstractContainerMenu menu,
+                                      @Nullable PortableToolboxInventory toolbox,
                                       int storageStart, int storageEnd,
                                       SortMode mode) {
+        boolean mainChanged = sortMainSlots(menu, storageStart, storageEnd, mode);
+        boolean toolboxChanged = toolbox != null && toolbox.sortCompartments(mode);
+        return mainChanged || toolboxChanged;
+    }
+
+    private static boolean sortMainSlots(AbstractContainerMenu menu,
+                                         int storageStart, int storageEnd,
+                                         SortMode mode) {
         int slotCount = storageEnd - storageStart;
         if (slotCount <= 0)
             return false;
@@ -208,7 +279,7 @@ public final class BackpackInventoryOps {
     private static Comparator<ItemStack> comparatorFor(SortMode mode) {
         return switch (mode) {
             case NAME -> Comparator
-                    .comparing((ItemStack s) -> displayName(s))
+                    .comparing(BackpackInventoryOps::displayName)
                     .thenComparing(s -> itemId(s).toString())
                     .thenComparing(Comparator.comparingInt(ItemStack::getCount).reversed())
                     .thenComparing(s -> s.getComponents().toString());
@@ -236,10 +307,8 @@ public final class BackpackInventoryOps {
     }
 
     /**
-     * Handles Create-style toolbox compartment click interactions safely on the server.
-     * Supports: full-stack insert (LMB), single-item insert (RMB), stack extract (empty LMB),
-     * half-stack extract (empty RMB), shift-click transfer to player inventory, and clearing
-     * an empty reserved filter slot on click.
+     * Handles all server-authoritative toolbox compartment interactions with strict count preservation:
+     * LMB/RMB insert/extract/swap, Shift-click transfer, number-key/offhand swap, and throw.
      */
     public static boolean handleToolboxSlotClick(AbstractContainerMenu menu,
                                                  PortableToolboxInventory toolbox,
@@ -248,63 +317,168 @@ public final class BackpackInventoryOps {
                                                  ClickType clickType,
                                                  Player player,
                                                  int playerSlotStart,
-                                                 int playerSlotEnd) {
+                                                 int playerSlotEnd,
+                                                 @Nullable ItemStack openBackpackStack) {
         if (compartment < 0 || compartment >= PortableToolboxInventory.COMPARTMENTS)
             return false;
 
-        if (clickType == ClickType.QUICK_MOVE) {
-            if (toolbox.getTotalCount(compartment) == 0)
-                return toolbox.clearReservation(compartment);
-            ItemStack filter = toolbox.getFilter(compartment);
-            int maxExtract = filter.isEmpty() ? 64 : Math.max(1, filter.getMaxStackSize());
-            ItemStack extracted = toolbox.extractFromCompartment(compartment, maxExtract, false);
-            if (extracted.isEmpty())
-                return false;
-            ItemStack remaining = insertIntoPlayerSlots(menu, extracted, playerSlotStart, playerSlotEnd);
-            if (!remaining.isEmpty())
-                toolbox.insertIntoCompartment(compartment, remaining, false);
-            return remaining.getCount() != extracted.getCount();
-        }
+        switch (clickType) {
+            case QUICK_MOVE -> {
+                int total = toolbox.getTotalCount(compartment);
+                if (total <= 0)
+                    return false;
+                ItemStack template = toolbox.getTemplate(compartment);
+                int maxExtract = template.isEmpty() ? 64 : Math.max(1, template.getMaxStackSize());
+                ItemStack extracted = toolbox.extractFromCompartment(compartment, maxExtract, false);
+                if (extracted.isEmpty())
+                    return false;
+                ItemStack remaining = insertIntoPlayerSlots(menu, extracted, playerSlotStart, playerSlotEnd);
+                if (!remaining.isEmpty())
+                    toolbox.insertIntoCompartment(compartment, remaining, false);
+                return remaining.getCount() != extracted.getCount() || remaining.isEmpty();
+            }
+            case PICKUP -> {
+                ItemStack carried = menu.getCarried();
+                if (!carried.isEmpty()) {
+                    if (BackpackHelper.isNestedContainer(carried))
+                        return false;
+                    if (openBackpackStack != null && carried == openBackpackStack)
+                        return false;
 
-        if (clickType != ClickType.PICKUP)
-            return false;
+                    if (toolbox.canAccept(compartment, carried)) {
+                        if (button == 1) {
+                            ItemStack one = carried.copyWithCount(1);
+                            ItemStack rem = toolbox.insertIntoCompartment(compartment, one, false);
+                            if (rem.isEmpty()) {
+                                ItemStack nextCarried = carried.copy();
+                                nextCarried.shrink(1);
+                                menu.setCarried(nextCarried.isEmpty() ? ItemStack.EMPTY : nextCarried);
+                                return true;
+                            }
+                            return false;
+                        } else {
+                            ItemStack rem = toolbox.insertIntoCompartment(compartment, carried, false);
+                            if (rem.getCount() != carried.getCount() || rem.isEmpty()) {
+                                menu.setCarried(rem);
+                                return true;
+                            }
+                            return false;
+                        }
+                    }
 
-        ItemStack carried = menu.getCarried();
-        if (!carried.isEmpty()) {
-            if (button == 1) {
-                ItemStack one = carried.copyWithCount(1);
-                ItemStack rem = toolbox.insertIntoCompartment(compartment, one, false);
-                if (rem.isEmpty()) {
-                    ItemStack nextCarried = carried.copy();
-                    nextCarried.shrink(1);
-                    menu.setCarried(nextCarried.isEmpty() ? ItemStack.EMPTY : nextCarried);
-                    return true;
+                    // LMB with a different item onto a populated compartment whose total <= maxStackSize: swap cleanly
+                    if (button == 0) {
+                        int existingTotal = toolbox.getTotalCount(compartment);
+                        ItemStack existingTemplate = toolbox.getTemplate(compartment);
+                        if (existingTotal > 0 && !existingTemplate.isEmpty()
+                                && existingTotal <= Math.max(1, existingTemplate.getMaxStackSize())
+                                && !ItemStack.isSameItemSameComponents(existingTemplate, carried)) {
+                            ItemStack extracted = toolbox.extractFromCompartment(compartment, existingTotal, false);
+                            if (!extracted.isEmpty()) {
+                                toolbox.replaceCompartment(compartment, carried);
+                                menu.setCarried(extracted);
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
                 }
-                return false;
-            } else {
-                ItemStack rem = toolbox.insertIntoCompartment(compartment, carried, false);
-                if (rem.getCount() != carried.getCount() || rem.isEmpty()) {
-                    menu.setCarried(rem);
+
+                // Empty cursor: extract up to maxStackSize (LMB) or half of min(total, maxStackSize) rounded up (RMB)
+                int total = toolbox.getTotalCount(compartment);
+                if (total <= 0)
+                    return false;
+
+                ItemStack template = toolbox.getTemplate(compartment);
+                int maxStack = template.isEmpty() ? 64 : Math.max(1, template.getMaxStackSize());
+                int avail = Math.min(total, maxStack);
+                int amount = button == 1 ? Math.max(1, (avail + 1) / 2) : maxStack;
+                ItemStack extracted = toolbox.extractFromCompartment(compartment, amount, false);
+                if (!extracted.isEmpty()) {
+                    menu.setCarried(extracted);
                     return true;
                 }
                 return false;
             }
-        }
+            case SWAP -> {
+                if (!menu.getCarried().isEmpty())
+                    return false;
+                boolean isOffhand = button == 40;
+                if (!isOffhand && (button < 0 || button >= Inventory.getSelectionSize()))
+                    return false;
 
-        // Empty cursor: extract or clear empty reservation
-        int total = toolbox.getTotalCount(compartment);
-        if (total == 0)
-            return toolbox.clearReservation(compartment);
+                ItemStack swapStack = isOffhand
+                        ? player.getOffhandItem()
+                        : player.getInventory().getItem(button);
+                if (openBackpackStack != null && swapStack == openBackpackStack)
+                    return false;
 
-        ItemStack filter = toolbox.getFilter(compartment);
-        int maxStack = filter.isEmpty() ? 64 : Math.max(1, filter.getMaxStackSize());
-        int amount = button == 1 ? Math.max(1, Math.min(total, maxStack) / 2) : maxStack;
-        ItemStack extracted = toolbox.extractFromCompartment(compartment, amount, false);
-        if (!extracted.isEmpty()) {
-            menu.setCarried(extracted);
-            return true;
+                int existingTotal = toolbox.getTotalCount(compartment);
+                if (swapStack.isEmpty()) {
+                    if (existingTotal <= 0)
+                        return false;
+                    ItemStack template = toolbox.getTemplate(compartment);
+                    int maxStack = template.isEmpty() ? 64 : Math.max(1, template.getMaxStackSize());
+                    ItemStack extracted = toolbox.extractFromCompartment(compartment, maxStack, false);
+                    if (extracted.isEmpty())
+                        return false;
+                    setSwapTarget(player, button, isOffhand, extracted);
+                    return true;
+                }
+
+                if (BackpackHelper.isNestedContainer(swapStack))
+                    return false;
+
+                if (toolbox.canAccept(compartment, swapStack)) {
+                    ItemStack rem = toolbox.insertIntoCompartment(compartment, swapStack, false);
+                    if (rem.getCount() != swapStack.getCount() || rem.isEmpty()) {
+                        setSwapTarget(player, button, isOffhand, rem);
+                        return true;
+                    }
+                    return false;
+                }
+
+                // Different item in hotbar/offhand: swap only if compartment total fits into one valid stack
+                ItemStack existingTemplate = toolbox.getTemplate(compartment);
+                if (existingTotal > 0 && !existingTemplate.isEmpty()
+                        && existingTotal <= Math.max(1, existingTemplate.getMaxStackSize())) {
+                    ItemStack extracted = toolbox.extractFromCompartment(compartment, existingTotal, false);
+                    if (!extracted.isEmpty()) {
+                        toolbox.replaceCompartment(compartment, swapStack);
+                        setSwapTarget(player, button, isOffhand, extracted);
+                        return true;
+                    }
+                }
+                return false;
+            }
+            case THROW -> {
+                if (!menu.getCarried().isEmpty())
+                    return false;
+                int total = toolbox.getTotalCount(compartment);
+                if (total <= 0)
+                    return false;
+                ItemStack template = toolbox.getTemplate(compartment);
+                int maxStack = template.isEmpty() ? 64 : Math.max(1, template.getMaxStackSize());
+                int amount = button == 1 ? maxStack : 1;
+                ItemStack extracted = toolbox.extractFromCompartment(compartment, amount, false);
+                if (!extracted.isEmpty()) {
+                    player.drop(extracted, true);
+                    return true;
+                }
+                return false;
+            }
+            default -> {
+                return false;
+            }
         }
-        return false;
+    }
+
+    private static void setSwapTarget(Player player, int button, boolean isOffhand, ItemStack stack) {
+        if (isOffhand) {
+            player.setItemInHand(InteractionHand.OFF_HAND, stack);
+        } else {
+            player.getInventory().setItem(button, stack);
+        }
     }
 
     private static ItemStack insertIntoPlayerSlots(AbstractContainerMenu menu, ItemStack stack,

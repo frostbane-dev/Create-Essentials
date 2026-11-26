@@ -32,7 +32,7 @@ public record BackpackTooltipData(
         MAGNETIC
     }
 
-    public record ToolboxSlotEntry(ItemStack displayStack, int count, boolean reservedEmpty) {
+    public record ToolboxSlotEntry(ItemStack displayStack, int count) {
     }
 
     public static final int SLOT_COUNT = BackpackInventory.SLOTS;
@@ -74,15 +74,6 @@ public record BackpackTooltipData(
                     return false;
             }
         }
-        ItemContainerContents tbFilters = stack.get(ExtraDataComponents.TOOLBOX_FILTERS);
-        if (tbFilters != null) {
-            NonNullList<ItemStack> rawF = NonNullList.withSize(PortableToolboxInventory.COMPARTMENTS, ItemStack.EMPTY);
-            tbFilters.copyInto(rawF);
-            for (ItemStack entry : rawF) {
-                if (entry != null && !entry.isEmpty())
-                    return false;
-            }
-        }
         return true;
     }
 
@@ -118,18 +109,13 @@ public record BackpackTooltipData(
                 copied.add(ItemStack.EMPTY);
         }
 
-        // Portable 8-compartment toolbox snapshot (codec-safe read without mutation)
+        // Portable 8-compartment toolbox snapshot (physically stored items only)
         List<ToolboxSlotEntry> toolboxEntries = new ArrayList<>(PortableToolboxInventory.COMPARTMENTS);
         boolean hasToolbox = false;
         ItemContainerContents tbContents = stack.get(ExtraDataComponents.TOOLBOX_CONTENTS);
-        ItemContainerContents tbFilters = stack.get(ExtraDataComponents.TOOLBOX_FILTERS);
-
         NonNullList<ItemStack> backing = NonNullList.withSize(PortableToolboxInventory.BACKING_SLOTS, ItemStack.EMPTY);
         if (tbContents != null)
             tbContents.copyInto(backing);
-        NonNullList<ItemStack> filters = NonNullList.withSize(PortableToolboxInventory.COMPARTMENTS, ItemStack.EMPTY);
-        if (tbFilters != null)
-            tbFilters.copyInto(filters);
 
         for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++) {
             int total = 0;
@@ -143,18 +129,12 @@ public record BackpackTooltipData(
                         sample = sub.copyWithCount(1);
                 }
             }
-            ItemStack filter = filters.get(c);
-            if (filter == null)
-                filter = ItemStack.EMPTY;
 
             if (total > 0 && !sample.isEmpty()) {
-                toolboxEntries.add(new ToolboxSlotEntry(sample, total, false));
-                hasToolbox = true;
-            } else if (!filter.isEmpty()) {
-                toolboxEntries.add(new ToolboxSlotEntry(filter.copyWithCount(1), 0, true));
+                toolboxEntries.add(new ToolboxSlotEntry(sample, total));
                 hasToolbox = true;
             } else {
-                toolboxEntries.add(new ToolboxSlotEntry(ItemStack.EMPTY, 0, false));
+                toolboxEntries.add(new ToolboxSlotEntry(ItemStack.EMPTY, 0));
             }
         }
 
