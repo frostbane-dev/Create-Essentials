@@ -6,6 +6,7 @@ import com.stackultra.essentials.content.BacktankSupport;
 import com.stackultra.essentials.content.ItemPullHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.registry.AllDataComponents;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -69,7 +70,7 @@ public class MagneticBackpackTickHandler {
             BackpackInventory inventory = BackpackInventory.forStack(backpack);
 
             for (ItemEntity itemEntity : items) {
-                if (!matchesFilter(player, filters, itemEntity.getItem()))
+                if (!matchesFilter(player, filters, itemEntity.getItem(), backpack))
                     continue;
 
                 ItemStack remaining = itemEntity.getItem().copy();
@@ -103,14 +104,18 @@ public class MagneticBackpackTickHandler {
         }
     }
 
-    private static boolean matchesFilter(Player player, List<ItemStack> filters, ItemStack stack) {
+    private static boolean matchesFilter(Player player, List<ItemStack> filters, ItemStack stack, ItemStack backpack) {
         if (filters.isEmpty())
             return true;
+        boolean matches = false;
         for (ItemStack filter : filters) {
-            if (FilterItemStack.of(filter).test(player.level(), stack))
-                return true;
+            if (FilterItemStack.of(filter).test(player.level(), stack)) {
+                matches = true;
+                break;
+            }
         }
-        return false;
+        boolean blacklist = backpack.getOrDefault(ExtraDataComponents.BLACKLIST, false);
+        return blacklist ? !matches : matches;
     }
 
     private static ItemStack insertIntoMainInventory(Player player, ItemStack stack) {

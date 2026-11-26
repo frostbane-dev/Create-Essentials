@@ -2,25 +2,27 @@ package com.stackultra.essentials.content.magnet;
 
 import com.simibubi.create.AllItems;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
+import com.stackultra.essentials.client.DarkGuiStyling;
+import com.stackultra.essentials.client.DarkTextButton;
 import com.stackultra.essentials.client.GuiStyling;
+import com.stackultra.essentials.network.BlacklistTogglePayload;
+import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 @OnlyIn(Dist.CLIENT)
 public class RotationalMagnetScreen extends AbstractSimiContainerScreen<RotationalMagnetMenu> {
 
-    private static final ResourceLocation SLOT_SPRITE =
-            ResourceLocation.withDefaultNamespace("container/slot");
-
-    private static final int FILTER_SLOTS_Y = 20;
-    private static final int FILTER_SLOTS_X = 8;
-    private static final int PLAYER_INVENTORY_Y = 76;
-    private static final int HOTBAR_Y = 134;
+    private boolean enabledState;
+    private boolean blacklistState;
 
     public RotationalMagnetScreen(RotationalMagnetMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -28,57 +30,103 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
 
     @Override
     protected void init() {
-        setWindowSize(176, 158);
+        setWindowSize(176, 178);
         super.init();
+
+        enabledState = menu.isEnabled();
+        blacklistState = readBlacklist();
+
+        DarkTextButton toggle = new DarkTextButton(leftPos + 8, topPos + 18, 60, 14,
+                () -> Component.translatable("createessentials.gui.magnet_status",
+                        Component.translatable(enabledState ? "createessentials.gui.on" : "createessentials.gui.off")),
+                () -> enabledState ? 0xFF55FF55 : 0xFFFF5555,
+                () -> {
+                    enabledState = !enabledState;
+                    PacketDistributor.sendToServer(togglePayload());
+                });
+
+        DarkTextButton blacklist = new DarkTextButton(leftPos + 74, topPos + 18, 60, 14,
+                () -> Component.translatable(blacklistState
+                        ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
+                () -> blacklistState ? 0xFFAA00AA : 0xFF5555FF,
+                () -> {
+                    blacklistState = !blacklistState;
+                    PacketDistributor.sendToServer(blacklistPayload());
+                });
+
+        addRenderableWidget(toggle);
+        addRenderableWidget(blacklist);
+    }
+
+    private RotationalMagnetTogglePayload togglePayload() {
+        RotationalMagnetBlockEntity be = menu.getBlockEntity();
+        return be != null
+                ? new RotationalMagnetTogglePayload(be.getBlockPos(), false)
+                : new RotationalMagnetTogglePayload(BlockPos.ZERO, true);
+    }
+
+    private BlacklistTogglePayload blacklistPayload() {
+        RotationalMagnetBlockEntity be = menu.getBlockEntity();
+        return be != null
+                ? new BlacklistTogglePayload(be.getBlockPos(), false)
+                : new BlacklistTogglePayload(BlockPos.ZERO, true);
+    }
+
+    private boolean readBlacklist() {
+        RotationalMagnetBlockEntity be = menu.getBlockEntity();
+        if (be != null)
+            return be.isBlacklist();
+        ItemStack magnet = MagnetEquipment.findEquippedMagnet(this.minecraft.player);
+        return !magnet.isEmpty() && magnet.getOrDefault(ExtraDataComponents.BLACKLIST, false);
+    }
+
+    private int currentCharge() {
+        RotationalMagnetBlockEntity be = menu.getBlockEntity();
+        if (be != null)
+            return menu.getCharge();
+        ItemStack magnet = MagnetEquipment.findEquippedMagnet(this.minecraft.player);
+        if (!magnet.isEmpty() && magnet.getItem() instanceof RotationalMagnetItem item)
+            return item.getCharge(magnet);
+        return menu.getCharge();
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
-        drawPanel(graphics);
+        DarkGuiStyling.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight);
 
-        for (int i = 0; i < RotationalMagnetMenu.FILTER_SLOTS; i++)
-            graphics.blitSprite(SLOT_SPRITE, leftPos + FILTER_SLOTS_X + i * 18 - 1, topPos + FILTER_SLOTS_Y - 1, 18, 18);
+        for (Slot slot : menu.slots)
+            DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
 
-        ItemStack ghostFilter = AllItems.FILTER.asStack();
+        ItemStack ghost = AllItems.FILTER.asStack();
         for (int i = 0; i < RotationalMagnetMenu.FILTER_SLOTS; i++) {
-            if (menu.slots.get(i).hasItem())
+            Slot slot = menu.slots.get(i);
+            if (slot.hasItem())
                 continue;
-            GuiStyling.drawGhostItem(graphics, ghostFilter, leftPos + FILTER_SLOTS_X + i * 18, topPos + FILTER_SLOTS_Y);
+            GuiStyling.drawGhostItem(graphics, ghost, leftPos + slot.x, topPos + slot.y);
         }
-
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                graphics.blitSprite(SLOT_SPRITE, leftPos + 8 + col * 18 - 1, topPos + PLAYER_INVENTORY_Y + row * 18 - 1, 18, 18);
-            }
-        }
-        for (int col = 0; col < 9; col++) {
-            graphics.blitSprite(SLOT_SPRITE, leftPos + 8 + col * 18 - 1, topPos + HOTBAR_Y - 1, 18, 18);
-        }
-    }
-
-    private void drawPanel(GuiGraphics graphics) {
-        GuiStyling.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight);
-        GuiStyling.drawDivider(graphics, leftPos + 3, topPos + 16, imageWidth - 6);
     }
 
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         String titleText = title.getString();
-        if (font.width(titleText) > 140)
-            titleText = font.plainSubstrByWidth(titleText, 140 - font.width("...")) + "...";
-        graphics.drawString(font, titleText, leftPos + 8, topPos + 6, GuiStyling.COLOR_TEXT, false);
+        int maxTitle = imageWidth - 16;
+        if (font.width(titleText) > maxTitle)
+            titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
+        graphics.drawString(font, titleText, leftPos + 8, topPos + 6, DarkGuiStyling.COLOR_TITLE, false);
 
-        boolean enabled = menu.isEnabled();
-        Component status = Component.translatable(enabled
-                ? "createessentials.gui.enabled"
-                : "createessentials.gui.disabled");
-        graphics.drawString(font, status, leftPos + 8, topPos + 44, enabled ? 0x2E7D32 : 0xC62828, false);
+        graphics.drawString(font, Component.translatable("createessentials.gui.item_filter"),
+                leftPos + 8, topPos + 38, DarkGuiStyling.COLOR_TITLE, false);
 
-        Component charge = Component.translatable("createessentials.tooltip.remaining",
-                MagnetTier.formatRemaining(menu.getCharge()));
-        graphics.drawString(font, charge, leftPos + 62, topPos + 44, GuiStyling.COLOR_TEXT, false);
+        int playerStart = menu.slots.size() - 36;
+        int playerLabelY = menu.slots.get(playerStart).y - 12;
 
-        graphics.drawString(font, playerInventoryTitle, leftPos + 8, topPos + 62, GuiStyling.COLOR_TEXT, false);
+        int seconds = Math.max(0, currentCharge()) / 20;
+        String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);
+        Component timeText = Component.translatable("createessentials.gui.time_remaining", remaining);
+        graphics.drawString(font, timeText, leftPos + 8, topPos + 72, DarkGuiStyling.COLOR_TEXT_DIM, false);
+
+        graphics.drawString(font, playerInventoryTitle, leftPos + 8, topPos + playerLabelY,
+                DarkGuiStyling.COLOR_TEXT_DIM, false);
 
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }

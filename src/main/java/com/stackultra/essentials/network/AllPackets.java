@@ -45,6 +45,10 @@ public class AllPackets {
                 OpenMagnetPayload.TYPE,
                 OpenMagnetPayload.STREAM_CODEC,
                 AllPackets::handleOpenMagnet);
+        registrar.playToServer(
+                BlacklistTogglePayload.TYPE,
+                BlacklistTogglePayload.STREAM_CODEC,
+                BlacklistTogglePayload::handle);
     }
 
     private static void handleToggle(RotationalMagnetTogglePayload payload, IPayloadContext context) {

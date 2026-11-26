@@ -10,6 +10,7 @@ import com.stackultra.essentials.registry.AllBlockEntities;
 import com.stackultra.essentials.registry.AllBlocks;
 import com.stackultra.essentials.registry.AllCreativeTabs;
 import com.stackultra.essentials.registry.AllDataComponents;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import com.stackultra.essentials.registry.AllItems;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.AllRecipeSerializers;
@@ -28,6 +29,7 @@ public class CreateEssentials {
 
     public CreateEssentials(IEventBus modBus) {
         AllDataComponents.register(modBus);
+        ExtraDataComponents.register(modBus);
         AllBlocks.register(modBus);
         AllItems.register(modBus);
         AllBlockEntities.register(modBus);

@@ -5,6 +5,7 @@ import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.BacktankSupport;
 import com.stackultra.essentials.content.ItemPullHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -61,7 +62,7 @@ public class MagnetTickHandler {
                         player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
 
                 for (ItemEntity itemEntity : items) {
-                    if (!matchesFilter(player, filters, itemEntity.getItem()))
+                    if (!matchesFilter(player, filters, itemEntity.getItem(), magnet))
                         continue;
 
                     ItemPullHelper.pullToFeet(itemEntity, player);
@@ -76,13 +77,17 @@ public class MagnetTickHandler {
         }
     }
 
-    private static boolean matchesFilter(Player player, List<ItemStack> filters, ItemStack stack) {
+    private static boolean matchesFilter(Player player, List<ItemStack> filters, ItemStack stack, ItemStack magnet) {
         if (filters.isEmpty())
             return true;
+        boolean matches = false;
         for (ItemStack filter : filters) {
-            if (FilterItemStack.of(filter).test(player.level(), stack))
-                return true;
+            if (FilterItemStack.of(filter).test(player.level(), stack)) {
+                matches = true;
+                break;
+            }
         }
-        return false;
+        boolean blacklist = magnet.getOrDefault(ExtraDataComponents.BLACKLIST, false);
+        return blacklist ? !matches : matches;
     }
 }

@@ -41,5 +41,6 @@ public final class BackpackEquipment {
             } catch (Throwable ignored) {
             }
         }
+
     }
 }

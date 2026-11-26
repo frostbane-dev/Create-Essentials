@@ -8,6 +8,7 @@ import com.stackultra.essentials.content.ChargeDisplay;
 import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.registry.AllBlockEntities;
 import com.stackultra.essentials.registry.AllDataComponents;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -39,6 +40,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     private final ItemStackHandler filterInventory;
     private int charge = 0;
     private boolean enabled = true;
+    private boolean blacklist = false;
     private int capacityEnchantLevel = 0;
     private boolean wasFull;
     private float chargeAccumulator = 0F;
@@ -176,6 +178,22 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         setEnabled(!enabled);
     }
 
+    public boolean isBlacklist() {
+        return blacklist;
+    }
+
+    public void setBlacklist(boolean blacklist) {
+        if (this.blacklist == blacklist)
+            return;
+        this.blacklist = blacklist;
+        setChanged();
+        sendData();
+    }
+
+    public void toggleBlacklist() {
+        setBlacklist(!blacklist);
+    }
+
     public ItemStackHandler getFilterInventory() {
         return filterInventory;
     }
@@ -189,15 +207,20 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
 
     public boolean test(ItemStack stack) {
         boolean any = false;
+        boolean matches = false;
         for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++) {
             ItemStack filter = filterInventory.getStackInSlot(i);
             if (filter.isEmpty())
                 continue;
             any = true;
-            if (FilterItemStack.of(filter).test(level, stack))
-                return true;
+            if (FilterItemStack.of(filter).test(level, stack)) {
+                matches = true;
+                break;
+            }
         }
-        return !any;
+        if (!any)
+            return true;
+        return blacklist ? !matches : matches;
     }
 
     public void loadFromStack(ItemStack stack) {
@@ -205,6 +228,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         setCapacityEnchantLevel(MagneticBackpackItem.getCapacityLevel(stack));
         setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
         setEnabled(stack.getOrDefault(AllDataComponents.ENABLED, true));
+        setBlacklist(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
         wasFull = charge >= getMaxCharge();
         List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
         for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
@@ -215,6 +239,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         inventory.save(stack);
         stack.set(AllDataComponents.CHARGE, charge);
         stack.set(AllDataComponents.ENABLED, enabled);
+        stack.set(ExtraDataComponents.BLACKLIST, blacklist);
         List<ItemStack> filters = new ArrayList<>(MagneticBackpackItem.FILTER_SLOTS);
         for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
             filters.add(filterInventory.getStackInSlot(i).copy());
@@ -232,6 +257,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         tag.putInt("Charge", charge);
         tag.putBoolean("Enabled", enabled);
+        tag.putBoolean("Blacklist", blacklist);
         tag.putInt("CapacityEnchantLevel", capacityEnchantLevel);
         tag.put("Filters", filterInventory.serializeNBT(registries));
         tag.put("Inventory", inventory.serializeNBT(registries));
@@ -243,6 +269,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         capacityEnchantLevel = Math.max(0, tag.getInt("CapacityEnchantLevel"));
         charge = Math.clamp(tag.getInt("Charge"), 0, getMaxCharge());
         enabled = tag.getBoolean("Enabled");
+        blacklist = tag.getBoolean("Blacklist");
         wasFull = charge >= getMaxCharge();
         if (tag.contains("Filters"))
             filterInventory.deserializeNBT(registries, tag.getCompound("Filters"));
