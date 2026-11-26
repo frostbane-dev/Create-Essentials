@@ -1,17 +1,13 @@
-# Create Toolbox Fix
+# Create: Essentials
 
-A small NeoForge mod for Minecraft 1.21.1 that improves and fixes Toolbox behavior in the Create mod.
+NeoForge mod for Minecraft 1.21.1 adding Create-inspired mechanical and netherite backpacks, persistent data transfer, magnets, and multi-color variants.
 
 ## Features
-* **Empty Toolbox Stacking:** Allows stacking of empty toolboxes.
-* **Piston Compatibility:** Pistons can now break/move toolboxes.
-* **Dispenser Support:** Dispensers can place toolboxes.
-
-## Bug Fixes
-* **Issue #8761:** This mod DOES'NT resolves the issue where toolboxes would remain "ready for request" after being clicked, fixing persistent state bugs.
-  * [See original issue here](https://github.com/Creators-of-Create/Create/issues/8761) ( NOT IMPLEMENTED, WAITING FOR A PROPER FIX )
+- **Mechanical & Netherite Backpacks:** Placeable and wearable backpacks preserving inventory, filters, and charges across upgrades and world placement.
+- **Magnets & Integrations:** Rotational and precision magnets with Create filter and Backtank/Curios support.
+- **Color Variants (In Progress):** 16 color variants for both Mechanical and Netherite Mechanical backpacks.
 
 ## Requirements
-* Minecraft 1.21.1
-* NeoForge
-* Create Mod
+- Minecraft 1.21.1
+- NeoForge
+- Create Mod
