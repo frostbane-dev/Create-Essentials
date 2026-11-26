@@ -1,0 +1,33 @@
+{
+  "type": "create:mechanical_crafting",
+  "accept_mirrored": true,
+  "key": {
+    "B": {
+      "item": "create:brass_ingot"
+    },
+    "C": {
+      "item": "create:cogwheel"
+    },
+    "E": {
+      "item": "create:electron_tube"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "create:precision_mechanism"
+    }
+  },
+  "pattern": [
+    "ICI",
+    "BPB",
+    "IEI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "createessentials:rotational_magnet",
+    "components": {
+      "createessentials:charge": 0
+    }
+  }
+}

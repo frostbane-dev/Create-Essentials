@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "createessentials:block/rotational_magnet" }
+  }
+}

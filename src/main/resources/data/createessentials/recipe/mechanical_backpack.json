@@ -1,0 +1,33 @@
+{
+  "type": "create:mechanical_crafting",
+  "accept_mirrored": true,
+  "key": {
+    "B": {
+      "item": "create:brass_ingot"
+    },
+    "C": {
+      "item": "create:cogwheel"
+    },
+    "H": {
+      "item": "minecraft:chest"
+    },
+    "K": {
+      "item": "create:brass_casing"
+    },
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "S": {
+      "item": "create:shaft"
+    }
+  },
+  "pattern": [
+    "LCL",
+    "HKH",
+    "SBS"
+  ],
+  "result": {
+    "count": 1,
+    "id": "createessentials:mechanical_backpack"
+  }
+}

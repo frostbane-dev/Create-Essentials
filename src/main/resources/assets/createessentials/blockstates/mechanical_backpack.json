@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "netherite=false": { "model": "createessentials:block/mechanical_backpack" },
+    "netherite=true": { "model": "createessentials:block/netherite_backpack" }
+  }
+}

@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="All Rights Reserved"
+[[mods]]
+modId="createessentials"
+version="${file.jarVersion}"
+displayName="Create: Essentials"
+description='''Añade magnetismo rotacional y una mochila mecánica balanceada.'''
+[[dependencies.createessentials]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.219,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.createessentials]]
+modId="create"
+type="required"
+versionRange="[6.0.9,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.createessentials]]
+modId="curios"
+type="optional"
+versionRange="[9.2.0,)"
+ordering="NONE"
+side="BOTH"
+[[mixins]]
+config="createessentials.mixins.json"

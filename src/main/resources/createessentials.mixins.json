@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.stackultra.essentials.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ItemInHandRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "createessentials:block/precision_magnet" }
+  }
+}

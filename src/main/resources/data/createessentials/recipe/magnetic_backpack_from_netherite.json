@@ -1,0 +1,22 @@
+{
+  "type": "createessentials:magnetic_backpack",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "createessentials:precision_magnet"
+    },
+    "N": {
+      "item": "createessentials:netherite_backpack"
+    }
+  },
+  "pattern": [
+    "NF"
+  ],
+  "result": {
+    "count": 1,
+    "id": "createessentials:magnetic_backpack",
+    "components": {
+      "createessentials:charge": 0
+    }
+  }
+}
