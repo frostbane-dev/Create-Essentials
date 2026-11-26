@@ -17,6 +17,7 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
@@ -30,6 +31,7 @@ import net.minecraft.world.level.block.Block;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class MagneticBackpackItem extends BlockItem implements Equipable {
 
@@ -86,18 +88,24 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
     }
 
     @Override
+    public Optional<TooltipComponent> getTooltipImage(ItemStack stack) {
+        return BackpackTooltipData.fromStack(stack, BackpackTooltipData.Tier.MAGNETIC);
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
-        if (!GogglesHelper.isViewerWearingGoggles())
-            return;
-        boolean enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
-        boolean charging = stack.getOrDefault(AllDataComponents.CHARGING, false);
+        if (GogglesHelper.isViewerWearingGoggles()) {
+            boolean enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
+            boolean charging = stack.getOrDefault(AllDataComponents.CHARGING, false);
 
-        tooltip.add(Component.translatable("createessentials.tooltip.status", ChargeDisplay.status(enabled))
-                .withStyle(ChatFormatting.GRAY));
-        if (charging)
-            tooltip.add(ChargeDisplay.chargingLine());
-        tooltip.add(ChargeDisplay.charge(getCharge(stack), getMaxCharge(stack)));
+            tooltip.add(Component.translatable("createessentials.tooltip.status", ChargeDisplay.status(enabled))
+                    .withStyle(ChatFormatting.GRAY));
+            if (charging)
+                tooltip.add(ChargeDisplay.chargingLine());
+            tooltip.add(ChargeDisplay.charge(getCharge(stack), getMaxCharge(stack)));
+        }
+        BackpackTooltipData.appendEmptyHint(stack, tooltip);
     }
 
     @Override

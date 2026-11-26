@@ -35,6 +35,8 @@
   "createessentials.tooltip.status": "Status: %s",
   "createessentials.tooltip.charging": "Charging…",
   "createessentials.tooltip.charge": "Charge: %s / %s (%s)",
+  "createessentials.tooltip.backpack_empty": "Empty",
+  "createessentials.tooltip.backpack_slots": "%s / %s",
   "key.categories.createessentials": "Create: Essentials",
   "key.createessentials.toggle_rotational_magnet": "Toggle Magnet",
   "key.createessentials.open_rotational_magnet": "Open Magnet",

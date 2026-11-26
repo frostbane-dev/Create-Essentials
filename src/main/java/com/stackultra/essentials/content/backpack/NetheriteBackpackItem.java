@@ -22,4 +22,9 @@ public class NetheriteBackpackItem extends MechanicalBackpackItem {
     public Holder<SoundEvent> getEquipSound() {
         return SoundEvents.ARMOR_EQUIP_NETHERITE;
     }
+
+    @Override
+    protected BackpackTooltipData.Tier getTooltipTier() {
+        return BackpackTooltipData.Tier.NETHERITE;
+    }
 }

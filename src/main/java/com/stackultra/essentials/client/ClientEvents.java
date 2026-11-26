@@ -3,6 +3,7 @@ package com.stackultra.essentials.client;
 import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.GogglesHelper;
 import com.stackultra.essentials.content.backpack.BackpackScreen;
+import com.stackultra.essentials.content.backpack.BackpackTooltipData;
 import com.stackultra.essentials.content.backpack.MagneticBackpackScreen;
 import com.stackultra.essentials.content.magnet.RotationalMagnetScreen;
 import com.stackultra.essentials.network.OpenBackpackPayload;
@@ -12,13 +13,16 @@ import com.stackultra.essentials.registry.AllMenus;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -59,6 +63,25 @@ public class ClientEvents {
         event.register(TOGGLE_ROTATIONAL_MAGNET);
         event.register(OPEN_ROTATIONAL_MAGNET);
         event.register(OPEN_BACKPACK);
+    }
+
+    @SubscribeEvent
+    public static void registerTooltipComponents(RegisterClientTooltipComponentFactoriesEvent event) {
+        event.register(BackpackTooltipData.class, ClientBackpackTooltip::new);
+    }
+
+    @SubscribeEvent
+    public static void onTooltipColor(RenderTooltipEvent.Color event) {
+        ItemStack stack = event.getItemStack();
+        if (stack.isEmpty())
+            return;
+        BackpackTooltipPalette palette = BackpackTooltipPalette.resolveForStack(stack);
+        if (palette == null)
+            return;
+        event.setBackgroundStart(palette.tooltipBgStart());
+        event.setBackgroundEnd(palette.tooltipBgEnd());
+        event.setBorderStart(palette.borderStart());
+        event.setBorderEnd(palette.borderEnd());
     }
 
     @SubscribeEvent

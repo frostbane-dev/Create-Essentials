@@ -47,3 +47,12 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
   - Added `BackpackActionPayload` (`TRANSFER_TO_STORAGE`, `TRANSFER_TO_INVENTORY`, `SORT`, `SET_SORT_MODE`) registered in `AllPackets` with strict server-side menu/validity/enum validation.
   - Added `SortMode` enum (`NAME`, `MOD`, `COUNT`) and `ExtraDataComponents.SORT_MODE` DataComponent (plus NBT persistence on `MechanicalBackpackBlockEntity` and `MagneticBackpackBlockEntity`), synced live to open menus via `DataSlot`.
   - Implemented zero-loss/zero-dupe inventory routines in `BackpackInventoryOps` and shared `IBackpackMenu` interface across `BackpackMenu` and `MagneticBackpackMenu`.
+
+### Phase 3 — Native Backpack Hover Tooltip Preview & Per-Tier/Color Tinting
+- **Zero-Dependency Native Hover Preview (`BackpackTooltipData`, `ClientBackpackTooltip`):**
+  - Implemented `Item#getTooltipImage(ItemStack)` across **Mechanical Backpack**, **Netherite Mechanical Backpack**, and **Magnetic Backpack**, registered via NeoForge's `RegisterClientTooltipComponentFactoriesEvent`.
+  - Safely reads strictly the **27 storage slots (9×3)** from `AllDataComponents.BACKPACK_INVENTORY` without mutating stacks, allocating capabilities, or leaking the Magnetic Backpack's 3 filter slots.
+  - Displays a compact color-tinted header strip with live slot occupancy (`X / 27`) and fill bar above a crisp 9×3 dark-mode slot grid rendering items, stack counts, durability bars, and enchantment glints; empty/fresh backpacks (including Creative tab and JEI stacks) gracefully show a subtle `"Empty"` tooltip line instead of a blank box.
+- **Per-Tier & Per-Color Accent Palettes (`BackpackTooltipPalette`, `ClientEvents`):**
+  - Distinct dark-mode ARGB palettes for all 3 backpack tiers (**Mechanical** warm brass/amber, **Netherite** forged obsidian-rose, **Magnetic** electric cyan-violet), plus full curated dark-mode palettes for all **16 `DyeColor` variants** and custom `DataComponents.DYED_COLOR` tints.
+  - Applied color accents consistently to both the preview frame/header and the vanilla tooltip border gradient via `RenderTooltipEvent.Color` while maintaining strict client/server separation.
