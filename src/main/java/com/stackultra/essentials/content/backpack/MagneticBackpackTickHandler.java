@@ -83,7 +83,11 @@ public class MagneticBackpackTickHandler {
                 BackpackInventory inventory = openMenu != null && openMenu.getBackpackInventory() != null
                         ? openMenu.getBackpackInventory()
                         : BackpackInventory.forStack(backpack);
+                PortableToolboxInventory toolbox = openMenu != null && openMenu.getToolboxInventory() != null
+                        ? openMenu.getToolboxInventory()
+                        : PortableToolboxInventory.forStack(backpack);
 
+                boolean pulledIntoToolbox = false;
                 boolean pulledIntoBackpack = false;
                 boolean pulledIntoPlayer = false;
 
@@ -94,15 +98,24 @@ public class MagneticBackpackTickHandler {
                         continue;
 
                     ItemStack remaining = itemEntity.getItem().copy();
-                    int beforeBackpack = remaining.getCount();
 
-                    for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
-                        remaining = inventory.insertItem(i, remaining, false);
+                    // Priority 1: matching / reserved 8-slot portable toolbox compartments
+                    int beforeToolbox = remaining.getCount();
+                    remaining = toolbox.insertIntoMatchingCompartment(remaining, false);
+                    if (remaining.getCount() != beforeToolbox)
+                        pulledIntoToolbox = true;
+
+                    // Priority 2: 27 main backpack storage slots
+                    if (!remaining.isEmpty()) {
+                        int beforeBackpack = remaining.getCount();
+                        for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
+                            remaining = inventory.insertItem(i, remaining, false);
+                        }
+                        if (remaining.getCount() != beforeBackpack)
+                            pulledIntoBackpack = true;
                     }
 
-                    if (remaining.getCount() != beforeBackpack)
-                        pulledIntoBackpack = true;
-
+                    // Priority 3: player main inventory fallback
                     if (!remaining.isEmpty()) {
                         int beforePlayer = remaining.getCount();
                         remaining = insertIntoMainInventory(player, remaining);
@@ -118,11 +131,14 @@ public class MagneticBackpackTickHandler {
                     }
                 }
 
-                if (pulledIntoBackpack)
+                if (pulledIntoToolbox || pulledIntoBackpack)
                     changed = true;
 
-                if (pulledIntoBackpack || pulledIntoPlayer)
+                if (pulledIntoToolbox || pulledIntoBackpack || pulledIntoPlayer) {
                     player.containerMenu.broadcastChanges();
+                    if (openMenu != null && pulledIntoToolbox)
+                        openMenu.syncToolboxFiltersToClient(player);
+                }
 
                 if (!charging) {
                     charge--;

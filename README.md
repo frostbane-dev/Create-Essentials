@@ -63,3 +63,18 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
 - **Independent Multi-Item Toggle & Open Targeting (`AllPackets`, `BlacklistTogglePayload`, `MagnetEquipment`, `MagneticBackpackEquipment`, `MagneticBackpackTickHandler`):**
   - Clicking `Magnet: ON/OFF` or `Blacklist`/`Whitelist` inside a Precision Magnet or Magnetic Backpack GUI now toggles **exclusively** the exact open item instance, synced live via `DataSlot`.
   - Magnet toggle keybind uses strict context-aware priority (**Main hand → Offhand → Curios/Equipped → Rest of inventory**) so multiple magnets or magnetic backpacks toggle and operate independently without interfering with each other.
+
+### Phase 4 — Portable Create Toolbox Integration & 16-Color Variant Readiness
+- **Codec-Safe 8-Compartment Portable Toolbox (`PortableToolboxInventory`, `ExtraDataComponents`):**
+  - Integrated an 8-compartment Create-style toolbox across **Mechanical**, **Netherite Mechanical**, and **Magnetic Mechanical** backpacks (up to **256 items** per compartment via 8 × 4 backing `ItemStack`s + 8 persistent reserved filter slots, completely avoiding Minecraft 1.21.1's `ItemStack.CODEC` count-99 limit).
+  - Persists seamlessly across DataComponents (`TOOLBOX_CONTENTS`, `TOOLBOX_FILTERS`, `TOOLBOX_RESTOCK`), placed block entities, and upgrades.
+  - Hardened anti-nesting (`BackpackHelper.isNestedContainer`) to block backpacks, shulker boxes, Create toolboxes (`#create:toolboxes`), bundles, and items with `CONTAINER`/`BUNDLE_CONTENTS` or `Capabilities.ItemHandler.ITEM`.
+- **GUI & Radial Menu (`BackpackScreen`, `MagneticBackpackScreen`, `PortableToolboxRadialScreen`, `PortableToolboxHandler`, `BackpackToolboxPayload`):**
+  - Added a seamless attached right-side `2×4` Toolbox panel with compact 3-digit counts (up to `256`), empty reserved-filter ghost hints (click to clear), and a persisted per-backpack **Restock ON/OFF** toggle.
+  - Strictly isolated toolbox slots from Phase 2 quick-transfer arrows, sorting, and Magnetic Backpack filter slots.
+  - Added `Alt` (`AllKeys.TOOLBELT`) radial wheel supporting 32-item equip, live auto-refill while Restock is ON, center **Return**, full `ExtendoGripItem` mainhand/offhand protection, and one-click handoff to nearby placed Create Toolboxes.
+- **Minimalist Hover Tooltip Toolbox Row & Priority Magnet Routing:**
+  - Extended `BackpackTooltipData` / `ClientBackpackTooltip` with a cleanly separated minimalist 8-slot toolbox row below the 9×3 grid (counts up to `256`, reserved ghost markers, no progress bars or `X/27` clutter) and centralized color resolution (`BackpackColorHelper`) ready for 16 `DyeColor` variants.
+  - Updated `MagneticBackpackTickHandler` to route magnetized items (after Whitelist/Blacklist filtering) into matching/reserved toolbox compartments first (with live open-GUI sync), falling back to the 27 main storage slots.
+- **Crafting & Upgrade Progression:**
+  - Updated `mechanical_backpack.json` to require `#create:toolboxes`, and updated `MagneticBackpackRecipe` (alongside smithing to Netherite) to preserve all backpack DataComponents (`BACKPACK_INVENTORY`, `TOOLBOX_CONTENTS`, `TOOLBOX_FILTERS`, `TOOLBOX_RESTOCK`, `SORT_MODE`, `DYED_COLOR`) and magnet filter/blacklist state.

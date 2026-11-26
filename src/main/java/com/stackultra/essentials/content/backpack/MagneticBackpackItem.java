@@ -5,6 +5,7 @@ import com.stackultra.essentials.content.ChargeDisplay;
 import com.stackultra.essentials.content.GogglesHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.registry.AllDataComponents;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
@@ -59,6 +60,8 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
                         buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
                         buf.writeVarInt(getCharge(stack));
                         buf.writeVarInt(getMaxCharge(stack));
+                        ItemContainerContents.STREAM_CODEC.encode(buf,
+                                stack.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
                     });
             return InteractionResultHolder.consume(stack);
         }

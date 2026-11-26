@@ -7,7 +7,9 @@ import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllRecipeSerializers;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
@@ -39,10 +41,22 @@ public class MagneticBackpackRecipe extends ShapedRecipe {
                 ItemContainerContents contents =
                         stack.getOrDefault(AllDataComponents.BACKPACK_INVENTORY, ItemContainerContents.EMPTY);
                 output.set(AllDataComponents.BACKPACK_INVENTORY, contents);
+                if (stack.has(ExtraDataComponents.TOOLBOX_CONTENTS))
+                    output.set(ExtraDataComponents.TOOLBOX_CONTENTS, stack.get(ExtraDataComponents.TOOLBOX_CONTENTS));
+                if (stack.has(ExtraDataComponents.TOOLBOX_FILTERS))
+                    output.set(ExtraDataComponents.TOOLBOX_FILTERS, stack.get(ExtraDataComponents.TOOLBOX_FILTERS));
+                if (stack.has(ExtraDataComponents.TOOLBOX_RESTOCK))
+                    output.set(ExtraDataComponents.TOOLBOX_RESTOCK, stack.get(ExtraDataComponents.TOOLBOX_RESTOCK));
+                if (stack.has(ExtraDataComponents.SORT_MODE))
+                    output.set(ExtraDataComponents.SORT_MODE, stack.get(ExtraDataComponents.SORT_MODE));
+                if (stack.has(DataComponents.DYED_COLOR))
+                    output.set(DataComponents.DYED_COLOR, stack.get(DataComponents.DYED_COLOR));
             } else if (stack.getItem() instanceof RotationalMagnetItem magnet && magnet.getTier() == MagnetTier.TIER_2) {
                 ItemContainerContents filters =
                         stack.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY);
                 output.set(AllDataComponents.BACKPACK_FILTERS, filters);
+                if (stack.has(ExtraDataComponents.BLACKLIST))
+                    output.set(ExtraDataComponents.BLACKLIST, stack.get(ExtraDataComponents.BLACKLIST));
             }
         }
         output.set(AllDataComponents.CHARGE, 0);

@@ -1,6 +1,7 @@
 package com.stackultra.essentials.content.backpack;
 
 import com.stackultra.essentials.CreateEssentials;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -56,6 +57,8 @@ public class BackpackRestockHandler {
 
         ItemStack backpack = BackpackEquipment.findEquippedBackpack(player);
         if (backpack.isEmpty())
+            return;
+        if (!backpack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true))
             return;
 
         BackpackInventory inventory = BackpackInventory.forStack(backpack);

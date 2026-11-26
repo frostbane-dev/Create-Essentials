@@ -21,12 +21,15 @@ import net.neoforged.neoforge.items.IItemHandler;
 public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuProvider {
 
     private final BackpackInventory inventory;
+    private final PortableToolboxInventory toolboxInventory;
     private boolean netherite = false;
     private SortMode sortMode = SortMode.NAME;
+    private boolean restockEnabled = true;
 
     public MechanicalBackpackBlockEntity(BlockPos pos, BlockState state) {
         super(AllBlockEntities.MECHANICAL_BACKPACK.get(), pos, state);
         this.inventory = BackpackInventory.forBlockEntity(this::markChanged);
+        this.toolboxInventory = PortableToolboxInventory.forBlockEntity(this::markChanged);
     }
 
     public boolean isNetherite() {
@@ -45,12 +48,27 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         setChanged();
     }
 
+    public boolean isRestockEnabled() {
+        return restockEnabled;
+    }
+
+    public void setRestockEnabled(boolean restockEnabled) {
+        if (this.restockEnabled == restockEnabled)
+            return;
+        this.restockEnabled = restockEnabled;
+        setChanged();
+    }
+
     private void markChanged() {
         setChanged();
     }
 
     public BackpackInventory getInventory() {
         return inventory;
+    }
+
+    public PortableToolboxInventory getToolboxInventory() {
+        return toolboxInventory;
     }
 
     public IItemHandler getItemHandler() {
@@ -60,12 +78,16 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
     public void loadFromStack(ItemStack stack) {
         this.netherite = stack.getItem() instanceof NetheriteBackpackItem;
         this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
+        this.restockEnabled = stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
         inventory.load(stack);
+        toolboxInventory.load(stack);
     }
 
     public void saveToStack(ItemStack stack) {
         inventory.save(stack);
+        toolboxInventory.save(stack);
         stack.set(ExtraDataComponents.SORT_MODE, sortMode);
+        stack.set(ExtraDataComponents.TOOLBOX_RESTOCK, restockEnabled);
     }
 
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
@@ -80,7 +102,9 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         super.saveAdditional(tag, registries);
         tag.putBoolean("Netherite", netherite);
         tag.putString("SortMode", sortMode.getSerializedName());
+        tag.putBoolean("Restock", restockEnabled);
         tag.put("Inventory", inventory.serializeNBT(registries));
+        tag.put("Toolbox", toolboxInventory.serializeNBT(registries));
     }
 
     @Override
@@ -89,8 +113,19 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         netherite = tag.getBoolean("Netherite");
         if (tag.contains("SortMode"))
             sortMode = SortMode.byName(tag.getString("SortMode"));
+        if (tag.contains("Restock"))
+            restockEnabled = tag.getBoolean("Restock");
         if (tag.contains("Inventory"))
             inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
+        if (tag.contains("Toolbox"))
+            toolboxInventory.deserializeNBT(registries, tag.getCompound("Toolbox"));
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        saveAdditional(tag, registries);
+        return tag;
     }
 
     public void sendToMenu(RegistryFriendlyByteBuf buf) {
@@ -100,12 +135,18 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
     }
 
     public void readClient(CompoundTag tag, HolderLookup.Provider registries) {
-        if (tag != null && tag.contains("Netherite"))
+        if (tag == null)
+            return;
+        if (tag.contains("Netherite"))
             netherite = tag.getBoolean("Netherite");
-        if (tag != null && tag.contains("SortMode"))
+        if (tag.contains("SortMode"))
             sortMode = SortMode.byName(tag.getString("SortMode"));
-        if (tag != null && tag.contains("Inventory"))
+        if (tag.contains("Restock"))
+            restockEnabled = tag.getBoolean("Restock");
+        if (tag.contains("Inventory"))
             inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
+        if (tag.contains("Toolbox"))
+            toolboxInventory.deserializeNBT(registries, tag.getCompound("Toolbox"));
     }
 
     @Override
@@ -115,6 +156,8 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable(getBlockState().getBlock().getDescriptionId());
+        return Component.translatable(netherite
+                ? "item.createessentials.netherite_backpack"
+                : getBlockState().getBlock().getDescriptionId());
     }
 }

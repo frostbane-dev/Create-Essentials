@@ -13,6 +13,7 @@ import com.stackultra.essentials.content.magnet.RotationalMagnetBlockEntity;
 import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
 import com.stackultra.essentials.content.magnet.RotationalMagnetMenu;
 import com.stackultra.essentials.registry.AllDataComponents;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -52,6 +53,14 @@ public class AllPackets {
                 BackpackActionPayload.TYPE,
                 BackpackActionPayload.STREAM_CODEC,
                 BackpackActionPayload::handle);
+        registrar.playToServer(
+                BackpackToolboxPayload.TYPE,
+                BackpackToolboxPayload.STREAM_CODEC,
+                BackpackToolboxPayload::handle);
+        registrar.playToClient(
+                SyncToolboxFiltersPayload.TYPE,
+                SyncToolboxFiltersPayload.STREAM_CODEC,
+                SyncToolboxFiltersPayload::handle);
     }
 
     private static void handleToggle(RotationalMagnetTogglePayload payload, IPayloadContext context) {
@@ -215,6 +224,8 @@ public class AllPackets {
                             buf.writeBoolean(magnetic.getOrDefault(AllDataComponents.ENABLED, true));
                             buf.writeVarInt(magneticItem.getCharge(magnetic));
                             buf.writeVarInt(magneticItem.getMaxCharge(magnetic));
+                            ItemContainerContents.STREAM_CODEC.encode(buf,
+                                    magnetic.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
                         });
                 return;
             }
@@ -226,7 +237,11 @@ public class AllPackets {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
                             backpack.getHoverName()),
-                    buf -> buf.writeBoolean(false));
+                    buf -> {
+                        buf.writeBoolean(false);
+                        ItemContainerContents.STREAM_CODEC.encode(buf,
+                                backpack.getOrDefault(ExtraDataComponents.TOOLBOX_FILTERS, ItemContainerContents.EMPTY));
+                    });
         });
     }
 }

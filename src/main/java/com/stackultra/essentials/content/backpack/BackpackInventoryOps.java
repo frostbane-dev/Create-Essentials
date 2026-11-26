@@ -4,6 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
@@ -232,5 +233,111 @@ public final class BackpackInventoryOps {
 
     private static ResourceLocation itemId(ItemStack stack) {
         return BuiltInRegistries.ITEM.getKey(stack.getItem());
+    }
+
+    /**
+     * Handles Create-style toolbox compartment click interactions safely on the server.
+     * Supports: full-stack insert (LMB), single-item insert (RMB), stack extract (empty LMB),
+     * half-stack extract (empty RMB), shift-click transfer to player inventory, and clearing
+     * an empty reserved filter slot on click.
+     */
+    public static boolean handleToolboxSlotClick(AbstractContainerMenu menu,
+                                                 PortableToolboxInventory toolbox,
+                                                 int compartment,
+                                                 int button,
+                                                 ClickType clickType,
+                                                 Player player,
+                                                 int playerSlotStart,
+                                                 int playerSlotEnd) {
+        if (compartment < 0 || compartment >= PortableToolboxInventory.COMPARTMENTS)
+            return false;
+
+        if (clickType == ClickType.QUICK_MOVE) {
+            if (toolbox.getTotalCount(compartment) == 0)
+                return toolbox.clearReservation(compartment);
+            ItemStack filter = toolbox.getFilter(compartment);
+            int maxExtract = filter.isEmpty() ? 64 : Math.max(1, filter.getMaxStackSize());
+            ItemStack extracted = toolbox.extractFromCompartment(compartment, maxExtract, false);
+            if (extracted.isEmpty())
+                return false;
+            ItemStack remaining = insertIntoPlayerSlots(menu, extracted, playerSlotStart, playerSlotEnd);
+            if (!remaining.isEmpty())
+                toolbox.insertIntoCompartment(compartment, remaining, false);
+            return remaining.getCount() != extracted.getCount();
+        }
+
+        if (clickType != ClickType.PICKUP)
+            return false;
+
+        ItemStack carried = menu.getCarried();
+        if (!carried.isEmpty()) {
+            if (button == 1) {
+                ItemStack one = carried.copyWithCount(1);
+                ItemStack rem = toolbox.insertIntoCompartment(compartment, one, false);
+                if (rem.isEmpty()) {
+                    ItemStack nextCarried = carried.copy();
+                    nextCarried.shrink(1);
+                    menu.setCarried(nextCarried.isEmpty() ? ItemStack.EMPTY : nextCarried);
+                    return true;
+                }
+                return false;
+            } else {
+                ItemStack rem = toolbox.insertIntoCompartment(compartment, carried, false);
+                if (rem.getCount() != carried.getCount() || rem.isEmpty()) {
+                    menu.setCarried(rem);
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // Empty cursor: extract or clear empty reservation
+        int total = toolbox.getTotalCount(compartment);
+        if (total == 0)
+            return toolbox.clearReservation(compartment);
+
+        ItemStack filter = toolbox.getFilter(compartment);
+        int maxStack = filter.isEmpty() ? 64 : Math.max(1, filter.getMaxStackSize());
+        int amount = button == 1 ? Math.max(1, Math.min(total, maxStack) / 2) : maxStack;
+        ItemStack extracted = toolbox.extractFromCompartment(compartment, amount, false);
+        if (!extracted.isEmpty()) {
+            menu.setCarried(extracted);
+            return true;
+        }
+        return false;
+    }
+
+    private static ItemStack insertIntoPlayerSlots(AbstractContainerMenu menu, ItemStack stack,
+                                                   int playerStart, int playerEnd) {
+        ItemStack remaining = stack.copy();
+        if (remaining.isStackable()) {
+            for (int i = playerStart; i < playerEnd && !remaining.isEmpty(); i++) {
+                Slot slot = menu.getSlot(i);
+                ItemStack dest = slot.getItem();
+                if (dest.isEmpty() || !ItemStack.isSameItemSameComponents(dest, remaining))
+                    continue;
+                int limit = Math.min(slot.getMaxStackSize(remaining), remaining.getMaxStackSize());
+                int space = limit - dest.getCount();
+                if (space <= 0)
+                    continue;
+                int move = Math.min(space, remaining.getCount());
+                slot.set(dest.copyWithCount(dest.getCount() + move));
+                slot.setChanged();
+                remaining.shrink(move);
+            }
+        }
+        for (int i = playerStart; i < playerEnd && !remaining.isEmpty(); i++) {
+            Slot slot = menu.getSlot(i);
+            if (slot.hasItem() || !slot.mayPlace(remaining))
+                continue;
+            int limit = Math.min(slot.getMaxStackSize(remaining), remaining.getMaxStackSize());
+            int move = Math.min(limit, remaining.getCount());
+            if (move <= 0)
+                continue;
+            slot.set(remaining.copyWithCount(move));
+            slot.setChanged();
+            remaining.shrink(move);
+        }
+        return remaining.isEmpty() ? ItemStack.EMPTY : remaining;
     }
 }

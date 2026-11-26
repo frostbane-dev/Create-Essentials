@@ -1,10 +1,14 @@
 package com.stackultra.essentials.client;
 
+import com.simibubi.create.AllKeys;
+import com.simibubi.create.content.equipment.toolbox.ToolboxBlockEntity;
+import com.simibubi.create.content.equipment.toolbox.ToolboxHandler;
 import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.GogglesHelper;
 import com.stackultra.essentials.content.backpack.BackpackScreen;
 import com.stackultra.essentials.content.backpack.BackpackTooltipData;
 import com.stackultra.essentials.content.backpack.MagneticBackpackScreen;
+import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.magnet.RotationalMagnetScreen;
 import com.stackultra.essentials.network.OpenBackpackPayload;
 import com.stackultra.essentials.network.OpenMagnetPayload;
@@ -14,17 +18,22 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
 
 @EventBusSubscriber(modid = CreateEssentials.MOD_ID, value = Dist.CLIENT)
 public class ClientEvents {
@@ -105,5 +114,26 @@ public class ClientEvents {
                 continue;
             PacketDistributor.sendToServer(new OpenBackpackPayload());
         }
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGH)
+    public static void onKeyInput(InputEvent.Key event) {
+        if (event.getAction() != GLFW.GLFW_PRESS)
+            return;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.level == null || minecraft.screen != null)
+            return;
+        if (minecraft.gameMode == null || minecraft.gameMode.getPlayerMode() == GameType.SPECTATOR)
+            return;
+        if (!AllKeys.TOOLBELT.doesModifierAndCodeMatch(event.getKey()))
+            return;
+
+        ItemStack backpack = PortableToolboxHandler.findPortableToolboxBackpack(minecraft.player);
+        if (backpack.isEmpty())
+            return;
+
+        List<ToolboxBlockEntity> worldToolboxes =
+                ToolboxHandler.getNearest(minecraft.level, minecraft.player, 8);
+        minecraft.setScreen(new PortableToolboxRadialScreen(backpack, worldToolboxes));
     }
 }
