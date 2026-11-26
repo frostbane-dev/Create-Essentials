@@ -1,6 +1,7 @@
 package com.stackultra.essentials.content.backpack;
 
 import com.stackultra.essentials.registry.AllMenus;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -9,41 +10,31 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
 
-public class BackpackMenu extends AbstractContainerMenu {
+import javax.annotation.Nullable;
 
-    private static final int BACKPACK_SLOTS = BackpackInventory.SLOTS;
+public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu {
+
+    public static final int BACKPACK_SLOTS = BackpackInventory.SLOTS;
 
     private final Inventory playerInventory;
     private final IItemHandler backpackInventory;
+    @Nullable
+    private final MechanicalBackpackBlockEntity blockEntity;
+    private final ItemStack backpackStack;
+    private SortMode sortMode;
 
     public BackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
-        this(windowId, inv, createClientInventory(extraData));
-    }
-
-    private BackpackMenu(int windowId, Inventory inv, IItemHandler backpackInventory) {
         super(AllMenus.BACKPACK.get(), windowId);
         this.playerInventory = inv;
-        this.backpackInventory = backpackInventory;
-        addBackpackSlots();
-        addPlayerSlots();
-    }
-
-    public static BackpackMenu create(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
-        return new BackpackMenu(windowId, inv, be.getItemHandler());
-    }
-
-    public static BackpackMenu create(int windowId, Inventory inv, ItemStack stack) {
-        return new BackpackMenu(windowId, inv, BackpackInventory.forStack(stack));
-    }
-
-    private static IItemHandler createClientInventory(RegistryFriendlyByteBuf extraData) {
         boolean fromBlockEntity = extraData.readBoolean();
+        MechanicalBackpackBlockEntity found = null;
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
@@ -52,11 +43,64 @@ public class BackpackMenu extends AbstractContainerMenu {
                 BlockEntity be = level.getBlockEntity(pos);
                 if (be instanceof MechanicalBackpackBlockEntity backpack) {
                     backpack.readClient(tag, extraData.registryAccess());
-                    return backpack.getItemHandler();
+                    found = backpack;
                 }
             }
         }
-        return new BackpackInventory();
+        this.blockEntity = found;
+        this.backpackStack = ItemStack.EMPTY;
+        this.backpackInventory = found != null ? found.getItemHandler() : new BackpackInventory();
+        this.sortMode = found != null ? found.getSortMode() : SortMode.NAME;
+        addBackpackSlots();
+        addPlayerSlots();
+        addSortModeDataSlot();
+    }
+
+    private BackpackMenu(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
+        super(AllMenus.BACKPACK.get(), windowId);
+        this.playerInventory = inv;
+        this.blockEntity = be;
+        this.backpackStack = ItemStack.EMPTY;
+        this.backpackInventory = be.getItemHandler();
+        this.sortMode = be.getSortMode();
+        addBackpackSlots();
+        addPlayerSlots();
+        addSortModeDataSlot();
+    }
+
+    private BackpackMenu(int windowId, Inventory inv, ItemStack stack) {
+        super(AllMenus.BACKPACK.get(), windowId);
+        this.playerInventory = inv;
+        this.blockEntity = null;
+        this.backpackStack = stack;
+        this.backpackInventory = BackpackInventory.forStack(stack,
+                () -> BackpackEquipment.syncBackpack(inv.player, stack));
+        this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
+        addBackpackSlots();
+        addPlayerSlots();
+        addSortModeDataSlot();
+    }
+
+    public static BackpackMenu create(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
+        return new BackpackMenu(windowId, inv, be);
+    }
+
+    public static BackpackMenu create(int windowId, Inventory inv, ItemStack stack) {
+        return new BackpackMenu(windowId, inv, stack);
+    }
+
+    private void addSortModeDataSlot() {
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return blockEntity != null ? blockEntity.getSortMode().ordinal() : sortMode.ordinal();
+            }
+
+            @Override
+            public void set(int value) {
+                sortMode = SortMode.byOrdinal(value);
+            }
+        });
     }
 
     private void addBackpackSlots() {
@@ -84,6 +128,57 @@ public class BackpackMenu extends AbstractContainerMenu {
     }
 
     @Override
+    public SortMode getSortMode() {
+        return blockEntity != null ? blockEntity.getSortMode() : sortMode;
+    }
+
+    @Override
+    public void setSortMode(SortMode mode, Player player) {
+        SortMode resolved = mode != null ? mode : SortMode.NAME;
+        this.sortMode = resolved;
+        if (blockEntity != null) {
+            blockEntity.setSortMode(resolved);
+        } else if (!backpackStack.isEmpty()) {
+            backpackStack.set(ExtraDataComponents.SORT_MODE, resolved);
+            BackpackEquipment.syncBackpack(player, backpackStack);
+        }
+        broadcastChanges();
+    }
+
+    @Override
+    public void transferMatchingToStorage(Player player) {
+        if (BackpackInventoryOps.transferMatchingToStorage(
+                this, 0, BACKPACK_SLOTS, BACKPACK_SLOTS, this.slots.size(),
+                player, backpackStack.isEmpty() ? null : backpackStack)) {
+            syncBacking(player);
+        }
+    }
+
+    @Override
+    public void transferMatchingToInventory(Player player) {
+        if (BackpackInventoryOps.transferMatchingToInventory(
+                this, 0, BACKPACK_SLOTS, BACKPACK_SLOTS, this.slots.size(), player)) {
+            syncBacking(player);
+        }
+    }
+
+    @Override
+    public void sortStorage(Player player) {
+        if (BackpackInventoryOps.sortStorage(this, 0, BACKPACK_SLOTS, getSortMode())) {
+            syncBacking(player);
+        }
+    }
+
+    private void syncBacking(Player player) {
+        if (blockEntity != null) {
+            blockEntity.setChanged();
+        } else if (!backpackStack.isEmpty()) {
+            BackpackEquipment.syncBackpack(player, backpackStack);
+        }
+        broadcastChanges();
+    }
+
+    @Override
     public ItemStack quickMoveStack(Player player, int index) {
         ItemStack result = ItemStack.EMPTY;
         Slot slot = this.slots.get(index);
@@ -106,6 +201,8 @@ public class BackpackMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return true;
+        if (player.level().isClientSide())
+            return true;
+        return blockEntity != null || !backpackStack.isEmpty();
     }
 }

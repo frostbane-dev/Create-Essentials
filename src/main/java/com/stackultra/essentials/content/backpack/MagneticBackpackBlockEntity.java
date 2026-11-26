@@ -41,6 +41,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     private int charge = 0;
     private boolean enabled = true;
     private boolean blacklist = false;
+    private SortMode sortMode = SortMode.NAME;
     private int capacityEnchantLevel = 0;
     private boolean wasFull;
     private float chargeAccumulator = 0F;
@@ -194,6 +195,19 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         setBlacklist(!blacklist);
     }
 
+    public SortMode getSortMode() {
+        return sortMode;
+    }
+
+    public void setSortMode(SortMode sortMode) {
+        SortMode resolved = sortMode != null ? sortMode : SortMode.NAME;
+        if (this.sortMode == resolved)
+            return;
+        this.sortMode = resolved;
+        setChanged();
+        sendData();
+    }
+
     public ItemStackHandler getFilterInventory() {
         return filterInventory;
     }
@@ -229,6 +243,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
         setEnabled(stack.getOrDefault(AllDataComponents.ENABLED, true));
         setBlacklist(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
+        setSortMode(stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME));
         wasFull = charge >= getMaxCharge();
         List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
         for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
@@ -240,6 +255,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         stack.set(AllDataComponents.CHARGE, charge);
         stack.set(AllDataComponents.ENABLED, enabled);
         stack.set(ExtraDataComponents.BLACKLIST, blacklist);
+        stack.set(ExtraDataComponents.SORT_MODE, sortMode);
         List<ItemStack> filters = new ArrayList<>(MagneticBackpackItem.FILTER_SLOTS);
         for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
             filters.add(filterInventory.getStackInSlot(i).copy());
@@ -258,6 +274,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         tag.putInt("Charge", charge);
         tag.putBoolean("Enabled", enabled);
         tag.putBoolean("Blacklist", blacklist);
+        tag.putString("SortMode", sortMode.getSerializedName());
         tag.putInt("CapacityEnchantLevel", capacityEnchantLevel);
         tag.put("Filters", filterInventory.serializeNBT(registries));
         tag.put("Inventory", inventory.serializeNBT(registries));
@@ -270,6 +287,8 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         charge = Math.clamp(tag.getInt("Charge"), 0, getMaxCharge());
         enabled = tag.getBoolean("Enabled");
         blacklist = tag.getBoolean("Blacklist");
+        if (tag.contains("SortMode"))
+            sortMode = SortMode.byName(tag.getString("SortMode"));
         wasFull = charge >= getMaxCharge();
         if (tag.contains("Filters"))
             filterInventory.deserializeNBT(registries, tag.getCompound("Filters"));

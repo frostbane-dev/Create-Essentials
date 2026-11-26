@@ -49,6 +49,10 @@ public class AllPackets {
                 BlacklistTogglePayload.TYPE,
                 BlacklistTogglePayload.STREAM_CODEC,
                 BlacklistTogglePayload::handle);
+        registrar.playToServer(
+                BackpackActionPayload.TYPE,
+                BackpackActionPayload.STREAM_CODEC,
+                BackpackActionPayload::handle);
     }
 
     private static void handleToggle(RotationalMagnetTogglePayload payload, IPayloadContext context) {

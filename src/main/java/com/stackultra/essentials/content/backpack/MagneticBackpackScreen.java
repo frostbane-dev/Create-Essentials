@@ -3,7 +3,9 @@ package com.stackultra.essentials.content.backpack;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.stackultra.essentials.client.DarkGuiStyling;
+import com.stackultra.essentials.client.DarkIconButton;
 import com.stackultra.essentials.client.DarkTextButton;
+import com.stackultra.essentials.network.BackpackActionPayload;
 import com.stackultra.essentials.network.BlacklistTogglePayload;
 import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
 import com.stackultra.essentials.registry.ExtraDataComponents;
@@ -18,6 +20,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @OnlyIn(Dist.CLIENT)
 public class MagneticBackpackScreen extends AbstractSimiContainerScreen<MagneticBackpackMenu> {
 
@@ -25,6 +30,11 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     private static final int WINDOW_HEIGHT = 191;
 
     private static final int TITLE_Y = 6;
+    private static final int UTILITY_BTN_SIZE = 12;
+    private static final int UTILITY_BTN_GAP = 1;
+    private static final int UTILITY_BTN_Y = 4;
+    private static final int UTILITY_START_X = 169 - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
+
     private static final int BUTTON_Y = 19;
     private static final int BUTTON_W = 78;
     private static final int BUTTON_H = 18;
@@ -35,6 +45,8 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
 
     private static final int COLOR_BLACKLIST = 0xFFD66BFF;
     private static final int COLOR_WHITELIST = 0xFF78B8FF;
+
+    private final List<DarkIconButton> utilityButtons = new ArrayList<>(4);
 
     private boolean enabledState;
     private boolean blacklistState;
@@ -50,6 +62,53 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
 
         enabledState = menu.isEnabled();
         blacklistState = readBlacklist();
+
+        utilityButtons.clear();
+        int step = UTILITY_BTN_SIZE + UTILITY_BTN_GAP;
+        int bx = leftPos + UTILITY_START_X;
+        int by = topPos + UTILITY_BTN_Y;
+
+        DarkIconButton toStorage = new DarkIconButton(bx, by, UTILITY_BTN_SIZE,
+                DarkIconButton.Icon.TRANSFER_TO_STORAGE,
+                () -> "",
+                () -> List.of(Component.translatable("createessentials.gui.transfer_to_storage")
+                        .withStyle(ChatFormatting.GREEN)),
+                () -> PacketDistributor.sendToServer(BackpackActionPayload.transferToStorage()));
+
+        DarkIconButton toInventory = new DarkIconButton(bx + step, by, UTILITY_BTN_SIZE,
+                DarkIconButton.Icon.TRANSFER_TO_INVENTORY,
+                () -> "",
+                () -> List.of(Component.translatable("createessentials.gui.transfer_to_inventory")
+                        .withStyle(ChatFormatting.RED)),
+                () -> PacketDistributor.sendToServer(BackpackActionPayload.transferToInventory()));
+
+        DarkIconButton sortBtn = new DarkIconButton(bx + step * 2, by, UTILITY_BTN_SIZE,
+                DarkIconButton.Icon.SORT,
+                () -> "",
+                () -> List.of(
+                        Component.translatable("createessentials.gui.sort").withStyle(ChatFormatting.GOLD),
+                        Component.translatable("createessentials.gui.sort_by",
+                                Component.translatable(menu.getSortMode().translationKey()))
+                                .withStyle(ChatFormatting.GRAY)),
+                () -> PacketDistributor.sendToServer(BackpackActionPayload.sort()));
+
+        DarkIconButton sortModeBtn = new DarkIconButton(bx + step * 3, by, UTILITY_BTN_SIZE,
+                DarkIconButton.Icon.TEXT_BADGE,
+                () -> menu.getSortMode().shortBadge(),
+                () -> List.of(
+                        Component.translatable("createessentials.gui.sort_by",
+                                Component.translatable(menu.getSortMode().translationKey())
+                                        .withStyle(ChatFormatting.GREEN)),
+                        Component.translatable("createessentials.gui.sort_mode_hint")
+                                .withStyle(ChatFormatting.GRAY)),
+                () -> PacketDistributor.sendToServer(BackpackActionPayload.setSortMode(menu.getSortMode().next())));
+
+        utilityButtons.add(toStorage);
+        utilityButtons.add(toInventory);
+        utilityButtons.add(sortBtn);
+        utilityButtons.add(sortModeBtn);
+        for (DarkIconButton btn : utilityButtons)
+            addRenderableWidget(btn);
 
         DarkTextButton toggle = new DarkTextButton(leftPos + 8, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> Component.translatable("createessentials.gui.magnet_status",
@@ -127,7 +186,7 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         String titleText = title.getString();
-        int maxTitle = imageWidth - 16;
+        int maxTitle = UTILITY_START_X - 8 - 3;
         if (font.width(titleText) > maxTitle)
             titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
         graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
@@ -137,5 +196,18 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
                 DarkGuiStyling.COLOR_TEXT_DIM, true);
 
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
+    }
+
+    @Override
+    protected void renderTooltip(GuiGraphics graphics, int x, int y) {
+        super.renderTooltip(graphics, x, y);
+        if (!menu.getCarried().isEmpty())
+            return;
+        for (DarkIconButton btn : utilityButtons) {
+            if (btn.isHovered()) {
+                graphics.renderComponentTooltip(font, btn.getTooltipLines(), x, y);
+                break;
+            }
+        }
     }
 }

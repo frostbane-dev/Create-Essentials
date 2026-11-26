@@ -3,6 +3,7 @@ package com.stackultra.essentials.content.backpack;
 import com.simibubi.create.content.logistics.filter.FilterItem;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllMenus;
+import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -13,6 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -24,7 +26,7 @@ import net.neoforged.neoforge.items.SlotItemHandler;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MagneticBackpackMenu extends AbstractContainerMenu {
+public class MagneticBackpackMenu extends AbstractContainerMenu implements IBackpackMenu {
 
     public static final int STORAGE_SLOTS = BackpackInventory.SLOTS;
     public static final int FILTER_SLOTS = MagneticBackpackItem.FILTER_SLOTS;
@@ -47,6 +49,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
     private boolean enabled;
     private int charge;
     private int maxCharge;
+    private SortMode sortMode = SortMode.NAME;
 
     private MagneticBackpackMenu(int windowId, Inventory inv, MagneticBackpackBlockEntity be) {
         super(AllMenus.MAGNETIC_BACKPACK.get(), windowId);
@@ -60,7 +63,9 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
         this.enabled = be.isEnabled();
         this.charge = be.getCharge();
         this.maxCharge = be.getMaxCharge();
+        this.sortMode = be.getSortMode();
         addSlots();
+        addSortModeDataSlot();
     }
 
     private MagneticBackpackMenu(int windowId, Inventory inv, ItemStack stack) {
@@ -78,7 +83,9 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
         this.enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
         this.charge = item.getCharge(stack);
         this.maxCharge = item.getMaxCharge(stack);
+        this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
         addSlots();
+        addSortModeDataSlot();
     }
 
     public MagneticBackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
@@ -107,12 +114,14 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
                 this.enabled = found.isEnabled();
                 this.charge = found.getCharge();
                 this.maxCharge = found.getMaxCharge();
+                this.sortMode = found.getSortMode();
             } else {
                 this.storageInventory = new BackpackInventory();
                 this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
                 this.enabled = true;
                 this.charge = 0;
                 this.maxCharge = 1;
+                this.sortMode = SortMode.NAME;
             }
         } else {
             this.blockEntity = null;
@@ -126,8 +135,10 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
             this.enabled = extraData.readBoolean();
             this.charge = extraData.readVarInt();
             this.maxCharge = extraData.readVarInt();
+            this.sortMode = SortMode.NAME;
         }
         addSlots();
+        addSortModeDataSlot();
     }
 
     public static MagneticBackpackMenu create(int windowId, Inventory inv, MagneticBackpackBlockEntity be) {
@@ -136,6 +147,20 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
 
     public static MagneticBackpackMenu create(int windowId, Inventory inv, ItemStack stack) {
         return new MagneticBackpackMenu(windowId, inv, stack);
+    }
+
+    private void addSortModeDataSlot() {
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                return blockEntity != null ? blockEntity.getSortMode().ordinal() : sortMode.ordinal();
+            }
+
+            @Override
+            public void set(int value) {
+                sortMode = SortMode.byOrdinal(value);
+            }
+        });
     }
 
     private void addSlots() {
@@ -205,6 +230,58 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
 
     public int getMaxCharge() {
         return blockEntity != null ? blockEntity.getMaxCharge() : maxCharge;
+    }
+
+    @Override
+    public SortMode getSortMode() {
+        return blockEntity != null ? blockEntity.getSortMode() : sortMode;
+    }
+
+    @Override
+    public void setSortMode(SortMode mode, Player player) {
+        SortMode resolved = mode != null ? mode : SortMode.NAME;
+        this.sortMode = resolved;
+        if (blockEntity != null) {
+            blockEntity.setSortMode(resolved);
+        } else if (!backpackStack.isEmpty()) {
+            backpackStack.set(ExtraDataComponents.SORT_MODE, resolved);
+            MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
+        }
+        broadcastChanges();
+    }
+
+    @Override
+    public void transferMatchingToStorage(Player player) {
+        if (BackpackInventoryOps.transferMatchingToStorage(
+                this, 0, STORAGE_SLOTS, PLAYER_SLOT_START, this.slots.size(),
+                player, backpackStack.isEmpty() ? null : backpackStack)) {
+            syncBacking(player);
+        }
+    }
+
+    @Override
+    public void transferMatchingToInventory(Player player) {
+        if (BackpackInventoryOps.transferMatchingToInventory(
+                this, 0, STORAGE_SLOTS, PLAYER_SLOT_START, this.slots.size(), player)) {
+            syncBacking(player);
+        }
+    }
+
+    @Override
+    public void sortStorage(Player player) {
+        if (BackpackInventoryOps.sortStorage(this, 0, STORAGE_SLOTS, getSortMode())) {
+            syncBacking(player);
+        }
+    }
+
+    private void syncBacking(Player player) {
+        if (blockEntity != null) {
+            blockEntity.setChanged();
+            blockEntity.sendData();
+        } else if (!backpackStack.isEmpty()) {
+            MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
+        }
+        broadcastChanges();
     }
 
     private boolean isFilterSlot(int slotId) {
@@ -279,6 +356,8 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
+        if (player.level().isClientSide())
+            return true;
         return blockEntity != null || !backpackStack.isEmpty();
     }
 }
