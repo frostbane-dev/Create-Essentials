@@ -101,6 +101,16 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
     }
 
     @Override
+    public boolean isFoil(ItemStack stack) {
+        return stack.getOrDefault(AllDataComponents.ENABLED, true) || super.isFoil(stack);
+    }
+
+    @Override
+    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
+        return slotChanged || !ItemStack.isSameItem(oldStack, newStack);
+    }
+
+    @Override
     public boolean isEnchantable(ItemStack stack) {
         return true;
     }

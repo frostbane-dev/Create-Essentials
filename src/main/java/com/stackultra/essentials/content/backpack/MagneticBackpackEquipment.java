@@ -54,16 +54,19 @@ public final class MagneticBackpackEquipment {
     public static void syncMagneticBackpack(Player player, ItemStack backpack) {
         if (player.getItemBySlot(EquipmentSlot.CHEST) == backpack) {
             player.setItemSlot(EquipmentSlot.CHEST, backpack);
+            broadcastIfServer(player);
             return;
         }
 
         if (player.getMainHandItem() == backpack) {
             player.setItemInHand(InteractionHand.MAIN_HAND, backpack);
+            broadcastIfServer(player);
             return;
         }
 
         if (player.getOffhandItem() == backpack) {
             player.setItemInHand(InteractionHand.OFF_HAND, backpack);
+            broadcastIfServer(player);
             return;
         }
 
@@ -71,6 +74,7 @@ public final class MagneticBackpackEquipment {
         for (int i = 0; i < inventory.items.size(); i++) {
             if (inventory.items.get(i) == backpack) {
                 inventory.setItem(i, backpack);
+                broadcastIfServer(player);
                 return;
             }
         }
@@ -81,5 +85,14 @@ public final class MagneticBackpackEquipment {
             } catch (Throwable ignored) {
             }
         }
+        broadcastIfServer(player);
+    }
+
+    private static void broadcastIfServer(Player player) {
+        if (player.level().isClientSide())
+            return;
+        player.containerMenu.broadcastChanges();
+        if (player.containerMenu != player.inventoryMenu)
+            player.inventoryMenu.broadcastChanges();
     }
 }

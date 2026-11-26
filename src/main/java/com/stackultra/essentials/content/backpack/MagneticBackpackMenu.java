@@ -68,7 +68,8 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
         this.playerInventory = inv;
         this.blockEntity = null;
         this.backpackStack = stack;
-        this.storageInventory = BackpackInventory.forStack(stack);
+        this.storageInventory = BackpackInventory.forStack(stack,
+                () -> MagneticBackpackEquipment.syncMagneticBackpack(inv.player, stack));
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
         List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
         for (int i = 0; i < FILTER_SLOTS; i++)
@@ -178,6 +179,18 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
         return blockEntity;
     }
 
+    public ItemStack getBackpackStack() {
+        return backpackStack;
+    }
+
+    public boolean isBackingStack(ItemStack stack) {
+        return blockEntity == null && !backpackStack.isEmpty() && backpackStack == stack;
+    }
+
+    public BackpackInventory getBackpackInventory() {
+        return storageInventory instanceof BackpackInventory inv ? inv : null;
+    }
+
     public boolean isEnabled() {
         return blockEntity != null ? blockEntity.isEnabled() : enabled;
     }
@@ -260,11 +273,12 @@ public class MagneticBackpackMenu extends AbstractContainerMenu {
             blockEntity.setFilters(filters);
         } else if (!backpackStack.isEmpty()) {
             MagneticBackpackItem.setFilters(backpackStack, filters);
+            MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
         }
     }
 
     @Override
     public boolean stillValid(Player player) {
-        return true;
+        return blockEntity != null || !backpackStack.isEmpty();
     }
 }

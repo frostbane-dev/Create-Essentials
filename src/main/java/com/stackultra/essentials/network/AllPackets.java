@@ -57,7 +57,10 @@ public class AllPackets {
                 return;
 
             if (payload.toggleEquippedFirst()) {
-                ItemStack magnetic = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
+                ItemStack magnetic = (player.containerMenu instanceof MagneticBackpackMenu openMenu
+                        && !openMenu.isBlockEntityContext() && !openMenu.getBackpackStack().isEmpty())
+                        ? openMenu.getBackpackStack()
+                        : MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
                 if (!magnetic.isEmpty()) {
                     boolean enabled = !magnetic.getOrDefault(AllDataComponents.ENABLED, true);
                     magnetic.set(AllDataComponents.ENABLED, enabled);

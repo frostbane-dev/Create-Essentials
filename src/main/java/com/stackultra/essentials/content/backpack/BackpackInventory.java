@@ -33,6 +33,10 @@ public class BackpackInventory extends ItemStackHandler {
         return new BackpackInventory(stack, null);
     }
 
+    public static BackpackInventory forStack(ItemStack stack, Runnable onChanged) {
+        return new BackpackInventory(stack, onChanged);
+    }
+
     public static BackpackInventory forBlockEntity(Runnable onChanged) {
         return new BackpackInventory(onChanged);
     }

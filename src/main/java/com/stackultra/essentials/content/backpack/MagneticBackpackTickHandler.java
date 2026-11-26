@@ -67,20 +67,34 @@ public class MagneticBackpackTickHandler {
             List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class,
                     player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
 
-            BackpackInventory inventory = BackpackInventory.forStack(backpack);
+            MagneticBackpackMenu openMenu = (player.containerMenu instanceof MagneticBackpackMenu menu
+                    && menu.isBackingStack(backpack)) ? menu : null;
+            BackpackInventory inventory = openMenu != null && openMenu.getBackpackInventory() != null
+                    ? openMenu.getBackpackInventory()
+                    : BackpackInventory.forStack(backpack);
+
+            boolean pulledIntoBackpack = false;
+            boolean pulledIntoPlayer = false;
 
             for (ItemEntity itemEntity : items) {
                 if (!matchesFilter(player, filters, itemEntity.getItem(), backpack))
                     continue;
 
                 ItemStack remaining = itemEntity.getItem().copy();
+                int beforeBackpack = remaining.getCount();
 
                 for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
                     remaining = inventory.insertItem(i, remaining, false);
                 }
 
+                if (remaining.getCount() != beforeBackpack)
+                    pulledIntoBackpack = true;
+
                 if (!remaining.isEmpty()) {
+                    int beforePlayer = remaining.getCount();
                     remaining = insertIntoMainInventory(player, remaining);
+                    if (remaining.getCount() != beforePlayer)
+                        pulledIntoPlayer = true;
                 }
 
                 if (remaining.isEmpty()) {
@@ -91,11 +105,20 @@ public class MagneticBackpackTickHandler {
                 }
             }
 
+            if (pulledIntoBackpack)
+                changed = true;
+
+            if (pulledIntoBackpack || pulledIntoPlayer)
+                player.containerMenu.broadcastChanges();
+
             if (!charging) {
                 charge--;
                 changed = true;
             }
         }
+
+        if (backpack.getOrDefault(AllDataComponents.CHARGING, false) != charging)
+            changed = true;
 
         if (changed) {
             backpack.set(AllDataComponents.CHARGE, Math.clamp(charge, 0, max));
