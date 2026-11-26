@@ -31,99 +31,113 @@ public class MagneticBackpackTickHandler {
         if (player.level().isClientSide())
             return;
 
-        ItemStack backpack = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
-        if (backpack.isEmpty() || !(backpack.getItem() instanceof MagneticBackpackItem item))
+        List<ItemStack> backpacks = MagneticBackpackEquipment.getCarriedMagneticBackpacks(player);
+        if (backpacks.isEmpty())
             return;
 
-        int charge = item.getCharge(backpack);
-        int max = item.getMaxCharge(backpack);
-        boolean enabled = backpack.getOrDefault(AllDataComponents.ENABLED, true);
-        boolean charging = false;
-        boolean changed = false;
+        List<ItemStack> backtanks = null;
+        int availableAir = 0;
+        int backtankMaxAir = 0;
 
-        if (charge < max) {
-            List<ItemStack> backtanks = BacktankSupport.getBacktanks(player);
-            int air = BacktankSupport.totalAir(backtanks);
-            int backtankMaxAir = BacktankSupport.totalMaxAir(backtanks);
-            if (air > 0) {
-                int before = charge;
-                charge = Math.min(max, charge + BACKTANK_RECHARGE_PER_TICK);
-                int chargeDelta = charge - before;
-                airRemainder += (chargeDelta / (double) max) * backtankMaxAir;
-                int consume = Math.min((int) airRemainder, air);
-                if (consume > 0) {
-                    BacktankSupport.consumeAir(player, backtanks, consume);
-                    airRemainder -= consume;
+        for (ItemStack backpack : backpacks) {
+            if (backpack.isEmpty() || !(backpack.getItem() instanceof MagneticBackpackItem item))
+                continue;
+
+            int charge = item.getCharge(backpack);
+            int max = item.getMaxCharge(backpack);
+            boolean enabled = backpack.getOrDefault(AllDataComponents.ENABLED, true);
+            boolean charging = false;
+            boolean changed = false;
+
+            if (charge < max) {
+                if (backtanks == null) {
+                    backtanks = BacktankSupport.getBacktanks(player);
+                    availableAir = BacktankSupport.totalAir(backtanks);
+                    backtankMaxAir = BacktankSupport.totalMaxAir(backtanks);
                 }
-                changed = true;
-                charging = true;
-            }
-        }
-
-        if (enabled && charge > 0) {
-            double radius = MagnetTier.TIER_2.pullRadius();
-            List<ItemStack> filters = MagneticBackpackItem.getFilters(backpack);
-
-            List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class,
-                    player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
-
-            MagneticBackpackMenu openMenu = (player.containerMenu instanceof MagneticBackpackMenu menu
-                    && menu.isBackingStack(backpack)) ? menu : null;
-            BackpackInventory inventory = openMenu != null && openMenu.getBackpackInventory() != null
-                    ? openMenu.getBackpackInventory()
-                    : BackpackInventory.forStack(backpack);
-
-            boolean pulledIntoBackpack = false;
-            boolean pulledIntoPlayer = false;
-
-            for (ItemEntity itemEntity : items) {
-                if (!matchesFilter(player, filters, itemEntity.getItem(), backpack))
-                    continue;
-
-                ItemStack remaining = itemEntity.getItem().copy();
-                int beforeBackpack = remaining.getCount();
-
-                for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
-                    remaining = inventory.insertItem(i, remaining, false);
-                }
-
-                if (remaining.getCount() != beforeBackpack)
-                    pulledIntoBackpack = true;
-
-                if (!remaining.isEmpty()) {
-                    int beforePlayer = remaining.getCount();
-                    remaining = insertIntoMainInventory(player, remaining);
-                    if (remaining.getCount() != beforePlayer)
-                        pulledIntoPlayer = true;
-                }
-
-                if (remaining.isEmpty()) {
-                    itemEntity.discard();
-                } else {
-                    itemEntity.setItem(remaining);
-                    ItemPullHelper.pullToFeet(itemEntity, player);
+                if (availableAir > 0) {
+                    int before = charge;
+                    charge = Math.min(max, charge + BACKTANK_RECHARGE_PER_TICK);
+                    int chargeDelta = charge - before;
+                    airRemainder += (chargeDelta / (double) max) * backtankMaxAir;
+                    int consume = Math.min((int) airRemainder, availableAir);
+                    if (consume > 0) {
+                        BacktankSupport.consumeAir(player, backtanks, consume);
+                        availableAir -= consume;
+                        airRemainder -= consume;
+                    }
+                    changed = true;
+                    charging = true;
                 }
             }
 
-            if (pulledIntoBackpack)
-                changed = true;
+            if (enabled && charge > 0) {
+                double radius = MagnetTier.TIER_2.pullRadius();
+                List<ItemStack> filters = MagneticBackpackItem.getFilters(backpack);
 
-            if (pulledIntoBackpack || pulledIntoPlayer)
-                player.containerMenu.broadcastChanges();
+                List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class,
+                        player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
 
-            if (!charging) {
-                charge--;
-                changed = true;
+                MagneticBackpackMenu openMenu = (player.containerMenu instanceof MagneticBackpackMenu menu
+                        && menu.isBackingStack(backpack)) ? menu : null;
+                BackpackInventory inventory = openMenu != null && openMenu.getBackpackInventory() != null
+                        ? openMenu.getBackpackInventory()
+                        : BackpackInventory.forStack(backpack);
+
+                boolean pulledIntoBackpack = false;
+                boolean pulledIntoPlayer = false;
+
+                for (ItemEntity itemEntity : items) {
+                    if (!itemEntity.isAlive())
+                        continue;
+                    if (!matchesFilter(player, filters, itemEntity.getItem(), backpack))
+                        continue;
+
+                    ItemStack remaining = itemEntity.getItem().copy();
+                    int beforeBackpack = remaining.getCount();
+
+                    for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
+                        remaining = inventory.insertItem(i, remaining, false);
+                    }
+
+                    if (remaining.getCount() != beforeBackpack)
+                        pulledIntoBackpack = true;
+
+                    if (!remaining.isEmpty()) {
+                        int beforePlayer = remaining.getCount();
+                        remaining = insertIntoMainInventory(player, remaining);
+                        if (remaining.getCount() != beforePlayer)
+                            pulledIntoPlayer = true;
+                    }
+
+                    if (remaining.isEmpty()) {
+                        itemEntity.discard();
+                    } else {
+                        itemEntity.setItem(remaining);
+                        ItemPullHelper.pullToFeet(itemEntity, player);
+                    }
+                }
+
+                if (pulledIntoBackpack)
+                    changed = true;
+
+                if (pulledIntoBackpack || pulledIntoPlayer)
+                    player.containerMenu.broadcastChanges();
+
+                if (!charging) {
+                    charge--;
+                    changed = true;
+                }
             }
-        }
 
-        if (backpack.getOrDefault(AllDataComponents.CHARGING, false) != charging)
-            changed = true;
+            if (backpack.getOrDefault(AllDataComponents.CHARGING, false) != charging)
+                changed = true;
 
-        if (changed) {
-            backpack.set(AllDataComponents.CHARGE, Math.clamp(charge, 0, max));
-            backpack.set(AllDataComponents.CHARGING, charging);
-            MagneticBackpackEquipment.syncMagneticBackpack(player, backpack);
+            if (changed) {
+                backpack.set(AllDataComponents.CHARGE, Math.clamp(charge, 0, max));
+                backpack.set(AllDataComponents.CHARGING, charging);
+                MagneticBackpackEquipment.syncMagneticBackpack(player, backpack);
+            }
         }
     }
 

@@ -12,52 +12,56 @@ import java.util.Map;
 
 @OnlyIn(Dist.CLIENT)
 public record BackpackTooltipPalette(
+        int panelBg,
+        int panelBevelLight,
+        int panelBevelDark,
+        int panelOutline,
         int borderStart,
         int borderEnd,
-        int headerBg,
-        int headerAccent,
-        int divider,
         int tooltipBgStart,
         int tooltipBgEnd
 ) {
 
-    private static final int DEFAULT_BG_START = 0xF017171A;
-    private static final int DEFAULT_BG_END = 0xF0111114;
+    private static final int DEFAULT_OUTLINE = DarkGuiStyling.COLOR_BORDER_DARK;
+    private static final int DEFAULT_BG_START = 0xF01C1C1C;
+    private static final int DEFAULT_BG_END = 0xF0141414;
 
-    private static final BackpackTooltipPalette MECHANICAL_DEFAULT = new BackpackTooltipPalette(
-            0xFFD9A14A, 0xFF8C5B20, 0xFF3A3124, 0xFFF2C24C, 0xFF7A5624, DEFAULT_BG_START, DEFAULT_BG_END);
-
-    private static final BackpackTooltipPalette NETHERITE_DEFAULT = new BackpackTooltipPalette(
-            0xFFA87682, 0xFF563B43, 0xFF33292D, 0xFFD4A3AF, 0xFF694852, DEFAULT_BG_START, DEFAULT_BG_END);
-
-    private static final BackpackTooltipPalette MAGNETIC_DEFAULT = new BackpackTooltipPalette(
-            0xFF5CE1FF, 0xFF7B4DFF, 0xFF23303B, 0xFF7EE8FF, 0xFF47698A, DEFAULT_BG_START, DEFAULT_BG_END);
+    private static final BackpackTooltipPalette UNPAINTED_DEFAULT = new BackpackTooltipPalette(
+            DarkGuiStyling.COLOR_PANEL,
+            DarkGuiStyling.COLOR_BEVEL_LIGHT,
+            DarkGuiStyling.COLOR_BEVEL_DARK,
+            DEFAULT_OUTLINE,
+            0xFF6E6E6E,
+            0xFF3A3A3A,
+            DEFAULT_BG_START,
+            DEFAULT_BG_END);
 
     private static final Map<DyeColor, BackpackTooltipPalette> DYE_PALETTES = new EnumMap<>(DyeColor.class);
 
     static {
-        putDye(DyeColor.WHITE, 0xFFDCDCE6, 0xFF8E8E9E, 0xFF38383E, 0xFFF0F0F8, 0xFF727280);
-        putDye(DyeColor.ORANGE, 0xFFFF9A3C, 0xFFA65214, 0xFF3D2C1E, 0xFFFFB86C, 0xFF8A4C1E);
-        putDye(DyeColor.MAGENTA, 0xFFE366D9, 0xFF8C2B87, 0xFF382438, 0xFFF28CEB, 0xFF7A3478);
-        putDye(DyeColor.LIGHT_BLUE, 0xFF6BCBFF, 0xFF2B75A8, 0xFF22333D, 0xFF94DCFF, 0xFF34688A);
-        putDye(DyeColor.YELLOW, 0xFFF5CC47, 0xFFA67C1E, 0xFF3B3520, 0xFFFFDF73, 0xFF8A6C24);
-        putDye(DyeColor.LIME, 0xFF8CE64C, 0xFF438C1F, 0xFF283820, 0xFFA9F573, 0xFF467829);
-        putDye(DyeColor.PINK, 0xFFFF96BC, 0xFFA84C6E, 0xFF3B2830, 0xFFFFB5D0, 0xFF8A4660);
-        putDye(DyeColor.GRAY, 0xFF9A9AA6, 0xFF565661, 0xFF2E2E33, 0xFFC8C8D4, 0xFF585863);
-        putDye(DyeColor.LIGHT_GRAY, 0xFFC2C2CC, 0xFF787885, 0xFF34343A, 0xFFE0E0EA, 0xFF6A6A75);
-        putDye(DyeColor.CYAN, 0xFF4CD4D4, 0xFF1F7A82, 0xFF1F3538, 0xFF7AEAEA, 0xFF2B6C73);
-        putDye(DyeColor.PURPLE, 0xFFB36BFF, 0xFF642CA6, 0xFF2E233B, 0xFFCBA0FF, 0xFF5D358A);
-        putDye(DyeColor.BLUE, 0xFF5E8BFF, 0xFF2848A6, 0xFF22293D, 0xFF8CB0FF, 0xFF344C8A);
-        putDye(DyeColor.BROWN, 0xFFC28554, 0xFF734726, 0xFF362A21, 0xFFDEA373, 0xFF6B462B);
-        putDye(DyeColor.GREEN, 0xFF69B854, 0xFF326E26, 0xFF243322, 0xFF8ED67A, 0xFF3B6632);
-        putDye(DyeColor.RED, 0xFFFF6666, 0xFFA32929, 0xFF3B2323, 0xFFFF8F8F, 0xFF853232);
-        putDye(DyeColor.BLACK, 0xFF6C6C7D, 0xFF343440, 0xFF242429, 0xFFB8B8CC, 0xFF4A4A57);
+        putDye(DyeColor.WHITE, 0xFF7D7D85, 0xFFA6A6B0, 0xFF4C4C54, 0xFFD0D0DA, 0xFF7A7A85);
+        putDye(DyeColor.ORANGE, 0xFF784D2B, 0xFFA86F40, 0xFF4A2E17, 0xFFD9873B, 0xFF7D481B);
+        putDye(DyeColor.MAGENTA, 0xFF6E3A6B, 0xFF9C5798, 0xFF422040, 0xFFC75EC0, 0xFF732E6E);
+        putDye(DyeColor.LIGHT_BLUE, 0xFF365E78, 0xFF5389AB, 0xFF1E394A, 0xFF62B5E8, 0xFF2B648A);
+        putDye(DyeColor.YELLOW, 0xFF75682D, 0xFFA69546, 0xFF473E18, 0xFFD9C04A, 0xFF806C1F);
+        putDye(DyeColor.LIME, 0xFF4B6E2C, 0xFF6FA144, 0xFF2C4218, 0xFF7FD147, 0xFF3E751F);
+        putDye(DyeColor.PINK, 0xFF7A4B5C, 0xFFAB6E84, 0xFF4A2B36, 0xFFE386A8, 0xFF87445D);
+        putDye(DyeColor.GRAY, 0xFF4A4A4F, 0xFF6E6E75, 0xFF2B2B30, 0xFF85858F, 0xFF484850);
+        putDye(DyeColor.LIGHT_GRAY, 0xFF66666E, 0xFF8E8E99, 0xFF3D3D42, 0xFFB0B0BA, 0xFF63636B);
+        putDye(DyeColor.CYAN, 0xFF2D5E63, 0xFF478C94, 0xFF18383B, 0xFF4BBAC2, 0xFF22666E);
+        putDye(DyeColor.PURPLE, 0xFF533975, 0xFF7957A6, 0xFF301F47, 0xFF9C66DE, 0xFF512B82);
+        putDye(DyeColor.BLUE, 0xFF334778, 0xFF4F6AA8, 0xFF1D2947, 0xFF5C82DE, 0xFF284182);
+        putDye(DyeColor.BROWN, 0xFF5E432F, 0xFF8A6449, 0xFF38271A, 0xFFA87650, 0xFF5E3C23);
+        putDye(DyeColor.GREEN, 0xFF3B5C33, 0xFF58874D, 0xFF21361C, 0xFF63A854, 0xFF2E5C25);
+        putDye(DyeColor.RED, 0xFF733333, 0xFFA34E4E, 0xFF451C1C, 0xFFD95959, 0xFF802929);
+        putDye(DyeColor.BLACK, 0xFF33333A, 0xFF54545E, 0xFF1C1C21, 0xFF5E5E6B, 0xFF2D2D36);
     }
 
-    private static void putDye(DyeColor color, int borderStart, int borderEnd,
-                               int headerBg, int headerAccent, int divider) {
+    private static void putDye(DyeColor color, int panelBg, int bevelLight, int bevelDark,
+                               int borderStart, int borderEnd) {
         DYE_PALETTES.put(color, new BackpackTooltipPalette(
-                borderStart, borderEnd, headerBg, headerAccent, divider, DEFAULT_BG_START, DEFAULT_BG_END));
+                panelBg, bevelLight, bevelDark, DEFAULT_OUTLINE,
+                borderStart, borderEnd, DEFAULT_BG_START, DEFAULT_BG_END));
     }
 
     public static BackpackTooltipPalette resolve(BackpackTooltipData.Tier tier,
@@ -71,11 +75,7 @@ public record BackpackTooltipPalette(
         if (customRgb != BackpackTooltipData.NO_CUSTOM_RGB) {
             return fromCustomRgb(customRgb);
         }
-        return switch (tier) {
-            case MECHANICAL -> MECHANICAL_DEFAULT;
-            case NETHERITE -> NETHERITE_DEFAULT;
-            case MAGNETIC -> MAGNETIC_DEFAULT;
-        };
+        return UNPAINTED_DEFAULT;
     }
 
     @Nullable
@@ -91,22 +91,26 @@ public record BackpackTooltipPalette(
         int g = (rgb >> 8) & 0xFF;
         int b = rgb & 0xFF;
 
-        // Lift very dark colors so borders and accents stay legible on dark tooltips
-        int borderStart = pack(clampChannel((int) (r * 0.90 + 38)), clampChannel((int) (g * 0.90 + 38)), clampChannel((int) (b * 0.90 + 38)));
-        int borderEnd = pack(clampChannel((int) (r * 0.55 + 18)), clampChannel((int) (g * 0.55 + 18)), clampChannel((int) (b * 0.55 + 18)));
-        int headerBg = pack(clampChannel((int) (r * 0.18 + 38)), clampChannel((int) (g * 0.18 + 38)), clampChannel((int) (b * 0.18 + 40)));
-        int headerAccent = pack(clampChannel((int) (r * 0.85 + 64)), clampChannel((int) (g * 0.85 + 64)), clampChannel((int) (b * 0.85 + 64)));
-        int divider = pack(clampChannel((int) (r * 0.45 + 24)), clampChannel((int) (g * 0.45 + 24)), clampChannel((int) (b * 0.45 + 26)));
+        // Blend custom dye into dark gray so the tinted panel stays clean and items remain crisp
+        int panelBg = pack(blend(r, 0x4A, 0.35), blend(g, 0x4A, 0.35), blend(b, 0x4A, 0.35));
+        int bevelLight = pack(blend(r, 0x6E, 0.40) + 12, blend(g, 0x6E, 0.40) + 12, blend(b, 0x6E, 0.40) + 12);
+        int bevelDark = pack(blend(r, 0x2B, 0.30), blend(g, 0x2B, 0.30), blend(b, 0x2B, 0.30));
+        int borderStart = pack(blend(r, 0x6E, 0.65) + 24, blend(g, 0x6E, 0.65) + 24, blend(b, 0x6E, 0.65) + 24);
+        int borderEnd = pack(blend(r, 0x3A, 0.55), blend(g, 0x3A, 0.55), blend(b, 0x3A, 0.55));
 
-        return new BackpackTooltipPalette(borderStart, borderEnd, headerBg, headerAccent, divider,
-                DEFAULT_BG_START, DEFAULT_BG_END);
+        return new BackpackTooltipPalette(
+                panelBg, bevelLight, bevelDark, DEFAULT_OUTLINE,
+                borderStart, borderEnd, DEFAULT_BG_START, DEFAULT_BG_END);
     }
 
-    private static int clampChannel(int c) {
-        return Math.max(0, Math.min(255, c));
+    private static int blend(int color, int base, double weight) {
+        return (int) Math.round(color * weight + base * (1.0 - weight));
     }
 
     private static int pack(int r, int g, int b) {
-        return 0xFF000000 | (r << 16) | (g << 8) | b;
+        int cr = Math.max(0, Math.min(255, r));
+        int cg = Math.max(0, Math.min(255, g));
+        int cb = Math.max(0, Math.min(255, b));
+        return 0xFF000000 | (cr << 16) | (cg << 8) | cb;
     }
 }

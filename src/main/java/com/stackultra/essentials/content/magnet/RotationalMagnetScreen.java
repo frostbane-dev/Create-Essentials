@@ -6,7 +6,6 @@ import com.stackultra.essentials.client.DarkGuiStyling;
 import com.stackultra.essentials.client.DarkTextButton;
 import com.stackultra.essentials.network.BlacklistTogglePayload;
 import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
-import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -35,9 +34,6 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
     private static final int COLOR_BLACKLIST = 0xFFD66BFF;
     private static final int COLOR_WHITELIST = 0xFF78B8FF;
 
-    private boolean enabledState;
-    private boolean blacklistState;
-
     public RotationalMagnetScreen(RotationalMagnetMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
     }
@@ -47,26 +43,25 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
         setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         super.init();
 
-        enabledState = menu.isEnabled();
-        blacklistState = readBlacklist();
-
         DarkTextButton toggle = new DarkTextButton(leftPos + 8, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
-                () -> Component.translatable("createessentials.gui.magnet_status",
-                        Component.translatable(enabledState ? "createessentials.gui.on" : "createessentials.gui.off")
-                                .withStyle(enabledState ? ChatFormatting.GREEN : ChatFormatting.RED)),
+                () -> {
+                    boolean enabled = menu.isEnabled();
+                    return Component.translatable("createessentials.gui.magnet_status",
+                            Component.translatable(enabled ? "createessentials.gui.on" : "createessentials.gui.off")
+                                    .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED));
+                },
                 () -> DarkGuiStyling.COLOR_TEXT,
                 () -> {
-                    enabledState = !enabledState;
-                    menu.setEnabledClient(enabledState);
+                    menu.setEnabledClient(!menu.isEnabled());
                     PacketDistributor.sendToServer(togglePayload());
                 });
 
         DarkTextButton blacklist = new DarkTextButton(leftPos + 90, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
-                () -> Component.translatable(blacklistState
+                () -> Component.translatable(menu.isBlacklist()
                         ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
-                () -> blacklistState ? COLOR_BLACKLIST : COLOR_WHITELIST,
+                () -> menu.isBlacklist() ? COLOR_BLACKLIST : COLOR_WHITELIST,
                 () -> {
-                    blacklistState = !blacklistState;
+                    menu.setBlacklistClient(!menu.isBlacklist());
                     PacketDistributor.sendToServer(blacklistPayload());
                 });
 
@@ -86,28 +81,6 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
         return be != null
                 ? new BlacklistTogglePayload(be.getBlockPos(), false)
                 : new BlacklistTogglePayload(BlockPos.ZERO, true);
-    }
-
-    private boolean readBlacklist() {
-        RotationalMagnetBlockEntity be = menu.getBlockEntity();
-        if (be != null)
-            return be.isBlacklist();
-        if (this.minecraft == null || this.minecraft.player == null)
-            return false;
-        ItemStack magnet = MagnetEquipment.findEquippedMagnet(this.minecraft.player);
-        return !magnet.isEmpty() && magnet.getOrDefault(ExtraDataComponents.BLACKLIST, false);
-    }
-
-    private int currentCharge() {
-        RotationalMagnetBlockEntity be = menu.getBlockEntity();
-        if (be != null)
-            return menu.getCharge();
-        if (this.minecraft == null || this.minecraft.player == null)
-            return menu.getCharge();
-        ItemStack magnet = MagnetEquipment.findEquippedMagnet(this.minecraft.player);
-        if (!magnet.isEmpty() && magnet.getItem() instanceof RotationalMagnetItem item)
-            return item.getCharge(magnet);
-        return menu.getCharge();
     }
 
     @Override
@@ -141,7 +114,7 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
         graphics.drawCenteredString(font, filterHeader, leftPos + imageWidth / 2, topPos + FILTER_LABEL_Y,
                 DarkGuiStyling.COLOR_TITLE);
 
-        int seconds = Math.max(0, currentCharge()) / 20;
+        int seconds = Math.max(0, menu.getCharge()) / 20;
         String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);
         Component timeText = Component.translatable("createessentials.gui.time_remaining", remaining);
         graphics.drawCenteredString(font, timeText, leftPos + imageWidth / 2, topPos + TIMER_Y,

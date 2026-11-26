@@ -48,11 +48,18 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
   - Added `SortMode` enum (`NAME`, `MOD`, `COUNT`) and `ExtraDataComponents.SORT_MODE` DataComponent (plus NBT persistence on `MechanicalBackpackBlockEntity` and `MagneticBackpackBlockEntity`), synced live to open menus via `DataSlot`.
   - Implemented zero-loss/zero-dupe inventory routines in `BackpackInventoryOps` and shared `IBackpackMenu` interface across `BackpackMenu` and `MagneticBackpackMenu`.
 
-### Phase 3 — Native Backpack Hover Tooltip Preview & Per-Tier/Color Tinting
-- **Zero-Dependency Native Hover Preview (`BackpackTooltipData`, `ClientBackpackTooltip`):**
+### Phase 3 — Native Backpack Hover Tooltip Preview & Per-Color Tinting
+- **Zero-Dependency Minimalist Hover Preview (`BackpackTooltipData`, `ClientBackpackTooltip`):**
   - Implemented `Item#getTooltipImage(ItemStack)` across **Mechanical Backpack**, **Netherite Mechanical Backpack**, and **Magnetic Backpack**, registered via NeoForge's `RegisterClientTooltipComponentFactoriesEvent`.
   - Safely reads strictly the **27 storage slots (9×3)** from `AllDataComponents.BACKPACK_INVENTORY` without mutating stacks, allocating capabilities, or leaking the Magnetic Backpack's 3 filter slots.
-  - Displays a compact color-tinted header strip with live slot occupancy (`X / 27`) and fill bar above a crisp 9×3 dark-mode slot grid rendering items, stack counts, durability bars, and enchantment glints; empty/fresh backpacks (including Creative tab and JEI stacks) gracefully show a subtle `"Empty"` tooltip line instead of a blank box.
-- **Per-Tier & Per-Color Accent Palettes (`BackpackTooltipPalette`, `ClientEvents`):**
-  - Distinct dark-mode ARGB palettes for all 3 backpack tiers (**Mechanical** warm brass/amber, **Netherite** forged obsidian-rose, **Magnetic** electric cyan-violet), plus full curated dark-mode palettes for all **16 `DyeColor` variants** and custom `DataComponents.DYED_COLOR` tints.
-  - Applied color accents consistently to both the preview frame/header and the vanilla tooltip border gradient via `RenderTooltipEvent.Color` while maintaining strict client/server separation.
+  - Renders a clean, minimalist beveled **9×3 slot grid** matching the uniform dark gray mod UI (no header clutter, no progress bar, no slot counter); empty/fresh backpacks gracefully display a subtle `"Empty"` line.
+- **Per-Color Background Tinting (`BackpackTooltipPalette`, `ClientEvents`):**
+  - Default/unpainted backpacks use the uniform dark gray panel style, while all **16 `DyeColor` variants** and custom `DataComponents.DYED_COLOR` backpacks cleanly tint the tooltip panel background and border gradient while keeping inner slots dark and readable.
+
+### QA Polish & Bug Fixes
+- **Magnet Filter Persistence & Matching (`RotationalMagnetMenu`, `MagneticBackpackMenu`, `MagnetTickHandler`, `MagneticBackpackTickHandler`):**
+  - Filter slot changes now persist immediately to `AllDataComponents.MAGNET_FILTERS` / `BACKPACK_FILTERS` and sync to the client on click (not just on close), preserving exact 3-slot positions.
+  - Both Precision Magnet and Magnetic Backpack now accept both standard items and Create filter items (`FilterItem` / `ListFilter` / `AttributeFilter`) in all 3 filter slots and strictly enforce Whitelist/Blacklist mode.
+- **Independent Multi-Item Toggle & Open Targeting (`AllPackets`, `BlacklistTogglePayload`, `MagnetEquipment`, `MagneticBackpackEquipment`, `MagneticBackpackTickHandler`):**
+  - Clicking `Magnet: ON/OFF` or `Blacklist`/`Whitelist` inside a Precision Magnet or Magnetic Backpack GUI now toggles **exclusively** the exact open item instance, synced live via `DataSlot`.
+  - Magnet toggle keybind uses strict context-aware priority (**Main hand → Offhand → Curios/Equipped → Rest of inventory**) so multiple magnets or magnetic backpacks toggle and operate independently without interfering with each other.

@@ -56,7 +56,9 @@ public class MagnetTickHandler {
 
             if (enabled && charge > 0) {
                 double radius = item.getTier().pullRadius();
-                List<ItemStack> filters = RotationalMagnetItem.getFilters(magnet);
+                List<ItemStack> filters = item.getTier().hasFilterSlots()
+                        ? RotationalMagnetItem.getFilters(magnet)
+                        : List.of();
 
                 List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class,
                         player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
@@ -72,8 +74,12 @@ public class MagnetTickHandler {
                     charge--;
             }
 
-            magnet.set(AllDataComponents.CHARGE, Math.clamp(charge, 0, max));
-            magnet.set(AllDataComponents.CHARGING, charging);
+            int clampedCharge = Math.clamp(charge, 0, max);
+            if (magnet.getOrDefault(AllDataComponents.CHARGE, 0) != clampedCharge
+                    || magnet.getOrDefault(AllDataComponents.CHARGING, false) != charging) {
+                magnet.set(AllDataComponents.CHARGE, clampedCharge);
+                magnet.set(AllDataComponents.CHARGING, charging);
+            }
         }
     }
 

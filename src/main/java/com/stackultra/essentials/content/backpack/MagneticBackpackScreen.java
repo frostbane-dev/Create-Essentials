@@ -8,7 +8,6 @@ import com.stackultra.essentials.client.DarkTextButton;
 import com.stackultra.essentials.network.BackpackActionPayload;
 import com.stackultra.essentials.network.BlacklistTogglePayload;
 import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
-import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -48,9 +47,6 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
 
     private final List<DarkIconButton> utilityButtons = new ArrayList<>(4);
 
-    private boolean enabledState;
-    private boolean blacklistState;
-
     public MagneticBackpackScreen(MagneticBackpackMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
     }
@@ -59,9 +55,6 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     protected void init() {
         setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         super.init();
-
-        enabledState = menu.isEnabled();
-        blacklistState = readBlacklist();
 
         utilityButtons.clear();
         int step = UTILITY_BTN_SIZE + UTILITY_BTN_GAP;
@@ -111,22 +104,24 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
             addRenderableWidget(btn);
 
         DarkTextButton toggle = new DarkTextButton(leftPos + 8, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
-                () -> Component.translatable("createessentials.gui.magnet_status",
-                        Component.translatable(enabledState ? "createessentials.gui.on" : "createessentials.gui.off")
-                                .withStyle(enabledState ? ChatFormatting.GREEN : ChatFormatting.RED)),
+                () -> {
+                    boolean enabled = menu.isEnabled();
+                    return Component.translatable("createessentials.gui.magnet_status",
+                            Component.translatable(enabled ? "createessentials.gui.on" : "createessentials.gui.off")
+                                    .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED));
+                },
                 () -> DarkGuiStyling.COLOR_TEXT,
                 () -> {
-                    enabledState = !enabledState;
-                    menu.setEnabledClient(enabledState);
+                    menu.setEnabledClient(!menu.isEnabled());
                     PacketDistributor.sendToServer(togglePayload());
                 });
 
         DarkTextButton blacklist = new DarkTextButton(leftPos + 90, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
-                () -> Component.translatable(blacklistState
+                () -> Component.translatable(menu.isBlacklist()
                         ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
-                () -> blacklistState ? COLOR_BLACKLIST : COLOR_WHITELIST,
+                () -> menu.isBlacklist() ? COLOR_BLACKLIST : COLOR_WHITELIST,
                 () -> {
-                    blacklistState = !blacklistState;
+                    menu.setBlacklistClient(!menu.isBlacklist());
                     PacketDistributor.sendToServer(blacklistPayload());
                 });
 
@@ -146,16 +141,6 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
         return be != null
                 ? new BlacklistTogglePayload(be.getBlockPos(), false)
                 : new BlacklistTogglePayload(BlockPos.ZERO, true);
-    }
-
-    private boolean readBlacklist() {
-        MagneticBackpackBlockEntity be = menu.getBlockEntity();
-        if (be != null)
-            return be.isBlacklist();
-        if (this.minecraft == null || this.minecraft.player == null)
-            return false;
-        ItemStack backpack = MagneticBackpackEquipment.findCarriedMagneticBackpack(this.minecraft.player);
-        return !backpack.isEmpty() && backpack.getOrDefault(ExtraDataComponents.BLACKLIST, false);
     }
 
     @Override

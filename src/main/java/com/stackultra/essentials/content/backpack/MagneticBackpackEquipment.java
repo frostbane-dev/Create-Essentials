@@ -8,6 +8,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class MagneticBackpackEquipment {
 
     private MagneticBackpackEquipment() {
@@ -31,10 +34,6 @@ public final class MagneticBackpackEquipment {
     }
 
     public static ItemStack findCarriedMagneticBackpack(Player player) {
-        ItemStack equipped = findEquippedMagneticBackpack(player);
-        if (!equipped.isEmpty())
-            return equipped;
-
         ItemStack main = player.getMainHandItem();
         if (main.getItem() instanceof MagneticBackpackItem)
             return main;
@@ -43,12 +42,56 @@ public final class MagneticBackpackEquipment {
         if (off.getItem() instanceof MagneticBackpackItem)
             return off;
 
+        ItemStack equipped = findEquippedMagneticBackpack(player);
+        if (!equipped.isEmpty())
+            return equipped;
+
         for (ItemStack stack : player.getInventory().items) {
             if (stack.getItem() instanceof MagneticBackpackItem)
                 return stack;
         }
 
         return ItemStack.EMPTY;
+    }
+
+    public static List<ItemStack> getCarriedMagneticBackpacks(Player player) {
+        List<ItemStack> backpacks = new ArrayList<>();
+
+        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
+        if (chest.getItem() instanceof MagneticBackpackItem)
+            addUnique(backpacks, chest);
+
+        if (ModList.get().isLoaded("curios")) {
+            try {
+                ItemStack back = CuriosBackpackIntegration.getBackMagneticBackpack(player);
+                if (back.getItem() instanceof MagneticBackpackItem)
+                    addUnique(backpacks, back);
+            } catch (Throwable ignored) {
+            }
+        }
+
+        ItemStack main = player.getMainHandItem();
+        if (main.getItem() instanceof MagneticBackpackItem)
+            addUnique(backpacks, main);
+
+        ItemStack off = player.getOffhandItem();
+        if (off.getItem() instanceof MagneticBackpackItem)
+            addUnique(backpacks, off);
+
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.getItem() instanceof MagneticBackpackItem)
+                addUnique(backpacks, stack);
+        }
+
+        return backpacks;
+    }
+
+    private static void addUnique(List<ItemStack> list, ItemStack stack) {
+        for (ItemStack existing : list) {
+            if (existing == stack)
+                return;
+        }
+        list.add(stack);
     }
 
     public static void syncMagneticBackpack(Player player, ItemStack backpack) {

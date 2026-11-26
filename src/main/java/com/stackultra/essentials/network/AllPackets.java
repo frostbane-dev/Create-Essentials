@@ -17,7 +17,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.phys.Vec3;
@@ -61,26 +60,28 @@ public class AllPackets {
                 return;
 
             if (payload.toggleEquippedFirst()) {
-                ItemStack magnetic = (player.containerMenu instanceof MagneticBackpackMenu openMenu
-                        && !openMenu.isBlockEntityContext() && !openMenu.getBackpackStack().isEmpty())
-                        ? openMenu.getBackpackStack()
-                        : MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
-                if (!magnetic.isEmpty()) {
-                    boolean enabled = !magnetic.getOrDefault(AllDataComponents.ENABLED, true);
-                    magnetic.set(AllDataComponents.ENABLED, enabled);
-                    MagneticBackpackEquipment.syncMagneticBackpack(player, magnetic);
-                    sendToggleStatus(player, magnetic.getHoverName(), enabled);
+                // 1. Strict per-item binding when toggled from an open item GUI
+                if (player.containerMenu instanceof MagneticBackpackMenu openBackpack
+                        && !openBackpack.isBlockEntityContext()
+                        && !openBackpack.getBackpackStack().isEmpty()) {
+                    toggleMagneticStack(player, openBackpack.getBackpackStack());
+                    return;
+                }
+                if (player.containerMenu instanceof RotationalMagnetMenu openMagnet
+                        && !openMagnet.isBlockEntityContext()
+                        && !openMagnet.getMagnetStack().isEmpty()) {
+                    toggleMagnetStack(player, openMagnet.getMagnetStack());
                     return;
                 }
 
-                for (ItemStack magnet : MagnetEquipment.getEquippedMagnets(player)) {
-                    if (!(magnet.getItem() instanceof RotationalMagnetItem))
-                        continue;
-                    boolean enabled = !magnet.getOrDefault(AllDataComponents.ENABLED, true);
-                    magnet.set(AllDataComponents.ENABLED, enabled);
-                    if (player.getItemBySlot(EquipmentSlot.CHEST) == magnet)
-                        player.setItemSlot(EquipmentSlot.CHEST, magnet);
-                    sendToggleStatus(player, magnet.getHoverName(), enabled);
+                // 2. Context-aware keybind targeting: Main hand -> Offhand -> Curios/Equipped -> Inventory
+                ItemStack target = findToggleTarget(player);
+                if (!target.isEmpty()) {
+                    if (target.getItem() instanceof MagneticBackpackItem) {
+                        toggleMagneticStack(player, target);
+                    } else if (target.getItem() instanceof RotationalMagnetItem) {
+                        toggleMagnetStack(player, target);
+                    }
                     return;
                 }
             }
@@ -99,12 +100,60 @@ public class AllPackets {
         });
     }
 
+    static ItemStack findToggleTarget(ServerPlayer player) {
+        // Priority 1: Main hand
+        ItemStack main = player.getMainHandItem();
+        if (isToggleableMagnetOrBackpack(main))
+            return main;
+
+        // Priority 2: Offhand
+        ItemStack off = player.getOffhandItem();
+        if (isToggleableMagnetOrBackpack(off))
+            return off;
+
+        // Priority 3: Equipped (Curios / Chest slot)
+        ItemStack equippedBackpack = MagneticBackpackEquipment.findEquippedMagneticBackpack(player);
+        if (!equippedBackpack.isEmpty())
+            return equippedBackpack;
+
+        ItemStack curiosMagnet = MagnetEquipment.findCuriosMagnet(player);
+        if (!curiosMagnet.isEmpty())
+            return curiosMagnet;
+
+        // Priority 4: Rest of inventory fallback
+        for (ItemStack stack : player.getInventory().items) {
+            if (isToggleableMagnetOrBackpack(stack))
+                return stack;
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+    private static boolean isToggleableMagnetOrBackpack(ItemStack stack) {
+        return stack.getItem() instanceof MagneticBackpackItem
+                || stack.getItem() instanceof RotationalMagnetItem;
+    }
+
+    private static void toggleMagneticStack(ServerPlayer player, ItemStack magnetic) {
+        boolean enabled = !magnetic.getOrDefault(AllDataComponents.ENABLED, true);
+        magnetic.set(AllDataComponents.ENABLED, enabled);
+        MagneticBackpackEquipment.syncMagneticBackpack(player, magnetic);
+        sendToggleStatus(player, magnetic.getHoverName(), enabled);
+    }
+
+    private static void toggleMagnetStack(ServerPlayer player, ItemStack magnet) {
+        boolean enabled = !magnet.getOrDefault(AllDataComponents.ENABLED, true);
+        magnet.set(AllDataComponents.ENABLED, enabled);
+        MagnetEquipment.syncMagnet(player, magnet);
+        sendToggleStatus(player, magnet.getHoverName(), enabled);
+    }
+
     private static void handleOpenMagnet(OpenMagnetPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player))
                 return;
 
-            ItemStack magnet = MagnetEquipment.findEquippedMagnet(player);
+            ItemStack magnet = MagnetEquipment.findTargetPrecisionMagnet(player);
             if (magnet.isEmpty() || !(magnet.getItem() instanceof RotationalMagnetItem item))
                 return;
             if (!item.getTier().hasFilterSlots())
@@ -131,18 +180,13 @@ public class AllPackets {
                 .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED), true);
     }
 
-    private static ItemStack findMagneticBackpack(ServerPlayer player) {
-        ItemStack equipped = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
-        if (!equipped.isEmpty())
-            return equipped;
-        for (ItemStack stack : player.getInventory().items) {
-            if (stack.getItem() instanceof MagneticBackpackItem)
-                return stack;
-        }
-        return ItemStack.EMPTY;
-    }
-
     private static ItemStack findMechanicalBackpack(ServerPlayer player) {
+        ItemStack main = player.getMainHandItem();
+        if (main.getItem() instanceof MechanicalBackpackItem)
+            return main;
+        ItemStack off = player.getOffhandItem();
+        if (off.getItem() instanceof MechanicalBackpackItem)
+            return off;
         ItemStack equipped = BackpackEquipment.findEquippedBackpack(player);
         if (!equipped.isEmpty() && equipped.getItem() instanceof MechanicalBackpackItem)
             return equipped;
@@ -158,7 +202,7 @@ public class AllPackets {
             if (!(context.player() instanceof ServerPlayer player))
                 return;
 
-            ItemStack magnetic = findMagneticBackpack(player);
+            ItemStack magnetic = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
             if (!magnetic.isEmpty()) {
                 MagneticBackpackItem magneticItem = (MagneticBackpackItem) magnetic.getItem();
                 player.openMenu(new SimpleMenuProvider(

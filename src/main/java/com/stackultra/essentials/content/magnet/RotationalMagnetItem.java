@@ -134,11 +134,16 @@ public class RotationalMagnetItem extends BlockItem {
         return 0;
     }
 
-    public static List<ItemStack> getFilters(ItemStack stack) {
+    public static NonNullList<ItemStack> getFilterSlots(ItemStack stack) {
         ItemContainerContents contents =
                 stack.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY);
         NonNullList<ItemStack> slots = NonNullList.withSize(FILTER_SLOTS, ItemStack.EMPTY);
         contents.copyInto(slots);
+        return slots;
+    }
+
+    public static List<ItemStack> getFilters(ItemStack stack) {
+        NonNullList<ItemStack> slots = getFilterSlots(stack);
         List<ItemStack> filters = new ArrayList<>();
         for (ItemStack entry : slots) {
             if (!entry.isEmpty())

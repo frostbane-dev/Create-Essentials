@@ -1,10 +1,13 @@
 package com.stackultra.essentials.content.magnet;
 
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,16 +20,20 @@ public final class MagnetEquipment {
     public static List<ItemStack> getEquippedMagnets(Player player) {
         List<ItemStack> magnets = new ArrayList<>(2);
 
+        ItemStack main = player.getMainHandItem();
+        if (main.getItem() instanceof RotationalMagnetItem)
+            magnets.add(main);
+
+        ItemStack offhand = player.getOffhandItem();
+        if (offhand.getItem() instanceof RotationalMagnetItem && offhand != main)
+            magnets.add(offhand);
+
         Inventory inventory = player.getInventory();
         for (int i = 0; i < Inventory.getSelectionSize(); i++) {
             ItemStack stack = inventory.getItem(i);
-            if (stack.getItem() instanceof RotationalMagnetItem)
+            if (stack.getItem() instanceof RotationalMagnetItem && !containsRef(magnets, stack))
                 magnets.add(stack);
         }
-
-        ItemStack offhand = player.getOffhandItem();
-        if (offhand.getItem() instanceof RotationalMagnetItem)
-            magnets.add(offhand);
 
         return magnets;
     }
@@ -53,6 +60,121 @@ public final class MagnetEquipment {
         return magnets;
     }
 
+    public static ItemStack findCuriosMagnet(Player player) {
+        if (!ModList.get().isLoaded("curios"))
+            return ItemStack.EMPTY;
+        try {
+            List<ItemStack> curios = getCuriosMagnets(player);
+            return curios.isEmpty() ? ItemStack.EMPTY : curios.get(0);
+        } catch (Throwable ignored) {
+            return ItemStack.EMPTY;
+        }
+    }
+
+    public static ItemStack findEquippedMagnet(Player player) {
+        ItemStack main = player.getMainHandItem();
+        if (main.getItem() instanceof RotationalMagnetItem)
+            return main;
+
+        ItemStack off = player.getOffhandItem();
+        if (off.getItem() instanceof RotationalMagnetItem)
+            return off;
+
+        ItemStack curio = findCuriosMagnet(player);
+        if (!curio.isEmpty())
+            return curio;
+
+        for (ItemStack magnet : getEquippedMagnets(player)) {
+            if (!magnet.isEmpty())
+                return magnet;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    public static ItemStack findTargetPrecisionMagnet(Player player) {
+        ItemStack main = player.getMainHandItem();
+        if (isPrecisionMagnet(main))
+            return main;
+
+        ItemStack off = player.getOffhandItem();
+        if (isPrecisionMagnet(off))
+            return off;
+
+        if (ModList.get().isLoaded("curios")) {
+            try {
+                for (ItemStack stack : getCuriosMagnets(player)) {
+                    if (isPrecisionMagnet(stack))
+                        return stack;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        for (ItemStack stack : player.getInventory().items) {
+            if (isPrecisionMagnet(stack))
+                return stack;
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+    public static void syncMagnet(Player player, ItemStack magnet) {
+        if (player.getMainHandItem() == magnet) {
+            player.setItemInHand(InteractionHand.MAIN_HAND, magnet);
+            broadcastIfServer(player);
+            return;
+        }
+
+        if (player.getOffhandItem() == magnet) {
+            player.setItemInHand(InteractionHand.OFF_HAND, magnet);
+            broadcastIfServer(player);
+            return;
+        }
+
+        if (player.getItemBySlot(EquipmentSlot.CHEST) == magnet) {
+            player.setItemSlot(EquipmentSlot.CHEST, magnet);
+            broadcastIfServer(player);
+            return;
+        }
+
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < inventory.items.size(); i++) {
+            if (inventory.items.get(i) == magnet) {
+                inventory.setItem(i, magnet);
+                broadcastIfServer(player);
+                return;
+            }
+        }
+
+        if (ModList.get().isLoaded("curios")) {
+            try {
+                syncCuriosMagnet(player, magnet);
+            } catch (Throwable ignored) {
+            }
+        }
+        broadcastIfServer(player);
+    }
+
+    private static void broadcastIfServer(Player player) {
+        if (player.level().isClientSide())
+            return;
+        player.containerMenu.broadcastChanges();
+        if (player.containerMenu != player.inventoryMenu)
+            player.inventoryMenu.broadcastChanges();
+    }
+
+    private static boolean isPrecisionMagnet(ItemStack stack) {
+        return stack.getItem() instanceof RotationalMagnetItem item && item.getTier().hasFilterSlots();
+    }
+
+    private static boolean containsRef(List<ItemStack> list, ItemStack target) {
+        for (ItemStack stack : list) {
+            if (stack == target)
+                return true;
+        }
+        return false;
+    }
+
     private static List<ItemStack> getCuriosMagnets(Player player) {
         return CuriosApi.getCuriosInventory(player)
                 .map(handler -> {
@@ -69,11 +191,17 @@ public final class MagnetEquipment {
                 .orElseGet(ArrayList::new);
     }
 
-    public static ItemStack findEquippedMagnet(Player player) {
-        for (ItemStack magnet : getEquippedMagnets(player)) {
-            if (!magnet.isEmpty())
-                return magnet;
-        }
-        return ItemStack.EMPTY;
+    private static void syncCuriosMagnet(Player player, ItemStack magnet) {
+        CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
+            handler.getCurios().values().forEach(stacksHandler -> {
+                IDynamicStackHandler stacks = stacksHandler.getStacks();
+                for (int i = 0; i < stacks.getSlots(); i++) {
+                    if (stacks.getStackInSlot(i) == magnet) {
+                        stacks.setStackInSlot(i, magnet);
+                        return;
+                    }
+                }
+            });
+        });
     }
 }

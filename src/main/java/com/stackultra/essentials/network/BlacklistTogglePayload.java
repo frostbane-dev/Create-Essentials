@@ -3,8 +3,12 @@ package com.stackultra.essentials.network;
 import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.backpack.MagneticBackpackBlockEntity;
 import com.stackultra.essentials.content.backpack.MagneticBackpackEquipment;
+import com.stackultra.essentials.content.backpack.MagneticBackpackItem;
+import com.stackultra.essentials.content.backpack.MagneticBackpackMenu;
 import com.stackultra.essentials.content.magnet.MagnetEquipment;
 import com.stackultra.essentials.content.magnet.RotationalMagnetBlockEntity;
+import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
+import com.stackultra.essentials.content.magnet.RotationalMagnetMenu;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -13,7 +17,6 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -40,18 +43,32 @@ public record BlacklistTogglePayload(BlockPos pos, boolean toggleEquippedFirst) 
                 return;
 
             if (payload.toggleEquippedFirst()) {
-                ItemStack backpack = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
-                if (!backpack.isEmpty()) {
-                    toggle(backpack);
-                    MagneticBackpackEquipment.syncMagneticBackpack(player, backpack);
+                // 1. Strict per-item binding when toggled from an open item GUI
+                if (player.containerMenu instanceof MagneticBackpackMenu openBackpack
+                        && !openBackpack.isBlockEntityContext()
+                        && !openBackpack.getBackpackStack().isEmpty()) {
+                    ItemStack stack = openBackpack.getBackpackStack();
+                    toggle(stack);
+                    MagneticBackpackEquipment.syncMagneticBackpack(player, stack);
+                    return;
+                }
+                if (player.containerMenu instanceof RotationalMagnetMenu openMagnet
+                        && !openMagnet.isBlockEntityContext()
+                        && !openMagnet.getMagnetStack().isEmpty()) {
+                    ItemStack stack = openMagnet.getMagnetStack();
+                    toggle(stack);
+                    MagnetEquipment.syncMagnet(player, stack);
                     return;
                 }
 
-                ItemStack magnet = MagnetEquipment.findEquippedMagnet(player);
-                if (!magnet.isEmpty()) {
-                    toggle(magnet);
-                    if (player.getItemBySlot(EquipmentSlot.CHEST) == magnet)
-                        player.setItemSlot(EquipmentSlot.CHEST, magnet);
+                // 2. Context-aware fallback matching keybind priority
+                ItemStack target = AllPackets.findToggleTarget(player);
+                if (!target.isEmpty()) {
+                    toggle(target);
+                    if (target.getItem() instanceof MagneticBackpackItem)
+                        MagneticBackpackEquipment.syncMagneticBackpack(player, target);
+                    else if (target.getItem() instanceof RotationalMagnetItem)
+                        MagnetEquipment.syncMagnet(player, target);
                     return;
                 }
             }

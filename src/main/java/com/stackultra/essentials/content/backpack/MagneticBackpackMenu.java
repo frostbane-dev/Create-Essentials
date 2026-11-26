@@ -1,6 +1,5 @@
 package com.stackultra.essentials.content.backpack;
 
-import com.simibubi.create.content.logistics.filter.FilterItem;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
@@ -47,6 +46,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     private final ItemStack backpackStack;
 
     private boolean enabled;
+    private boolean blacklist;
     private int charge;
     private int maxCharge;
     private SortMode sortMode = SortMode.NAME;
@@ -61,11 +61,12 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         for (int i = 0; i < FILTER_SLOTS; i++)
             this.filterInventory.setStackInSlot(i, be.getFilterInventory().getStackInSlot(i).copy());
         this.enabled = be.isEnabled();
+        this.blacklist = be.isBlacklist();
         this.charge = be.getCharge();
         this.maxCharge = be.getMaxCharge();
         this.sortMode = be.getSortMode();
         addSlots();
-        addSortModeDataSlot();
+        addStateDataSlots();
     }
 
     private MagneticBackpackMenu(int windowId, Inventory inv, ItemStack stack) {
@@ -76,16 +77,17 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         this.storageInventory = BackpackInventory.forStack(stack,
                 () -> MagneticBackpackEquipment.syncMagneticBackpack(inv.player, stack));
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
-        List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
+        NonNullList<ItemStack> filters = MagneticBackpackItem.getFilterSlots(stack);
         for (int i = 0; i < FILTER_SLOTS; i++)
-            this.filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i) : ItemStack.EMPTY);
+            this.filterInventory.setStackInSlot(i, filters.get(i).copy());
         MagneticBackpackItem item = (MagneticBackpackItem) stack.getItem();
         this.enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
+        this.blacklist = stack.getOrDefault(ExtraDataComponents.BLACKLIST, false);
         this.charge = item.getCharge(stack);
         this.maxCharge = item.getMaxCharge(stack);
         this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
         addSlots();
-        addSortModeDataSlot();
+        addStateDataSlots();
     }
 
     public MagneticBackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
@@ -112,6 +114,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
                 for (int i = 0; i < FILTER_SLOTS; i++)
                     this.filterInventory.setStackInSlot(i, found.getFilterInventory().getStackInSlot(i).copy());
                 this.enabled = found.isEnabled();
+                this.blacklist = found.isBlacklist();
                 this.charge = found.getCharge();
                 this.maxCharge = found.getMaxCharge();
                 this.sortMode = found.getSortMode();
@@ -119,6 +122,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
                 this.storageInventory = new BackpackInventory();
                 this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
                 this.enabled = true;
+                this.blacklist = false;
                 this.charge = 0;
                 this.maxCharge = 1;
                 this.sortMode = SortMode.NAME;
@@ -133,12 +137,13 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
             for (int i = 0; i < FILTER_SLOTS; i++)
                 this.filterInventory.setStackInSlot(i, filters.get(i));
             this.enabled = extraData.readBoolean();
+            this.blacklist = false;
             this.charge = extraData.readVarInt();
             this.maxCharge = extraData.readVarInt();
             this.sortMode = SortMode.NAME;
         }
         addSlots();
-        addSortModeDataSlot();
+        addStateDataSlots();
     }
 
     public static MagneticBackpackMenu create(int windowId, Inventory inv, MagneticBackpackBlockEntity be) {
@@ -149,7 +154,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         return new MagneticBackpackMenu(windowId, inv, stack);
     }
 
-    private void addSortModeDataSlot() {
+    private void addStateDataSlots() {
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
@@ -159,6 +164,38 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
             @Override
             public void set(int value) {
                 sortMode = SortMode.byOrdinal(value);
+            }
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                if (blockEntity != null)
+                    return blockEntity.isEnabled() ? 1 : 0;
+                if (!backpackStack.isEmpty())
+                    return backpackStack.getOrDefault(AllDataComponents.ENABLED, true) ? 1 : 0;
+                return enabled ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                enabled = value != 0;
+            }
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                if (blockEntity != null)
+                    return blockEntity.isBlacklist() ? 1 : 0;
+                if (!backpackStack.isEmpty())
+                    return backpackStack.getOrDefault(ExtraDataComponents.BLACKLIST, false) ? 1 : 0;
+                return blacklist ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                blacklist = value != 0;
             }
         });
     }
@@ -173,11 +210,6 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
         for (int i = 0; i < FILTER_SLOTS; i++) {
             addSlot(new SlotItemHandler(filterInventory, i, FILTER_X, FILTER_Y + i * 18) {
-                @Override
-                public boolean mayPlace(ItemStack stack) {
-                    return stack.getItem() instanceof FilterItem;
-                }
-
                 @Override
                 public int getMaxStackSize() {
                     return 1;
@@ -222,6 +254,14 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
     public void setEnabledClient(boolean value) {
         this.enabled = value;
+    }
+
+    public boolean isBlacklist() {
+        return blockEntity != null ? blockEntity.isBlacklist() : blacklist;
+    }
+
+    public void setBlacklistClient(boolean value) {
+        this.blacklist = value;
     }
 
     public int getCharge() {
@@ -288,18 +328,34 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         return slotId >= STORAGE_SLOTS && slotId < PLAYER_SLOT_START;
     }
 
+    private void persistFilters(Player player) {
+        if (player.level().isClientSide())
+            return;
+        List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
+        for (int i = 0; i < FILTER_SLOTS; i++)
+            filters.add(filterInventory.getStackInSlot(i).copy());
+        if (blockEntity != null) {
+            blockEntity.setFilters(filters);
+        } else if (!backpackStack.isEmpty()) {
+            MagneticBackpackItem.setFilters(backpackStack, filters);
+            MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
+        }
+        broadcastChanges();
+    }
+
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
-        if (isFilterSlot(slotId) && clickType != ClickType.THROW && clickType != ClickType.CLONE) {
-            ItemStack held = getCarried();
-            if (!held.isEmpty() && !(held.getItem() instanceof FilterItem))
+        if (isFilterSlot(slotId)) {
+            if (clickType == ClickType.THROW || clickType == ClickType.CLONE)
                 return;
-            ItemStack insert = held.isEmpty() ? ItemStack.EMPTY : held.copy();
-            if (!insert.isEmpty())
-                insert.setCount(1);
+            ItemStack held = getCarried();
+            ItemStack insert = (clickType == ClickType.QUICK_MOVE || held.isEmpty())
+                    ? ItemStack.EMPTY
+                    : held.copyWithCount(1);
             int filterIndex = slotId - STORAGE_SLOTS;
             filterInventory.setStackInSlot(filterIndex, insert);
             getSlot(slotId).setChanged();
+            persistFilters(player);
             return;
         }
         super.clicked(slotId, dragType, clickType, player);
@@ -307,12 +363,12 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
     @Override
     public boolean canDragTo(Slot slotIn) {
-        return slotIn.container != filterInventory;
+        return !isFilterSlot(slotIn.index);
     }
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return slotIn.container != filterInventory;
+        return !isFilterSlot(slotIn.index);
     }
 
     @Override
@@ -341,17 +397,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     @Override
     public void removed(Player player) {
         super.removed(player);
-        if (player.level().isClientSide())
-            return;
-        List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
-        for (int i = 0; i < FILTER_SLOTS; i++)
-            filters.add(filterInventory.getStackInSlot(i).copy());
-        if (blockEntity != null) {
-            blockEntity.setFilters(filters);
-        } else if (!backpackStack.isEmpty()) {
-            MagneticBackpackItem.setFilters(backpackStack, filters);
-            MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
-        }
+        persistFilters(player);
     }
 
     @Override
