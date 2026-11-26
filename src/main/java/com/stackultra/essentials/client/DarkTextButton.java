@@ -14,6 +14,13 @@ import java.util.function.Supplier;
 @OnlyIn(Dist.CLIENT)
 public class DarkTextButton extends AbstractWidget {
 
+    private static final int COLOR_OUTLINE = 0xFF1A1A1A;
+    private static final int COLOR_FILL = 0xFF5A5A5A;
+    private static final int COLOR_FILL_HOVER = 0xFF6A6A6A;
+    private static final int COLOR_LIGHT = 0xFF828282;
+    private static final int COLOR_LIGHT_HOVER = 0xFF969696;
+    private static final int COLOR_DARK = 0xFF323232;
+
     private final Supplier<Component> labelSupplier;
     private final Supplier<Integer> colorSupplier;
     private final Runnable onPress;
@@ -44,19 +51,21 @@ public class DarkTextButton extends AbstractWidget {
         int y = getY();
         int w = getWidth();
         int h = getHeight();
-        int base = isHovered ? 0xFF5A5A5A : 0xFF4C4C4C;
+        boolean hovered = isHoveredOrFocused();
+        int base = hovered ? COLOR_FILL_HOVER : COLOR_FILL;
+        int light = hovered ? COLOR_LIGHT_HOVER : COLOR_LIGHT;
 
-        graphics.fill(x, y, x + w, y + h, base);
-        graphics.fill(x, y, x + w, y + 1, 0xFF7A7A7A);
-        graphics.fill(x, y, x + 1, y + h, 0xFF7A7A7A);
-        graphics.fill(x, y + h - 1, x + w, y + h, 0xFF2B2B2B);
-        graphics.fill(x + w - 1, y, x + w, y + h, 0xFF2B2B2B);
+        graphics.fill(x, y, x + w, y + h, COLOR_OUTLINE);
+        graphics.fill(x + 1, y + 1, x + w - 1, y + h - 1, light);
+        graphics.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, COLOR_DARK);
+        graphics.fill(x + w - 2, y + 1, x + w - 1, y + h - 1, COLOR_DARK);
+        graphics.fill(x + 2, y + 2, x + w - 2, y + h - 2, base);
 
         Component label = labelSupplier.get();
         var font = Minecraft.getInstance().font;
         int textX = x + (w - font.width(label)) / 2;
         int textY = y + (h - 8) / 2;
-        graphics.drawString(font, label, textX, textY, colorSupplier.get(), false);
+        graphics.drawString(font, label, textX, textY, colorSupplier.get(), true);
     }
 
     @Override
