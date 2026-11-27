@@ -6,7 +6,7 @@
   ],
   "textures": {
     "1": "createessentials:block/precision_magnet",
-    "particle": "createessentials:block/precision_magnet"
+    "particle": "createessentials:block/precision_magnet_particle"
   },
   "elements": [
     {
