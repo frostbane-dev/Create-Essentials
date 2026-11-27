@@ -1,5 +1,10 @@
 {
   "variants": {
-    "": { "model": "createessentials:block/magnetic_backpack" }
+    "facing=north": { "model": "createessentials:block/magnetic_backpack" },
+    "facing=east":  { "model": "createessentials:block/magnetic_backpack", "y": 90 },
+    "facing=south": { "model": "createessentials:block/magnetic_backpack", "y": 180 },
+    "facing=west":  { "model": "createessentials:block/magnetic_backpack", "y": 270 },
+    "facing=up":    { "model": "createessentials:block/magnetic_backpack" },
+    "facing=down":  { "model": "createessentials:block/magnetic_backpack" }
   }
 }

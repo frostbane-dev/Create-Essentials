@@ -32,6 +32,7 @@ public class AllBlocks {
         return BlockBehaviour.Properties.of()
                 .mapColor(MapColor.METAL)
                 .instabreak()
+                .noOcclusion()
                 .sound(SoundType.METAL);
     }
 
@@ -39,6 +40,7 @@ public class AllBlocks {
         return BlockBehaviour.Properties.of()
                 .mapColor(MapColor.WOOD)
                 .instabreak()
+                .noOcclusion()
                 .sound(SoundType.WOOD);
     }
 
