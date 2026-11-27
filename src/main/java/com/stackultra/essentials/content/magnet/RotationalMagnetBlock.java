@@ -137,9 +137,7 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
 
         if (blockEntity instanceof RotationalMagnetBlockEntity be) {
             be.saveToStack(drop);
-            int capacityLevel = be.getCapacityEnchantLevel();
-            if (capacityLevel > 0)
-                drop.enchant(level.holderOrThrow(AllEnchantments.CAPACITY), capacityLevel);
+            applyLegacyCapacityIfMissing(drop, be, level);
         }
 
         if (!player.getInventory().add(drop))
@@ -158,9 +156,7 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
         BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (blockEntity instanceof RotationalMagnetBlockEntity be) {
             be.saveToStack(drop);
-            int capacityLevel = be.getCapacityEnchantLevel();
-            if (capacityLevel > 0)
-                drop.enchant(params.getLevel().holderOrThrow(AllEnchantments.CAPACITY), capacityLevel);
+            applyLegacyCapacityIfMissing(drop, be, params.getLevel());
         }
 
         return List.of(drop);
@@ -174,11 +170,18 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
 
         getBlockEntityOptional(level, pos).ifPresent(be -> {
             be.saveToStack(stack);
-            if (be.getCapacityEnchantLevel() > 0 && level instanceof Level actualLevel)
-                stack.enchant(actualLevel.holderOrThrow(AllEnchantments.CAPACITY), be.getCapacityEnchantLevel());
+            if (level instanceof Level actualLevel)
+                applyLegacyCapacityIfMissing(stack, be, actualLevel);
         });
 
         return stack;
+    }
+
+    private static void applyLegacyCapacityIfMissing(ItemStack stack, RotationalMagnetBlockEntity be, Level level) {
+        int capacityLevel = be.getCapacityEnchantLevel();
+        if (capacityLevel > 0 && RotationalMagnetItem.getCapacityLevel(stack) == 0) {
+            stack.enchant(level.holderOrThrow(AllEnchantments.CAPACITY), capacityLevel);
+        }
     }
 
     @Override

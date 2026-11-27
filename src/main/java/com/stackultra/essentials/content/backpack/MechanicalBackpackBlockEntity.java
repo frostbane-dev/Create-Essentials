@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.stackultra.essentials.content.BlockItemComponentHelper;
 import com.stackultra.essentials.registry.AllBlockEntities;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.core.BlockPos;
@@ -25,12 +26,16 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
 
     private final BackpackInventory inventory;
     private final PortableToolboxInventory toolboxInventory;
-    private boolean netherite = false;
+    private final BlockItemComponentHelper.PreservedComponents preservedComponents =
+            new BlockItemComponentHelper.PreservedComponents();
+    private boolean netherite;
     private SortMode sortMode = SortMode.NAME;
     private boolean restockEnabled = true;
 
     public MechanicalBackpackBlockEntity(BlockPos pos, BlockState state) {
         super(AllBlockEntities.MECHANICAL_BACKPACK.get(), pos, state);
+        this.netherite = state.hasProperty(MechanicalBackpackBlock.NETHERITE)
+                && state.getValue(MechanicalBackpackBlock.NETHERITE);
         this.inventory = BackpackInventory.forBlockEntity(this::markChanged);
         this.toolboxInventory = PortableToolboxInventory.forBlockEntity(this::markChanged);
     }
@@ -89,11 +94,13 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         this.netherite = stack.getItem() instanceof NetheriteBackpackItem;
         this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
         this.restockEnabled = stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
+        preservedComponents.loadFromStack(stack);
         inventory.load(stack);
         toolboxInventory.load(stack);
     }
 
     public void saveToStack(ItemStack stack) {
+        preservedComponents.saveToStack(stack);
         inventory.save(stack);
         toolboxInventory.save(stack);
         stack.set(ExtraDataComponents.SORT_MODE, sortMode);
@@ -115,12 +122,14 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         tag.putBoolean("Restock", restockEnabled);
         tag.put("Inventory", inventory.serializeNBT(registries));
         tag.put("Toolbox", toolboxInventory.serializeNBT(registries));
+        preservedComponents.writeToTag(tag, registries);
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        netherite = tag.getBoolean("Netherite");
+        if (tag.contains("Netherite"))
+            netherite = tag.getBoolean("Netherite");
         if (tag.contains("SortMode"))
             sortMode = SortMode.byName(tag.getString("SortMode"));
         if (tag.contains("Restock"))
@@ -129,6 +138,7 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
             inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
         if (tag.contains("Toolbox"))
             toolboxInventory.deserializeNBT(registries, tag.getCompound("Toolbox"));
+        preservedComponents.readFromTag(tag, registries);
     }
 
     @Override
@@ -162,6 +172,7 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
             inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
         if (tag.contains("Toolbox"))
             toolboxInventory.deserializeNBT(registries, tag.getCompound("Toolbox"));
+        preservedComponents.readFromTag(tag, registries);
     }
 
     @Override
@@ -171,6 +182,9 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
 
     @Override
     public Component getDisplayName() {
+        Component customName = preservedComponents.getCustomName();
+        if (customName != null)
+            return customName;
         return Component.translatable(netherite
                 ? "item.createessentials.netherite_backpack"
                 : getBlockState().getBlock().getDescriptionId());

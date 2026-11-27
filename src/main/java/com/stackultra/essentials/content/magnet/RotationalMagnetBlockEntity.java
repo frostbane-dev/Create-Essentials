@@ -3,6 +3,7 @@ package com.stackultra.essentials.content.magnet;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.CreateLang;
+import com.stackultra.essentials.content.BlockItemComponentHelper;
 import com.stackultra.essentials.content.KineticChargeHelper;
 import com.stackultra.essentials.registry.AllBlockEntities;
 import com.stackultra.essentials.registry.AllDataComponents;
@@ -30,6 +31,8 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
     private final MagnetTier tier;
     private final ItemStackHandler filterInventory;
     private final KineticChargeHelper.KineticChargeState kineticCharge = new KineticChargeHelper.KineticChargeState();
+    private final BlockItemComponentHelper.PreservedComponents preservedComponents =
+            new BlockItemComponentHelper.PreservedComponents();
     private int charge = 0;
     private boolean enabled = true;
     private boolean blacklist = false;
@@ -138,6 +141,7 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
     }
 
     public void loadFromStack(ItemStack stack) {
+        preservedComponents.loadFromStack(stack);
         setCapacityEnchantLevel(RotationalMagnetItem.getCapacityLevel(stack));
         setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
         setEnabled(stack.getOrDefault(AllDataComponents.ENABLED, true));
@@ -149,6 +153,7 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
     }
 
     public void saveToStack(ItemStack stack) {
+        preservedComponents.saveToStack(stack);
         stack.set(AllDataComponents.CHARGE, charge);
         stack.set(AllDataComponents.ENABLED, enabled);
         stack.set(ExtraDataComponents.BLACKLIST, blacklist);
@@ -165,6 +170,7 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
         tag.putBoolean("Blacklist", blacklist);
         tag.putInt("CapacityEnchantLevel", capacityEnchantLevel);
         tag.put("Filters", filterInventory.serializeNBT(registries));
+        preservedComponents.writeToTag(tag, registries);
         super.write(tag, registries, clientPacket);
     }
 
@@ -177,6 +183,7 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
         kineticCharge.syncFullState(charge, getMaxCharge());
         if (tag.contains("Filters"))
             filterInventory.deserializeNBT(registries, tag.getCompound("Filters"));
+        preservedComponents.readFromTag(tag, registries);
         super.read(tag, registries, clientPacket);
     }
 
@@ -194,6 +201,9 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
 
     @Override
     public Component getDisplayName() {
+        Component customName = preservedComponents.getCustomName();
+        if (customName != null)
+            return customName;
         return Component.translatable(getBlockState().getBlock().getDescriptionId());
     }
 

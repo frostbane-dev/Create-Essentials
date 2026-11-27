@@ -45,6 +45,21 @@ class BlockLightingAndMagnetOrientationTest {
     }
 
     @Test
+    void magneticBackpackAlwaysExposesUpwardKineticAxisAndShaft() {
+        var block = AllBlocks.MAGNETIC_BACKPACK.get();
+        for (Direction stateFacing : Direction.values()) {
+            BlockState state = block.defaultBlockState().setValue(
+                    com.stackultra.essentials.content.backpack.MagneticBackpackBlock.FACING, stateFacing);
+            assertEquals(Direction.Axis.Y, block.getRotationAxis(state),
+                    "Magnetic backpack kinetic axis must always be Y regardless of FACING=" + stateFacing);
+            for (Direction face : Direction.values()) {
+                assertEquals(face == Direction.UP, block.hasShaftTowards(null, BlockPos.ZERO, state, face),
+                        "Magnetic backpack shaft must only connect on Direction.UP (checked face=" + face + ")");
+            }
+        }
+    }
+
+    @Test
     void magnetsAndBackpacksAreNonFullAndDoNotCastOcclusionShadows() {
         Block[] blocks = new Block[]{
                 AllBlocks.ROTATIONAL_MAGNET.get(),

@@ -57,17 +57,17 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getNearestLookingDirection().getOpposite());
+        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
     @Override
     public Direction.Axis getRotationAxis(BlockState state) {
-        return state.getValue(FACING).getAxis();
+        return Direction.Axis.Y;
     }
 
     @Override
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return true;
+        return face == Direction.UP;
     }
 
     @Override
@@ -127,9 +127,7 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
         ItemStack drop = new ItemStack(AllItems.MAGNETIC_BACKPACK.get());
         if (blockEntity instanceof MagneticBackpackBlockEntity be) {
             be.saveToStack(drop);
-            int capacityLevel = be.getCapacityEnchantLevel();
-            if (capacityLevel > 0)
-                drop.enchant(level.holderOrThrow(AllEnchantments.CAPACITY), capacityLevel);
+            applyLegacyCapacityIfMissing(drop, be, level);
         }
 
         if (!player.getInventory().add(drop))
@@ -146,9 +144,7 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
         BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (blockEntity instanceof MagneticBackpackBlockEntity be) {
             be.saveToStack(drop);
-            int capacityLevel = be.getCapacityEnchantLevel();
-            if (capacityLevel > 0)
-                drop.enchant(params.getLevel().holderOrThrow(AllEnchantments.CAPACITY), capacityLevel);
+            applyLegacyCapacityIfMissing(drop, be, params.getLevel());
         }
 
         return List.of(drop);
@@ -160,11 +156,18 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
 
         getBlockEntityOptional(level, pos).ifPresent(be -> {
             be.saveToStack(stack);
-            if (be.getCapacityEnchantLevel() > 0 && level instanceof Level actualLevel)
-                stack.enchant(actualLevel.holderOrThrow(AllEnchantments.CAPACITY), be.getCapacityEnchantLevel());
+            if (level instanceof Level actualLevel)
+                applyLegacyCapacityIfMissing(stack, be, actualLevel);
         });
 
         return stack;
+    }
+
+    private static void applyLegacyCapacityIfMissing(ItemStack stack, MagneticBackpackBlockEntity be, Level level) {
+        int capacityLevel = be.getCapacityEnchantLevel();
+        if (capacityLevel > 0 && MagneticBackpackItem.getCapacityLevel(stack) == 0) {
+            stack.enchant(level.holderOrThrow(AllEnchantments.CAPACITY), capacityLevel);
+        }
     }
 
     @Override

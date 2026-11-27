@@ -59,14 +59,7 @@ public class RotationalMagnetItem extends BlockItem {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> RotationalMagnetMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> {
-                        buf.writeBoolean(false);
-                        ItemContainerContents.STREAM_CODEC.encode(buf,
-                                stack.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY));
-                        buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
-                        buf.writeVarInt(getCharge(stack));
-                        buf.writeVarInt(getMaxCharge(stack));
-                    });
+                    buf -> RotationalMagnetMenu.writeItemOpenData(buf, stack, this));
             return InteractionResultHolder.consume(stack);
         }
         return super.use(level, player, hand);

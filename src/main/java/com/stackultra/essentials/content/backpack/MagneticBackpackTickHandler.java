@@ -25,7 +25,7 @@ public class MagneticBackpackTickHandler {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
-        if (player.level().isClientSide())
+        if (player.level().isClientSide() || player.isSpectator() || !player.isAlive())
             return;
 
         List<ItemStack> backpacks = MagneticBackpackEquipment.getCarriedMagneticBackpacks(player);
@@ -57,73 +57,75 @@ public class MagneticBackpackTickHandler {
 
             if (step.activePower()) {
                 double radius = MagnetTier.TIER_2.pullRadius();
-                List<ItemStack> filters = MagneticBackpackItem.getFilters(backpack);
-
                 List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class,
-                        player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
+                        player.getBoundingBox().inflate(radius), ItemPullHelper::canPullOrPickup);
 
-                MagneticBackpackMenu openMenu = (player.containerMenu instanceof MagneticBackpackMenu menu
-                        && menu.isBackingStack(backpack)) ? menu : null;
-                BackpackInventory inventory = openMenu != null && openMenu.getBackpackInventory() != null
-                        ? openMenu.getBackpackInventory()
-                        : BackpackInventory.forStack(backpack);
-                PortableToolboxInventory toolbox = openMenu != null && openMenu.getToolboxInventory() != null
-                        ? openMenu.getToolboxInventory()
-                        : PortableToolboxInventory.forStack(backpack);
+                if (!items.isEmpty()) {
+                    List<ItemStack> filters = MagneticBackpackItem.getFilters(backpack);
 
-                boolean pulledIntoToolbox = false;
-                boolean pulledIntoBackpack = false;
-                boolean pulledIntoPlayer = false;
+                    MagneticBackpackMenu openMenu = (player.containerMenu instanceof MagneticBackpackMenu menu
+                            && menu.isBackingStack(backpack)) ? menu : null;
+                    BackpackInventory inventory = openMenu != null && openMenu.getBackpackInventory() != null
+                            ? openMenu.getBackpackInventory()
+                            : BackpackInventory.forStack(backpack);
+                    PortableToolboxInventory toolbox = openMenu != null && openMenu.getToolboxInventory() != null
+                            ? openMenu.getToolboxInventory()
+                            : PortableToolboxInventory.forStack(backpack);
 
-                for (ItemEntity itemEntity : items) {
-                    if (!itemEntity.isAlive())
-                        continue;
-                    if (!MagnetFilterHelper.matchesFilter(player.level(), filters, itemEntity.getItem(), backpack))
-                        continue;
+                    boolean pulledIntoToolbox = false;
+                    boolean pulledIntoBackpack = false;
+                    boolean pulledIntoPlayer = false;
 
-                    ItemStack remaining = itemEntity.getItem().copy();
+                    for (ItemEntity itemEntity : items) {
+                        if (!ItemPullHelper.canPullOrPickup(itemEntity))
+                            continue;
+                        if (!MagnetFilterHelper.matchesFilter(player.level(), filters, itemEntity.getItem(), backpack))
+                            continue;
 
-                    // Priority 1: matching toolbox compartments (populated or empty ghost-reserved)
-                    int beforeToolbox = remaining.getCount();
-                    remaining = toolbox.insertIntoMatchingCompartment(remaining, false);
-                    if (remaining.getCount() != beforeToolbox)
-                        pulledIntoToolbox = true;
+                        ItemStack remaining = itemEntity.getItem().copy();
 
-                    // Priority 2: 27 main backpack storage slots
-                    if (!remaining.isEmpty()) {
-                        int beforeBackpack = remaining.getCount();
-                        for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
-                            remaining = inventory.insertItem(i, remaining, false);
+                        // Priority 1: matching toolbox compartments (populated or empty ghost-reserved)
+                        int beforeToolbox = remaining.getCount();
+                        remaining = toolbox.insertIntoMatchingCompartment(remaining, false);
+                        if (remaining.getCount() != beforeToolbox)
+                            pulledIntoToolbox = true;
+
+                        // Priority 2: 27 main backpack storage slots
+                        if (!remaining.isEmpty()) {
+                            int beforeBackpack = remaining.getCount();
+                            for (int i = 0; i < inventory.getSlots() && !remaining.isEmpty(); i++) {
+                                remaining = inventory.insertItem(i, remaining, false);
+                            }
+                            if (remaining.getCount() != beforeBackpack)
+                                pulledIntoBackpack = true;
                         }
-                        if (remaining.getCount() != beforeBackpack)
-                            pulledIntoBackpack = true;
+
+                        // Priority 3: player main inventory fallback
+                        if (!remaining.isEmpty()) {
+                            int beforePlayer = remaining.getCount();
+                            remaining = insertIntoMainInventory(player, remaining);
+                            if (remaining.getCount() != beforePlayer)
+                                pulledIntoPlayer = true;
+                        }
+
+                        if (remaining.isEmpty()) {
+                            itemEntity.discard();
+                        } else {
+                            itemEntity.setItem(remaining);
+                            ItemPullHelper.pullToFeet(itemEntity, player);
+                        }
                     }
 
-                    // Priority 3: player main inventory fallback
-                    if (!remaining.isEmpty()) {
-                        int beforePlayer = remaining.getCount();
-                        remaining = insertIntoMainInventory(player, remaining);
-                        if (remaining.getCount() != beforePlayer)
-                            pulledIntoPlayer = true;
+                    if (pulledIntoToolbox || pulledIntoBackpack)
+                        changed = true;
+
+                    if (pulledIntoToolbox || pulledIntoBackpack || pulledIntoPlayer) {
+                        player.containerMenu.broadcastChanges();
                     }
 
-                    if (remaining.isEmpty()) {
-                        itemEntity.discard();
-                    } else {
-                        itemEntity.setItem(remaining);
-                        ItemPullHelper.pullToFeet(itemEntity, player);
+                    if (pulledIntoToolbox && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                        PortableToolboxHandler.onToolboxModified(serverPlayer, backpack, toolbox);
                     }
-                }
-
-                if (pulledIntoToolbox || pulledIntoBackpack)
-                    changed = true;
-
-                if (pulledIntoToolbox || pulledIntoBackpack || pulledIntoPlayer) {
-                    player.containerMenu.broadcastChanges();
-                }
-
-                if (pulledIntoToolbox && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-                    PortableToolboxHandler.onToolboxModified(serverPlayer, backpack, toolbox);
                 }
             }
 

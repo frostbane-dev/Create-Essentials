@@ -176,8 +176,8 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     private RotationalMagnetTogglePayload togglePayload() {
         MagneticBackpackBlockEntity be = menu.getBlockEntity();
         return be != null
-                ? new RotationalMagnetTogglePayload(be.getBlockPos(), false)
-                : new RotationalMagnetTogglePayload(BlockPos.ZERO, true);
+                ? RotationalMagnetTogglePayload.forBlockEntity(be.getBlockPos())
+                : RotationalMagnetTogglePayload.forOpenItemMenu();
     }
 
     private BlacklistTogglePayload blacklistPayload() {

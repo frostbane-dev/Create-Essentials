@@ -70,19 +70,25 @@ public class AllPackets {
                 return;
 
             if (payload.toggleEquippedFirst()) {
-                // 1. Strict per-item binding when toggled from an open item GUI
-                if (player.containerMenu instanceof MagneticBackpackMenu openBackpack
-                        && !openBackpack.isBlockEntityContext()
-                        && !openBackpack.getBackpackStack().isEmpty()) {
-                    toggleMagneticStack(player, openBackpack.getBackpackStack());
-                    return;
+                // 1. Strict per-item binding when toggled from an open, valid item GUI
+                if (player.containerMenu.stillValid(player)) {
+                    if (player.containerMenu instanceof MagneticBackpackMenu openBackpack
+                            && !openBackpack.isBlockEntityContext()
+                            && !openBackpack.getBackpackStack().isEmpty()) {
+                        toggleMagneticStack(player, openBackpack.getBackpackStack());
+                        return;
+                    }
+                    if (player.containerMenu instanceof RotationalMagnetMenu openMagnet
+                            && !openMagnet.isBlockEntityContext()
+                            && !openMagnet.getMagnetStack().isEmpty()) {
+                        toggleMagnetStack(player, openMagnet.getMagnetStack());
+                        return;
+                    }
                 }
-                if (player.containerMenu instanceof RotationalMagnetMenu openMagnet
-                        && !openMagnet.isBlockEntityContext()
-                        && !openMagnet.getMagnetStack().isEmpty()) {
-                    toggleMagnetStack(player, openMagnet.getMagnetStack());
+
+                // If sent from an item GUI button and the menu closed mid-flight, do NOT fall through
+                if (payload.fromOpenMenu())
                     return;
-                }
 
                 // 2. Context-aware keybind targeting: Main hand -> Offhand -> Curios/Equipped -> Inventory
                 ItemStack target = findToggleTarget(player);
@@ -98,12 +104,14 @@ public class AllPackets {
 
             if (player.distanceToSqr(Vec3.atCenterOf(payload.pos())) > 64.0D)
                 return;
-            if (player.level().getBlockEntity(payload.pos()) instanceof MagneticBackpackBlockEntity magneticBackpack) {
+            if (player.level().getBlockEntity(payload.pos()) instanceof MagneticBackpackBlockEntity magneticBackpack
+                    && !magneticBackpack.isRemoved()) {
                 magneticBackpack.toggleEnabled();
                 sendToggleStatus(player, magneticBackpack.getDisplayName(), magneticBackpack.isEnabled());
                 return;
             }
-            if (player.level().getBlockEntity(payload.pos()) instanceof RotationalMagnetBlockEntity magnetBlock) {
+            if (player.level().getBlockEntity(payload.pos()) instanceof RotationalMagnetBlockEntity magnetBlock
+                    && !magnetBlock.isRemoved()) {
                 magnetBlock.toggleEnabled();
                 sendToggleStatus(player, magnetBlock.getDisplayName(), magnetBlock.isEnabled());
             }
@@ -172,14 +180,7 @@ public class AllPackets {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> RotationalMagnetMenu.create(id, inv, magnet),
                             magnet.getHoverName()),
-                    buf -> {
-                        buf.writeBoolean(false);
-                        ItemContainerContents.STREAM_CODEC.encode(buf,
-                                magnet.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY));
-                        buf.writeBoolean(magnet.getOrDefault(AllDataComponents.ENABLED, true));
-                        buf.writeVarInt(item.getCharge(magnet));
-                        buf.writeVarInt(item.getMaxCharge(magnet));
-                    });
+                    buf -> RotationalMagnetMenu.writeItemOpenData(buf, magnet, item));
         });
     }
 
@@ -207,16 +208,7 @@ public class AllPackets {
                 player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> MagneticBackpackMenu.create(id, inv, backpack),
                                 backpack.getHoverName()),
-                        buf -> {
-                            buf.writeBoolean(false);
-                            ItemContainerContents.STREAM_CODEC.encode(buf,
-                                    backpack.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY));
-                            buf.writeBoolean(backpack.getOrDefault(AllDataComponents.ENABLED, true));
-                            buf.writeVarInt(magneticItem.getCharge(backpack));
-                            buf.writeVarInt(magneticItem.getMaxCharge(backpack));
-                            for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
-                                buf.writeVarInt(tb.getTotalCount(c));
-                        });
+                        buf -> MagneticBackpackMenu.writeItemOpenData(buf, backpack, magneticItem, tb));
                 return;
             }
 
@@ -225,11 +217,7 @@ public class AllPackets {
                 player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
                                 backpack.getHoverName()),
-                        buf -> {
-                            buf.writeBoolean(false);
-                            for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
-                                buf.writeVarInt(tb.getTotalCount(c));
-                        });
+                        buf -> BackpackMenu.writeItemOpenData(buf, backpack, tb));
             }
         });
     }

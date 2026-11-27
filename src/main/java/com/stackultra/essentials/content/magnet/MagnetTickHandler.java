@@ -21,7 +21,7 @@ public class MagnetTickHandler {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
-        if (player.level().isClientSide())
+        if (player.level().isClientSide() || player.isSpectator() || !player.isAlive())
             return;
 
         List<ItemStack> magnets = MagnetEquipment.getCarriedMagnets(player);
@@ -52,18 +52,22 @@ public class MagnetTickHandler {
 
             if (step.activePower()) {
                 double radius = item.getTier().pullRadius();
-                List<ItemStack> filters = item.getTier().hasFilterSlots()
-                        ? RotationalMagnetItem.getFilters(magnet)
-                        : List.of();
-
                 List<ItemEntity> items = player.level().getEntitiesOfClass(ItemEntity.class,
-                        player.getBoundingBox().inflate(radius), ItemEntity::isAlive);
+                        player.getBoundingBox().inflate(radius), ItemPullHelper::canPullOrPickup);
 
-                for (ItemEntity itemEntity : items) {
-                    if (!MagnetFilterHelper.matchesFilter(player.level(), filters, itemEntity.getItem(), magnet))
-                        continue;
+                if (!items.isEmpty()) {
+                    List<ItemStack> filters = item.getTier().hasFilterSlots()
+                            ? RotationalMagnetItem.getFilters(magnet)
+                            : List.of();
 
-                    ItemPullHelper.pullToFeet(itemEntity, player);
+                    for (ItemEntity itemEntity : items) {
+                        if (!ItemPullHelper.canPullOrPickup(itemEntity))
+                            continue;
+                        if (!MagnetFilterHelper.matchesFilter(player.level(), filters, itemEntity.getItem(), magnet))
+                            continue;
+
+                        ItemPullHelper.pullToFeet(itemEntity, player);
+                    }
                 }
             }
 

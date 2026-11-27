@@ -104,8 +104,10 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock {
             be.loadFromStack(stack);
     }
 
-    private static Item dropItem(@Nullable BlockEntity blockEntity) {
-        return blockEntity instanceof MechanicalBackpackBlockEntity be && be.isNetherite()
+    private static Item dropItem(BlockState state, @Nullable BlockEntity blockEntity) {
+        boolean isNetherite = (blockEntity instanceof MechanicalBackpackBlockEntity be && be.isNetherite())
+                || (state.hasProperty(NETHERITE) && state.getValue(NETHERITE));
+        return isNetherite
                 ? AllItems.NETHERITE_BACKPACK.get()
                 : AllItems.MECHANICAL_BACKPACK.get();
     }
@@ -115,7 +117,7 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock {
         if (level.isClientSide())
             return;
 
-        ItemStack drop = new ItemStack(dropItem(blockEntity));
+        ItemStack drop = new ItemStack(dropItem(state, blockEntity));
         if (blockEntity instanceof MechanicalBackpackBlockEntity be)
             be.saveToStack(drop);
 
@@ -129,7 +131,7 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock {
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
         BlockEntity blockEntity = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
-        ItemStack drop = new ItemStack(dropItem(blockEntity));
+        ItemStack drop = new ItemStack(dropItem(state, blockEntity));
         if (blockEntity instanceof MechanicalBackpackBlockEntity be)
             be.saveToStack(drop);
         return List.of(drop);
@@ -137,7 +139,7 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock {
 
     @Override
     public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
-        ItemStack stack = new ItemStack(dropItem(level.getBlockEntity(pos)));
+        ItemStack stack = new ItemStack(dropItem(state, level.getBlockEntity(pos)));
         if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be)
             be.saveToStack(stack);
         return stack;

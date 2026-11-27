@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.magnet;
 
+import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
@@ -38,6 +39,18 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     private boolean blacklist;
     private int charge;
     private int maxCharge;
+
+    public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
+                                         ItemStack stack,
+                                         RotationalMagnetItem item) {
+        buf.writeBoolean(false);
+        ItemContainerContents.STREAM_CODEC.encode(buf,
+                stack.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY));
+        buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
+        buf.writeBoolean(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
+        buf.writeVarInt(item.getCharge(stack));
+        buf.writeVarInt(item.getMaxCharge(stack));
+    }
 
     public RotationalMagnetMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
         super(AllMenus.ROTATIONAL_MAGNET.get(), windowId);
@@ -80,9 +93,9 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
             for (int i = 0; i < FILTER_SLOTS; i++)
                 filterInventory.setStackInSlot(i, filters.get(i));
             this.enabled = extraData.readBoolean();
+            this.blacklist = extraData.readBoolean();
             this.charge = extraData.readVarInt();
-            this.maxCharge = extraData.readVarInt();
-            this.blacklist = false;
+            this.maxCharge = Math.max(1, extraData.readVarInt());
         }
 
         addSlots();
@@ -182,7 +195,23 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
 
             @Override
             public void set(int value) {
-                charge = value;
+                charge = Math.max(0, value);
+            }
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                if (blockEntity != null)
+                    return blockEntity.getMaxCharge();
+                if (!magnetStack.isEmpty() && magnetStack.getItem() instanceof RotationalMagnetItem item)
+                    return item.getMaxCharge(magnetStack);
+                return maxCharge;
+            }
+
+            @Override
+            public void set(int value) {
+                maxCharge = Math.max(1, value);
             }
         });
     }
@@ -199,12 +228,26 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
 
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 110 + row * 18));
+                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 110 + row * 18) {
+                    @Override
+                    public boolean mayPickup(Player player) {
+                        return isNotLockedOpenStack(getItem());
+                    }
+                });
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, 8 + col * 18, 168));
+            addSlot(new Slot(playerInventory, col, 8 + col * 18, 168) {
+                @Override
+                public boolean mayPickup(Player player) {
+                    return isNotLockedOpenStack(getItem());
+                }
+            });
         }
+    }
+
+    private boolean isNotLockedOpenStack(ItemStack stack) {
+        return magnetStack.isEmpty() || stack != magnetStack;
     }
 
     public boolean isBlockEntityContext() {
@@ -220,7 +263,8 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     }
 
     public boolean isEnabled() {
-        return blockEntity != null ? blockEntity.isEnabled() : enabled;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.isEnabled() : enabled;
     }
 
     public void setEnabledClient(boolean value) {
@@ -228,7 +272,8 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     }
 
     public boolean isBlacklist() {
-        return blockEntity != null ? blockEntity.isBlacklist() : blacklist;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.isBlacklist() : blacklist;
     }
 
     public void setBlacklistClient(boolean value) {
@@ -236,11 +281,13 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     }
 
     public int getCharge() {
-        return blockEntity != null ? blockEntity.getCharge() : charge;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.getCharge() : charge;
     }
 
     public int getMaxCharge() {
-        return blockEntity != null ? blockEntity.getMaxCharge() : maxCharge;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.getMaxCharge() : maxCharge;
     }
 
     private void persistFilters(Player player) {
@@ -252,8 +299,9 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
             filters.add(filterInventory.getStackInSlot(i).copy());
 
         if (blockEntity != null) {
-            blockEntity.setFilters(filters);
-        } else if (!magnetStack.isEmpty()) {
+            if (!blockEntity.isRemoved())
+                blockEntity.setFilters(filters);
+        } else if (!magnetStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, magnetStack)) {
             RotationalMagnetItem.setFilters(magnetStack, filters);
             MagnetEquipment.syncMagnet(player, magnetStack);
         }
@@ -262,9 +310,24 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
+        if (!player.level().isClientSide() && !stillValid(player))
+            return;
+        if (MenuValidationHelper.isLockedOpenStackClick(this, magnetStack, slotId, dragType, clickType, player)) {
+            if (!player.level().isClientSide())
+                sendAllDataToRemote();
+            return;
+        }
         if (slotId >= 0 && slotId < FILTER_SLOTS) {
-            if (clickType == ClickType.THROW || clickType == ClickType.CLONE)
+            if (clickType == ClickType.QUICK_CRAFT) {
+                super.clicked(slotId, dragType, clickType, player);
                 return;
+            }
+            if (clickType == ClickType.THROW
+                    || clickType == ClickType.CLONE
+                    || clickType == ClickType.SWAP
+                    || clickType == ClickType.PICKUP_ALL) {
+                return;
+            }
             ItemStack held = getCarried();
             ItemStack insert = (clickType == ClickType.QUICK_MOVE || held.isEmpty())
                     ? ItemStack.EMPTY
@@ -279,12 +342,12 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
 
     @Override
     public boolean canDragTo(Slot slotIn) {
-        return slotIn.index >= FILTER_SLOTS;
+        return slotIn.index >= FILTER_SLOTS && isNotLockedOpenStack(slotIn.getItem());
     }
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return slotIn.index >= FILTER_SLOTS;
+        return slotIn.index >= FILTER_SLOTS && isNotLockedOpenStack(slotIn.getItem());
     }
 
     @Override
@@ -302,6 +365,8 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     public boolean stillValid(Player player) {
         if (player.level().isClientSide())
             return true;
-        return blockEntity != null || !magnetStack.isEmpty();
+        return blockEntity != null
+                ? MenuValidationHelper.isBlockEntityValid(player, blockEntity)
+                : MenuValidationHelper.isPlayerCarryingStack(player, magnetStack);
     }
 }

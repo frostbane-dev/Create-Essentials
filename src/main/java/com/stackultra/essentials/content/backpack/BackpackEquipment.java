@@ -1,12 +1,17 @@
 package com.stackultra.essentials.content.backpack;
 
 import com.stackultra.essentials.compat.curios.CuriosBackpackIntegration;
+import com.stackultra.essentials.content.StackSyncHelper;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
 public final class BackpackEquipment {
 
@@ -32,6 +37,10 @@ public final class BackpackEquipment {
     }
 
     public static void syncBackpack(Player player, ItemStack backpack) {
+        if (backpack == null || backpack.isEmpty())
+            return;
+
+        // Fast path: exact reference identity on live armor / inventory slots
         if (player.getItemBySlot(EquipmentSlot.CHEST) == backpack) {
             player.setItemSlot(EquipmentSlot.CHEST, backpack);
             broadcastIfServer(player);
@@ -59,11 +68,32 @@ public final class BackpackEquipment {
             }
         }
 
+        // Unified fallback across every unique physical backpack slot (inventory.items already includes main hand)
+        List<ItemStack> candidates = new ArrayList<>();
+        List<Consumer<ItemStack>> writers = new ArrayList<>();
+
+        candidates.add(player.getItemBySlot(EquipmentSlot.CHEST));
+        writers.add(stack -> player.setItemSlot(EquipmentSlot.CHEST, stack));
+
+        candidates.add(player.getOffhandItem());
+        writers.add(stack -> player.setItemInHand(InteractionHand.OFF_HAND, stack));
+
+        for (int i = 0; i < inventory.items.size(); i++) {
+            final int slotIndex = i;
+            candidates.add(inventory.items.get(i));
+            writers.add(stack -> inventory.setItem(slotIndex, stack));
+        }
+
         if (ModList.get().isLoaded("curios")) {
             try {
-                CuriosBackpackIntegration.syncBackBackpack(player, backpack);
+                CuriosBackpackIntegration.collectBackSlots(player, candidates, writers);
             } catch (Throwable ignored) {
             }
+        }
+
+        int matchIndex = StackSyncHelper.findMatchingIndex(candidates, backpack);
+        if (matchIndex >= 0) {
+            writers.get(matchIndex).accept(backpack);
         }
         broadcastIfServer(player);
     }

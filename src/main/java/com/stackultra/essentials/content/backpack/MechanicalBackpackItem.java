@@ -40,11 +40,7 @@ public class MechanicalBackpackItem extends BlockItem implements Equipable {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> BackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> {
-                        buf.writeBoolean(false);
-                        for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
-                            buf.writeVarInt(tb.getTotalCount(c));
-                    });
+                    buf -> BackpackMenu.writeItemOpenData(buf, stack, tb));
             return InteractionResultHolder.consume(stack);
         }
         return swapWithEquipmentSlot(this, level, player, hand);

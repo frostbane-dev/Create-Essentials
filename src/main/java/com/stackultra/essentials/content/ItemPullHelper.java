@@ -18,6 +18,20 @@ public final class ItemPullHelper {
         return new Vec3(player.getX(), player.getY() + FOOT_LIFT, player.getZ());
     }
 
+    /**
+     * Returns {@code true} only for alive, non-empty {@link ItemEntity} instances whose
+     * pickup delay has expired (protecting freshly player-dropped items and modded
+     * {@code setNeverPickUp()} display/pedestal entities).
+     */
+    public static boolean canPullOrPickup(ItemEntity itemEntity) {
+        return itemEntity != null
+                && isPickable(itemEntity.isAlive(), itemEntity.hasPickUpDelay(), itemEntity.getItem().isEmpty());
+    }
+
+    public static boolean isPickable(boolean alive, boolean hasPickUpDelay, boolean stackEmpty) {
+        return alive && !hasPickUpDelay && !stackEmpty;
+    }
+
     public static void pullToFeet(ItemEntity itemEntity, Player player) {
         Vec3 target = footTarget(player);
         Vec3 delta = target.subtract(itemEntity.position());

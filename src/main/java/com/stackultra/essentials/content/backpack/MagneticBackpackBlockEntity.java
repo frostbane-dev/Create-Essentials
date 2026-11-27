@@ -3,6 +3,7 @@ package com.stackultra.essentials.content.backpack;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.CreateLang;
+import com.stackultra.essentials.content.BlockItemComponentHelper;
 import com.stackultra.essentials.content.KineticChargeHelper;
 import com.stackultra.essentials.content.MagnetFilterHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
@@ -36,6 +37,8 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     private final PortableToolboxInventory toolboxInventory;
     private final ItemStackHandler filterInventory;
     private final KineticChargeHelper.KineticChargeState kineticCharge = new KineticChargeHelper.KineticChargeState();
+    private final BlockItemComponentHelper.PreservedComponents preservedComponents =
+            new BlockItemComponentHelper.PreservedComponents();
     private int charge = 0;
     private boolean enabled = true;
     private boolean blacklist = false;
@@ -186,6 +189,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     }
 
     public void loadFromStack(ItemStack stack) {
+        preservedComponents.loadFromStack(stack);
         inventory.load(stack);
         toolboxInventory.load(stack);
         setCapacityEnchantLevel(MagneticBackpackItem.getCapacityLevel(stack));
@@ -201,6 +205,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     }
 
     public void saveToStack(ItemStack stack) {
+        preservedComponents.saveToStack(stack);
         inventory.save(stack);
         toolboxInventory.save(stack);
         stack.set(AllDataComponents.CHARGE, charge);
@@ -232,6 +237,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         tag.put("Filters", filterInventory.serializeNBT(registries));
         tag.put("Inventory", inventory.serializeNBT(registries));
         tag.put("Toolbox", toolboxInventory.serializeNBT(registries));
+        preservedComponents.writeToTag(tag, registries);
         super.write(tag, registries, clientPacket);
     }
 
@@ -252,6 +258,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
             inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
         if (tag.contains("Toolbox"))
             toolboxInventory.deserializeNBT(registries, tag.getCompound("Toolbox"));
+        preservedComponents.readFromTag(tag, registries);
         super.read(tag, registries, clientPacket);
     }
 
@@ -269,6 +276,9 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
 
     @Override
     public Component getDisplayName() {
+        Component customName = preservedComponents.getCustomName();
+        if (customName != null)
+            return customName;
         return Component.translatable(getBlockState().getBlock().getDescriptionId());
     }
 

@@ -177,7 +177,7 @@ public class ClientEvents {
             BlockPos target = minecraft.hitResult instanceof BlockHitResult hitResult
                     ? hitResult.getBlockPos()
                     : minecraft.player.blockPosition();
-            PacketDistributor.sendToServer(new RotationalMagnetTogglePayload(target, true));
+            PacketDistributor.sendToServer(RotationalMagnetTogglePayload.forKeybind(target));
         }
         while (OPEN_ROTATIONAL_MAGNET.consumeClick()) {
             if (minecraft.player == null || minecraft.level == null || minecraft.screen != null)

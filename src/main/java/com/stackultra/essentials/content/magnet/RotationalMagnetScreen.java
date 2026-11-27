@@ -78,8 +78,8 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
     private RotationalMagnetTogglePayload togglePayload() {
         RotationalMagnetBlockEntity be = menu.getBlockEntity();
         return be != null
-                ? new RotationalMagnetTogglePayload(be.getBlockPos(), false)
-                : new RotationalMagnetTogglePayload(BlockPos.ZERO, true);
+                ? RotationalMagnetTogglePayload.forBlockEntity(be.getBlockPos())
+                : RotationalMagnetTogglePayload.forOpenItemMenu();
     }
 
     private BlacklistTogglePayload blacklistPayload() {

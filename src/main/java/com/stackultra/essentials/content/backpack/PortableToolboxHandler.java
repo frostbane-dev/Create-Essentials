@@ -10,10 +10,12 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -23,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -66,10 +69,36 @@ public final class PortableToolboxHandler {
         }
     }
 
+    private record ToolboxFingerprint(
+            ItemStack backpackRef,
+            @Nullable ItemContainerContents contents,
+            @Nullable ItemContainerContents filters,
+            boolean restockEnabled,
+            int linkMask
+    ) {
+        boolean matches(ItemStack backpack,
+                        @Nullable ItemContainerContents nextContents,
+                        @Nullable ItemContainerContents nextFilters,
+                        boolean nextRestock,
+                        int nextLinkMask) {
+            return backpackRef == backpack
+                    && restockEnabled == nextRestock
+                    && linkMask == nextLinkMask
+                    && Objects.equals(contents, nextContents)
+                    && Objects.equals(filters, nextFilters);
+        }
+    }
+
     private static final Map<UUID, Map<Integer, ToolboxLink>> ACTIVE_LINKS = new ConcurrentHashMap<>();
     private static final Map<UUID, SyncedToolboxState> LAST_SYNCED = new ConcurrentHashMap<>();
+    private static final Map<UUID, ToolboxFingerprint> LAST_FINGERPRINT = new ConcurrentHashMap<>();
 
     private PortableToolboxHandler() {
+    }
+
+    static boolean isHotbarSlotLinked(UUID playerId, int hotbarSlot) {
+        Map<Integer, ToolboxLink> links = ACTIVE_LINKS.get(playerId);
+        return links != null && links.containsKey(hotbarSlot);
     }
 
     /**
@@ -117,6 +146,7 @@ public final class PortableToolboxHandler {
                 ? requestedHotbarSlot
                 : player.getInventory().selected;
 
+        LAST_FINGERPRINT.remove(player.getUUID());
         ItemStack backpack = findPortableToolboxBackpack(player);
         if (backpack.isEmpty()) {
             pushToolboxState(player, ItemStack.EMPTY, null, true);
@@ -210,6 +240,7 @@ public final class PortableToolboxHandler {
                 ? requestedHotbarSlot
                 : player.getInventory().selected;
 
+        LAST_FINGERPRINT.remove(player.getUUID());
         ItemStack backpack = findPortableToolboxBackpack(player);
         Map<Integer, ToolboxLink> links = ACTIVE_LINKS.get(player.getUUID());
         ToolboxLink link = links != null ? links.remove(targetSlot) : null;
@@ -255,6 +286,7 @@ public final class PortableToolboxHandler {
     public static void onToolboxModified(ServerPlayer player,
                                          @Nullable ItemStack modifiedBackpack,
                                          @Nullable PortableToolboxInventory modifiedToolbox) {
+        LAST_FINGERPRINT.remove(player.getUUID());
         ItemStack activeBackpack = findPortableToolboxBackpack(player);
         if (activeBackpack.isEmpty()) {
             Map<Integer, ToolboxLink> links = ACTIVE_LINKS.get(player.getUUID());
@@ -280,6 +312,7 @@ public final class PortableToolboxHandler {
      * always displays authoritative, up-to-date server compartment contents and positions.
      */
     public static void handleSyncRequest(ServerPlayer player) {
+        LAST_FINGERPRINT.remove(player.getUUID());
         ItemStack backpack = findPortableToolboxBackpack(player);
         if (backpack.isEmpty()) {
             pushToolboxState(player, ItemStack.EMPTY, null, true);
@@ -298,31 +331,56 @@ public final class PortableToolboxHandler {
         Player player = event.getEntity();
         if (player.level().isClientSide() || !(player instanceof ServerPlayer serverPlayer))
             return;
-        if (player.isSpectator())
+        if (player.isSpectator() || !player.isAlive())
             return;
 
+        UUID uuid = player.getUUID();
         ItemStack backpack = findPortableToolboxBackpack(player);
-        Map<Integer, ToolboxLink> links = ACTIVE_LINKS.get(player.getUUID());
+        Map<Integer, ToolboxLink> links = ACTIVE_LINKS.get(uuid);
 
         if (backpack.isEmpty()) {
             if (links != null && !links.isEmpty())
                 links.clear();
+            LAST_FINGERPRINT.remove(uuid);
             pushToolboxState(serverPlayer, ItemStack.EMPTY, null, false);
             return;
         }
 
-        PortableToolboxInventory toolbox = resolveLiveToolbox(player, backpack);
+        boolean hasOpenMenu = player.containerMenu instanceof IBackpackMenu openMenu
+                && openMenu.isBackingStack(backpack)
+                && openMenu.getToolboxInventory() != null;
+        boolean restockEnabled = backpack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
+        ItemContainerContents rawContents = backpack.get(ExtraDataComponents.TOOLBOX_CONTENTS);
+        ItemContainerContents rawFilters = backpack.get(ExtraDataComponents.TOOLBOX_FILTERS);
+        int linkMask = computeLinkMask(links);
 
-        if (links == null || links.isEmpty() || player.isCreative()) {
+        ToolboxFingerprint prevFp = LAST_FINGERPRINT.get(uuid);
+        SyncedToolboxState prevSynced = LAST_SYNCED.get(uuid);
+        boolean backpackUnchanged = !hasOpenMenu
+                && prevFp != null
+                && prevSynced != null
+                && prevFp.matches(backpack, rawContents, rawFilters, restockEnabled, linkMask);
+
+        if (links == null || links.isEmpty()) {
+            if (backpackUnchanged)
+                return;
+            PortableToolboxInventory toolbox = resolveLiveToolbox(player, backpack);
             pushToolboxState(serverPlayer, backpack, toolbox, false);
+            if (!hasOpenMenu) {
+                LAST_FINGERPRINT.put(uuid, new ToolboxFingerprint(backpack, rawContents, rawFilters, restockEnabled, 0));
+            }
             return;
         }
 
+        // Fast idle skip when backpack components didn't change and no linked hotbar slot needs unlink/restock
+        if (backpackUnchanged && !needsLinkedSlotWork(player, backpack, links, restockEnabled, prevSynced)) {
+            return;
+        }
+
+        PortableToolboxInventory toolbox = resolveLiveToolbox(player, backpack);
         rebindMovedLinks(links, toolbox);
 
-        boolean restockEnabled = backpack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
         boolean anyItemsChanged = false;
-
         Iterator<Map.Entry<Integer, ToolboxLink>> it = links.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Integer, ToolboxLink> entry = it.next();
@@ -357,7 +415,8 @@ public final class PortableToolboxHandler {
                 continue;
             }
 
-            if (!restockEnabled || compCount <= 0)
+            // In Creative mode keep link validation/unlinking active, but skip auto-restock extraction
+            if (player.isCreative() || !restockEnabled || compCount <= 0)
                 continue;
 
             int targetCount = PortableToolboxInventory.equipTargetCount(link.itemTemplate());
@@ -383,6 +442,57 @@ public final class PortableToolboxHandler {
             syncBackpackAndPlayer(serverPlayer, backpack);
         }
         pushToolboxState(serverPlayer, backpack, toolbox, false);
+        if (!hasOpenMenu) {
+            LAST_FINGERPRINT.put(uuid, new ToolboxFingerprint(
+                    backpack,
+                    backpack.get(ExtraDataComponents.TOOLBOX_CONTENTS),
+                    backpack.get(ExtraDataComponents.TOOLBOX_FILTERS),
+                    restockEnabled,
+                    computeLinkMask(links)));
+        }
+    }
+
+    private static boolean needsLinkedSlotWork(Player player,
+                                               ItemStack backpack,
+                                               Map<Integer, ToolboxLink> links,
+                                               boolean restockEnabled,
+                                               SyncedToolboxState prevSynced) {
+        for (Map.Entry<Integer, ToolboxLink> entry : links.entrySet()) {
+            int slotKey = entry.getKey();
+            ToolboxLink link = entry.getValue();
+            if (slotKey < 0 || slotKey >= Inventory.getSelectionSize())
+                return true;
+
+            ItemStack current = player.getInventory().getItem(slotKey);
+            if (isExtendoGrip(current) || current == backpack)
+                return true;
+            if (!current.isEmpty() && !ItemStack.isSameItemSameComponents(current, link.itemTemplate()))
+                return true;
+
+            if (!player.isCreative() && restockEnabled) {
+                int comp = link.compartment();
+                int cachedCount = (comp >= 0 && comp < prevSynced.counts().size())
+                        ? prevSynced.counts().get(comp) : 0;
+                if (cachedCount > 0) {
+                    int targetCount = PortableToolboxInventory.equipTargetCount(link.itemTemplate());
+                    int currentCount = current.isEmpty() ? 0 : current.getCount();
+                    if (currentCount < targetCount)
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static int computeLinkMask(@Nullable Map<Integer, ToolboxLink> links) {
+        if (links == null || links.isEmpty())
+            return 0;
+        int mask = 0;
+        for (int slot : links.keySet()) {
+            if (slot >= 0 && slot < Inventory.getSelectionSize())
+                mask |= (1 << slot);
+        }
+        return mask;
     }
 
     /**
@@ -439,6 +549,10 @@ public final class PortableToolboxHandler {
     @SubscribeEvent
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            UUID uuid = serverPlayer.getUUID();
+            ACTIVE_LINKS.remove(uuid);
+            LAST_SYNCED.remove(uuid);
+            LAST_FINGERPRINT.remove(uuid);
             ItemStack backpack = findPortableToolboxBackpack(serverPlayer);
             PortableToolboxInventory toolbox = backpack.isEmpty() ? null : resolveLiveToolbox(serverPlayer, backpack);
             pushToolboxState(serverPlayer, backpack, toolbox, true);
@@ -450,9 +564,44 @@ public final class PortableToolboxHandler {
         UUID uuid = event.getEntity().getUUID();
         ACTIVE_LINKS.remove(uuid);
         LAST_SYNCED.remove(uuid);
+        LAST_FINGERPRINT.remove(uuid);
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            UUID uuid = serverPlayer.getUUID();
+            LAST_FINGERPRINT.remove(uuid);
+            ItemStack backpack = findPortableToolboxBackpack(serverPlayer);
+            if (backpack.isEmpty()) {
+                ACTIVE_LINKS.remove(uuid);
+                pushToolboxState(serverPlayer, ItemStack.EMPTY, null, true);
+                return;
+            }
+            PortableToolboxInventory toolbox = resolveLiveToolbox(serverPlayer, backpack);
+            pushToolboxState(serverPlayer, backpack, toolbox, true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            LAST_FINGERPRINT.remove(serverPlayer.getUUID());
+            ItemStack backpack = findPortableToolboxBackpack(serverPlayer);
+            PortableToolboxInventory toolbox = backpack.isEmpty() ? null : resolveLiveToolbox(serverPlayer, backpack);
+            pushToolboxState(serverPlayer, backpack, toolbox, true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        ACTIVE_LINKS.clear();
+        LAST_SYNCED.clear();
+        LAST_FINGERPRINT.clear();
     }
 
     public static void notifyRestockToggled(ServerPlayer player, ItemStack backpack) {
+        LAST_FINGERPRINT.remove(player.getUUID());
         PortableToolboxInventory toolbox = backpack.isEmpty() ? null : resolveLiveToolbox(player, backpack);
         pushToolboxState(player, backpack, toolbox, true);
     }
@@ -462,14 +611,7 @@ public final class PortableToolboxHandler {
                                          @Nullable PortableToolboxInventory toolbox,
                                          boolean force) {
         Map<Integer, ToolboxLink> links = ACTIVE_LINKS.get(player.getUUID());
-        int mask = 0;
-        if (links != null) {
-            for (int slot : links.keySet()) {
-                if (slot >= 0 && slot < Inventory.getSelectionSize()) {
-                    mask |= (1 << slot);
-                }
-            }
-        }
+        int mask = computeLinkMask(links);
         boolean hasBackpack = !backpack.isEmpty();
         boolean restockActive = hasBackpack
                 && backpack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);

@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
@@ -62,6 +63,24 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     private SortMode sortMode = SortMode.NAME;
     private boolean restockEnabled = true;
     private final int[] syncedToolboxCounts = new int[TOOLBOX_SLOTS];
+
+    public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
+                                         ItemStack stack,
+                                         MagneticBackpackItem item,
+                                         PortableToolboxInventory toolbox) {
+        buf.writeBoolean(false);
+        ItemContainerContents.STREAM_CODEC.encode(buf,
+                stack.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY));
+        buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
+        buf.writeBoolean(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
+        buf.writeBoolean(stack.getOrDefault(AllDataComponents.CHARGING, false));
+        buf.writeVarInt(item.getCharge(stack));
+        buf.writeVarInt(item.getMaxCharge(stack));
+        buf.writeVarInt(stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME).ordinal());
+        buf.writeBoolean(stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            buf.writeVarInt(toolbox.getTotalCount(c));
+    }
 
     private MagneticBackpackMenu(int windowId, Inventory inv, MagneticBackpackBlockEntity be) {
         super(AllMenus.MAGNETIC_BACKPACK.get(), windowId);
@@ -175,14 +194,14 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
             for (int i = 0; i < FILTER_SLOTS; i++)
                 this.filterInventory.setStackInSlot(i, filters.get(i));
             this.enabled = extraData.readBoolean();
-            this.blacklist = false;
+            this.blacklist = extraData.readBoolean();
+            this.charging = extraData.readBoolean();
             this.charge = extraData.readVarInt();
-            this.maxCharge = extraData.readVarInt();
-            this.charging = false;
+            this.maxCharge = Math.max(1, extraData.readVarInt());
+            this.sortMode = SortMode.byOrdinal(extraData.readVarInt());
+            this.restockEnabled = extraData.readBoolean();
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 this.syncedToolboxCounts[c] = Math.max(0, extraData.readVarInt());
-            this.sortMode = SortMode.NAME;
-            this.restockEnabled = true;
         }
         // Client-side toolbox slots always bind to displayHandler so vanilla slot sync never wipes BE sub-stacks
         this.toolboxSlotBacking = displayHandler;
@@ -351,12 +370,26 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 addSlot(new Slot(playerInventory, col + row * 9 + 9,
-                        STORAGE_X + col * 18, PLAYER_Y + row * 18));
+                        STORAGE_X + col * 18, PLAYER_Y + row * 18) {
+                    @Override
+                    public boolean mayPickup(Player player) {
+                        return isNotLockedOpenStack(getItem());
+                    }
+                });
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, STORAGE_X + col * 18, HOTBAR_Y));
+            addSlot(new Slot(playerInventory, col, STORAGE_X + col * 18, HOTBAR_Y) {
+                @Override
+                public boolean mayPickup(Player player) {
+                    return isNotLockedOpenStack(getItem());
+                }
+            });
         }
+    }
+
+    private boolean isNotLockedOpenStack(ItemStack stack) {
+        return backpackStack.isEmpty() || stack != backpackStack;
     }
 
     public boolean isBlockEntityContext() {
@@ -430,7 +463,8 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         SortMode resolved = mode != null ? mode : SortMode.NAME;
         this.sortMode = resolved;
         if (blockEntity != null) {
-            blockEntity.setSortMode(resolved);
+            if (!blockEntity.isRemoved())
+                blockEntity.setSortMode(resolved);
         } else if (!backpackStack.isEmpty()) {
             backpackStack.set(ExtraDataComponents.SORT_MODE, resolved);
             MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
@@ -448,7 +482,8 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     public void setRestockEnabled(boolean enabled, Player player) {
         this.restockEnabled = enabled;
         if (blockEntity != null) {
-            blockEntity.setRestockEnabled(enabled);
+            if (!blockEntity.isRemoved())
+                blockEntity.setRestockEnabled(enabled);
         } else if (!backpackStack.isEmpty()) {
             backpackStack.set(ExtraDataComponents.TOOLBOX_RESTOCK, enabled);
             MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
@@ -495,8 +530,10 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
     private void syncBacking(Player player) {
         if (blockEntity != null) {
-            blockEntity.setChanged();
-            blockEntity.sendData();
+            if (!blockEntity.isRemoved()) {
+                blockEntity.setChanged();
+                blockEntity.sendData();
+            }
         } else if (!backpackStack.isEmpty()) {
             toolboxInventory.save(backpackStack);
             MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
@@ -522,8 +559,9 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         for (int i = 0; i < FILTER_SLOTS; i++)
             filters.add(filterInventory.getStackInSlot(i).copy());
         if (blockEntity != null) {
-            blockEntity.setFilters(filters);
-        } else if (!backpackStack.isEmpty()) {
+            if (!blockEntity.isRemoved())
+                blockEntity.setFilters(filters);
+        } else if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
             MagneticBackpackItem.setFilters(backpackStack, filters);
             MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
         }
@@ -532,9 +570,24 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
+        if (!player.level().isClientSide() && !stillValid(player))
+            return;
+        if (MenuValidationHelper.isLockedOpenStackClick(this, backpackStack, slotId, dragType, clickType, player)) {
+            if (!player.level().isClientSide())
+                sendAllDataToRemote();
+            return;
+        }
         if (isFilterSlot(slotId)) {
-            if (clickType == ClickType.THROW || clickType == ClickType.CLONE)
+            if (clickType == ClickType.QUICK_CRAFT) {
+                super.clicked(slotId, dragType, clickType, player);
                 return;
+            }
+            if (clickType == ClickType.THROW
+                    || clickType == ClickType.CLONE
+                    || clickType == ClickType.SWAP
+                    || clickType == ClickType.PICKUP_ALL) {
+                return;
+            }
             ItemStack held = getCarried();
             ItemStack insert = (clickType == ClickType.QUICK_MOVE || held.isEmpty())
                     ? ItemStack.EMPTY
@@ -567,12 +620,16 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
     @Override
     public boolean canDragTo(Slot slotIn) {
-        return !isFilterSlot(slotIn.index) && !isToolboxSlot(slotIn.index);
+        return !isFilterSlot(slotIn.index)
+                && !isToolboxSlot(slotIn.index)
+                && isNotLockedOpenStack(slotIn.getItem());
     }
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return !isFilterSlot(slotIn.index) && !isToolboxSlot(slotIn.index);
+        return !isFilterSlot(slotIn.index)
+                && !isToolboxSlot(slotIn.index)
+                && isNotLockedOpenStack(slotIn.getItem());
     }
 
     @Override
@@ -583,6 +640,8 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         Slot slot = this.slots.get(index);
         if (slot != null && slot.hasItem()) {
             ItemStack stack = slot.getItem();
+            if (!isNotLockedOpenStack(stack))
+                return ItemStack.EMPTY;
             result = stack.copy();
             if (index < STORAGE_SLOTS) {
                 if (!moveItemStackTo(stack, PLAYER_SLOT_START, this.slots.size(), true))
@@ -604,9 +663,11 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         persistFilters(player);
         if (!player.level().isClientSide()) {
             if (blockEntity != null) {
-                blockEntity.setChanged();
-                blockEntity.sendData();
-            } else if (!backpackStack.isEmpty()) {
+                if (!blockEntity.isRemoved()) {
+                    blockEntity.setChanged();
+                    blockEntity.sendData();
+                }
+            } else if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
                 toolboxInventory.save(backpackStack);
                 MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
                 if (player instanceof ServerPlayer serverPlayer) {
@@ -620,6 +681,8 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     public boolean stillValid(Player player) {
         if (player.level().isClientSide())
             return true;
-        return blockEntity != null || !backpackStack.isEmpty();
+        return blockEntity != null
+                ? MenuValidationHelper.isBlockEntityValid(player, blockEntity)
+                : MenuValidationHelper.isPlayerCarryingStack(player, backpackStack);
     }
 }

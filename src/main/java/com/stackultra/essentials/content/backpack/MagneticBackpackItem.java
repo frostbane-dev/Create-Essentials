@@ -54,16 +54,7 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> MagneticBackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> {
-                        buf.writeBoolean(false);
-                        ItemContainerContents.STREAM_CODEC.encode(buf,
-                                stack.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY));
-                        buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
-                        buf.writeVarInt(getCharge(stack));
-                        buf.writeVarInt(getMaxCharge(stack));
-                        for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
-                            buf.writeVarInt(tb.getTotalCount(c));
-                    });
+                    buf -> MagneticBackpackMenu.writeItemOpenData(buf, stack, this, tb));
             return InteractionResultHolder.consume(stack);
         }
         return swapWithEquipmentSlot(this, level, player, hand);

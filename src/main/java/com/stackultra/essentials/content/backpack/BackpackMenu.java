@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.Minecraft;
@@ -49,12 +50,24 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     private boolean restockEnabled;
     private final int[] syncedToolboxCounts = new int[TOOLBOX_SLOTS];
 
+    public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
+                                         ItemStack stack,
+                                         PortableToolboxInventory toolbox) {
+        buf.writeBoolean(false);
+        buf.writeVarInt(stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME).ordinal());
+        buf.writeBoolean(stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            buf.writeVarInt(toolbox.getTotalCount(c));
+    }
+
     public BackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
         super(AllMenus.BACKPACK.get(), windowId);
         this.playerInventory = inv;
         boolean fromBlockEntity = extraData.readBoolean();
         MechanicalBackpackBlockEntity found = null;
         int[] initialCounts = new int[TOOLBOX_SLOTS];
+        SortMode initialSortMode = SortMode.NAME;
+        boolean initialRestock = true;
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
@@ -67,10 +80,14 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
                 }
             }
             if (found != null) {
+                initialSortMode = found.getSortMode();
+                initialRestock = found.isRestockEnabled();
                 for (int c = 0; c < TOOLBOX_SLOTS; c++)
                     initialCounts[c] = found.getToolboxInventory().getTotalCount(c);
             }
         } else {
+            initialSortMode = SortMode.byOrdinal(extraData.readVarInt());
+            initialRestock = extraData.readBoolean();
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 initialCounts[c] = Math.max(0, extraData.readVarInt());
         }
@@ -83,16 +100,14 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         ItemStackHandler displayHandler = new ItemStackHandler(TOOLBOX_SLOTS);
         if (found != null) {
             this.toolboxInventory = found.getToolboxInventory();
-            this.sortMode = found.getSortMode();
-            this.restockEnabled = found.isRestockEnabled();
             IItemHandler menuView = found.getToolboxInventory().asMenuDisplayHandler();
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 displayHandler.setStackInSlot(c, menuView.getStackInSlot(c));
         } else {
             this.toolboxInventory = PortableToolboxInventory.empty();
-            this.sortMode = SortMode.NAME;
-            this.restockEnabled = true;
         }
+        this.sortMode = initialSortMode;
+        this.restockEnabled = initialRestock;
         this.toolboxSlotBacking = displayHandler;
         System.arraycopy(initialCounts, 0, this.syncedToolboxCounts, 0, TOOLBOX_SLOTS);
 
@@ -213,16 +228,34 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 addSlot(new Slot(playerInventory, col + row * 9 + 9,
-                        STORAGE_X + col * 18, PLAYER_Y + row * 18));
+                        STORAGE_X + col * 18, PLAYER_Y + row * 18) {
+                    @Override
+                    public boolean mayPickup(Player player) {
+                        return isNotLockedOpenStack(getItem());
+                    }
+                });
             }
         }
         for (int hotbar = 0; hotbar < 9; hotbar++) {
-            addSlot(new Slot(playerInventory, hotbar, STORAGE_X + hotbar * 18, HOTBAR_Y));
+            addSlot(new Slot(playerInventory, hotbar, STORAGE_X + hotbar * 18, HOTBAR_Y) {
+                @Override
+                public boolean mayPickup(Player player) {
+                    return isNotLockedOpenStack(getItem());
+                }
+            });
         }
+    }
+
+    private boolean isNotLockedOpenStack(ItemStack stack) {
+        return backpackStack.isEmpty() || stack != backpackStack;
     }
 
     public boolean isToolboxSlot(int slotId) {
         return slotId >= TOOLBOX_SLOT_START && slotId < PLAYER_SLOT_START;
+    }
+
+    public BackpackInventory getBackpackInventory() {
+        return backpackInventory instanceof BackpackInventory inv ? inv : null;
     }
 
     @Override
@@ -236,7 +269,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         SortMode resolved = mode != null ? mode : SortMode.NAME;
         this.sortMode = resolved;
         if (blockEntity != null) {
-            blockEntity.setSortMode(resolved);
+            if (!blockEntity.isRemoved())
+                blockEntity.setSortMode(resolved);
         } else if (!backpackStack.isEmpty()) {
             backpackStack.set(ExtraDataComponents.SORT_MODE, resolved);
             BackpackEquipment.syncBackpack(player, backpackStack);
@@ -254,7 +288,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     public void setRestockEnabled(boolean enabled, Player player) {
         this.restockEnabled = enabled;
         if (blockEntity != null) {
-            blockEntity.setRestockEnabled(enabled);
+            if (!blockEntity.isRemoved())
+                blockEntity.setRestockEnabled(enabled);
         } else if (!backpackStack.isEmpty()) {
             backpackStack.set(ExtraDataComponents.TOOLBOX_RESTOCK, enabled);
             BackpackEquipment.syncBackpack(player, backpackStack);
@@ -314,7 +349,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
 
     private void syncBacking(Player player) {
         if (blockEntity != null) {
-            blockEntity.syncToClients();
+            if (!blockEntity.isRemoved())
+                blockEntity.syncToClients();
         } else if (!backpackStack.isEmpty()) {
             toolboxInventory.save(backpackStack);
             BackpackEquipment.syncBackpack(player, backpackStack);
@@ -327,6 +363,13 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
 
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
+        if (!player.level().isClientSide() && !stillValid(player))
+            return;
+        if (MenuValidationHelper.isLockedOpenStackClick(this, backpackStack, slotId, dragType, clickType, player)) {
+            if (!player.level().isClientSide())
+                sendAllDataToRemote();
+            return;
+        }
         if (isToolboxSlot(slotId)) {
             // Allow drag-split state machine to finish cleanly without touching toolbox slots (canDragTo is false)
             if (clickType == ClickType.QUICK_CRAFT) {
@@ -349,12 +392,12 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
 
     @Override
     public boolean canDragTo(Slot slotIn) {
-        return !isToolboxSlot(slotIn.index);
+        return !isToolboxSlot(slotIn.index) && isNotLockedOpenStack(slotIn.getItem());
     }
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return !isToolboxSlot(slotIn.index);
+        return !isToolboxSlot(slotIn.index) && isNotLockedOpenStack(slotIn.getItem());
     }
 
     @Override
@@ -365,6 +408,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         Slot slot = this.slots.get(index);
         if (slot != null && slot.hasItem()) {
             ItemStack stack = slot.getItem();
+            if (!isNotLockedOpenStack(stack))
+                return ItemStack.EMPTY;
             result = stack.copy();
             if (index < BACKPACK_SLOTS) {
                 if (!moveItemStackTo(stack, PLAYER_SLOT_START, this.slots.size(), true))
@@ -385,8 +430,9 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
         super.removed(player);
         if (!player.level().isClientSide()) {
             if (blockEntity != null) {
-                blockEntity.syncToClients();
-            } else if (!backpackStack.isEmpty()) {
+                if (!blockEntity.isRemoved())
+                    blockEntity.syncToClients();
+            } else if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
                 toolboxInventory.save(backpackStack);
                 BackpackEquipment.syncBackpack(player, backpackStack);
                 if (player instanceof ServerPlayer serverPlayer) {
@@ -400,6 +446,8 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     public boolean stillValid(Player player) {
         if (player.level().isClientSide())
             return true;
-        return blockEntity != null || !backpackStack.isEmpty();
+        return blockEntity != null
+                ? MenuValidationHelper.isBlockEntityValid(player, blockEntity)
+                : MenuValidationHelper.isPlayerCarryingStack(player, backpackStack);
     }
 }
