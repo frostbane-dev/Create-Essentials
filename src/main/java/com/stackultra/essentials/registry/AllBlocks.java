@@ -33,6 +33,9 @@ public class AllBlocks {
                 .mapColor(MapColor.METAL)
                 .instabreak()
                 .noOcclusion()
+                .isViewBlocking((state, level, pos) -> false)
+                .isSuffocating((state, level, pos) -> false)
+                .isRedstoneConductor((state, level, pos) -> false)
                 .sound(SoundType.METAL);
     }
 
@@ -41,6 +44,9 @@ public class AllBlocks {
                 .mapColor(MapColor.WOOD)
                 .instabreak()
                 .noOcclusion()
+                .isViewBlocking((state, level, pos) -> false)
+                .isSuffocating((state, level, pos) -> false)
+                .isRedstoneConductor((state, level, pos) -> false)
                 .sound(SoundType.WOOD);
     }
 

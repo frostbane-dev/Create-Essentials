@@ -6,6 +6,7 @@ import com.stackultra.essentials.client.AllPartialModels;
 import dev.engine_room.flywheel.api.visualization.VisualizationManager;
 import net.createmod.catnip.render.CachedBuffers;
 import net.createmod.catnip.render.SuperByteBuffer;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -31,11 +32,14 @@ public class RotationalMagnetRenderer extends KineticBlockEntityRenderer<Rotatio
             return;
 
         BlockState state = be.getBlockState();
-        Direction rear = state.getValue(RotationalMagnetBlock.FACING).getOpposite();
         SuperByteBuffer rotatingAssembly = CachedBuffers.partialFacing(
-                AllPartialModels.forMagnet(state), state, rear);
+                AllPartialModels.forMagnet(state), state, Direction.UP);
 
-        standardKineticRotationTransform(rotatingAssembly, be, light)
+        int packedLight = be.getLevel() != null
+                ? LevelRenderer.getLightColor(be.getLevel(), be.getBlockPos())
+                : light;
+
+        standardKineticRotationTransform(rotatingAssembly, be, packedLight)
                 .renderInto(ms, bufferSource.getBuffer(RenderType.cutoutMipped()));
     }
 }

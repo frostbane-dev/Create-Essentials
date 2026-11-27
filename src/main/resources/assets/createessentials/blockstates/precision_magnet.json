@@ -1,10 +1,10 @@
 {
   "variants": {
-    "facing=north": { "model": "createessentials:block/precision_magnet" },
-    "facing=east":  { "model": "createessentials:block/precision_magnet", "y": 90 },
-    "facing=south": { "model": "createessentials:block/precision_magnet", "y": 180 },
-    "facing=west":  { "model": "createessentials:block/precision_magnet", "y": 270 },
-    "facing=up":    { "model": "createessentials:block/precision_magnet", "x": 270 },
+    "facing=north": { "model": "createessentials:block/precision_magnet", "x": 90 },
+    "facing=east":  { "model": "createessentials:block/precision_magnet", "x": 90 },
+    "facing=south": { "model": "createessentials:block/precision_magnet", "x": 90 },
+    "facing=west":  { "model": "createessentials:block/precision_magnet", "x": 90 },
+    "facing=up":    { "model": "createessentials:block/precision_magnet", "x": 90 },
     "facing=down":  { "model": "createessentials:block/precision_magnet", "x": 90 }
   }
 }

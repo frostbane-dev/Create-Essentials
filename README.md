@@ -121,3 +121,12 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
   - Implemented GPU-instanced Flywheel rotation (`RotationalMagnetVisual`) and `KineticBlockEntityRenderer` fallback (`RotationalMagnetRenderer`), registered both in `ClientEvents`, and aligned `RotationalMagnetBlock.hasShaftTowards` strictly with the rear `facing.getOpposite()` shaft face.
 - **Handheld Display Transform Polish (`models/item/`, `.bbmodel`):**
   - Updated `firstperson_righthand`, `firstperson_lefthand` (`rotation: [76, 18, -16]`, `translation: [1, 2.75, 0]`, `scale: [0.52, 0.52, 0.52]`) and `thirdperson_righthand`, `thirdperson_lefthand` (`rotation: [78, 8, 0]`, `translation: [0, 2, 0.75]`, `scale: [0.45, 0.45, 0.45]`) on both magnets so the upright horseshoe silhouette and metallic pole tips read cleanly in-hand while tucking the rear gear/shaft into the grip.
+
+### Placed-Block Shadow Fix & Upward (`+Y`) Magnet Charging Orientation
+- **Eliminated Dark Placement Shadows (`AllBlocks`, `RotationalMagnetBlock`, `MechanicalBackpackBlock`, `MagneticBackpackBlock`, `RotationalMagnetRenderer`):**
+  - Added `.isViewBlocking((s, l, p) -> false)`, `.isSuffocating((s, l, p) -> false)`, and `.isRedstoneConductor((s, l, p) -> false)` alongside `.noOcclusion()` in `AllBlocks`.
+  - Replaced default full-cube hitboxes with accurate non-full `VoxelShape`s and overrode `getShadeBrightness` (`1.0F`), `propagatesSkylightDown` (`true`), and `getLightBlock` (`0`) across magnets and backpacks so placed models never darken adjacent blocks or themselves.
+  - Updated `RotationalMagnetRenderer` to sample clean packed light directly at `be.getBlockPos()` via `LevelRenderer.getLightColor(...)`.
+- **Fixed Upward (`+Y`) Kinetic Charging Orientation (`RotationalMagnetBlock`, `RotationalMagnetVisual`, `RotationalMagnetRenderer`, `blockstates/rotational_magnet.json`, `blockstates/precision_magnet.json`):**
+  - Locked magnet placement (`getStateForPlacement`), default state (`FACING = DOWN`), rotation axis (`Direction.Axis.Y`), shaft connection (`hasShaftTowards` → `Direction.UP` only), Flywheel/BER partial transforms (`Direction.UP`), and magnet blockstates (`"x": 90`) so both magnets always stand upright with their charging shaft input facing upward (`+Y`).
+  - Added JUnit 5 coverage in `BlockLightingAndMagnetOrientationTest`.

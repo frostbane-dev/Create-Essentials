@@ -14,12 +14,9 @@ import java.util.function.Consumer;
 public class RotationalMagnetVisual extends KineticBlockEntityVisual<RotationalMagnetBlockEntity> {
 
     protected final RotatingInstance shaft;
-    private final Direction rear;
 
     public RotationalMagnetVisual(VisualizationContext context, RotationalMagnetBlockEntity blockEntity, float partialTick) {
         super(context, blockEntity, partialTick);
-
-        this.rear = blockState.getValue(RotationalMagnetBlock.FACING).getOpposite();
 
         this.shaft = instancerProvider()
                 .instancer(AllInstanceTypes.ROTATING, Models.partial(AllPartialModels.forMagnet(blockState)))
@@ -27,7 +24,7 @@ public class RotationalMagnetVisual extends KineticBlockEntityVisual<RotationalM
 
         this.shaft.setup(blockEntity)
                 .setPosition(getVisualPosition())
-                .rotateToFace(Direction.SOUTH, rear)
+                .rotateToFace(Direction.SOUTH, Direction.UP)
                 .setChanged();
     }
 

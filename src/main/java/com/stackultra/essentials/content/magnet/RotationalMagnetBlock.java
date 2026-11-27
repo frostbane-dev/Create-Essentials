@@ -15,6 +15,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -27,6 +28,9 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import javax.annotation.Nullable;
 
@@ -36,12 +40,16 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
 
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
+    private static final VoxelShape SHAPE = Shapes.or(
+            Block.box(2.0, 0.0, 5.5, 14.0, 12.0, 10.5),
+            Block.box(4.0, 12.0, 4.0, 12.0, 16.0, 12.0));
+
     private final MagnetTier tier;
 
     public RotationalMagnetBlock(MagnetTier tier, Properties properties) {
         super(properties);
         this.tier = tier;
-        registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH));
+        registerDefaultState(defaultBlockState().setValue(FACING, Direction.DOWN));
     }
 
     public MagnetTier getTier() {
@@ -56,17 +64,38 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getNearestLookingDirection().getOpposite());
+        // Always place with the charging/kinetic shaft input oriented upward (+Y)
+        return defaultBlockState().setValue(FACING, Direction.DOWN);
     }
 
     @Override
     public Direction.Axis getRotationAxis(BlockState state) {
-        return state.getValue(FACING).getAxis();
+        return Direction.Axis.Y;
     }
 
     @Override
     public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return face == state.getValue(FACING).getOpposite();
+        return face == Direction.UP;
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return SHAPE;
+    }
+
+    @Override
+    protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+        return 1.0F;
+    }
+
+    @Override
+    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+        return true;
+    }
+
+    @Override
+    protected int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
+        return 0;
     }
 
     @Override
