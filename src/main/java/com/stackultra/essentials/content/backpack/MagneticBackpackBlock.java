@@ -19,6 +19,8 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -30,6 +32,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 import javax.annotation.Nullable;
 
@@ -58,6 +61,29 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
+
+    private static Direction horizontalFacing(BlockState state) {
+        Direction dir = state.getValue(FACING);
+        return dir.getAxis().isHorizontal() ? dir : Direction.NORTH;
+    }
+
+    @Override
+    protected BlockState rotate(BlockState state, Rotation rotation) {
+        return state.setValue(FACING, rotation.rotate(horizontalFacing(state)));
+    }
+
+    @Override
+    protected BlockState mirror(BlockState state, Mirror mirror) {
+        Direction dir = horizontalFacing(state);
+        return state.setValue(FACING, mirror.getRotation(dir).rotate(dir));
+    }
+
+    @Override
+    public BlockState getRotatedBlockState(BlockState originalState, Direction targetedFace) {
+        Direction current = horizontalFacing(originalState);
+        Direction next = targetedFace == Direction.DOWN ? current.getCounterClockWise() : current.getClockWise();
+        return originalState.setValue(FACING, next);
     }
 
     @Override
@@ -96,6 +122,18 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
     }
 
     @Override
+    protected boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    @Override
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof MagneticBackpackBlockEntity be)
+            return ItemHandlerHelper.calcRedstoneFromInventory(be.getItemHandler());
+        return 0;
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (level.isClientSide)
             return InteractionResult.SUCCESS;
@@ -105,6 +143,8 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
 
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
+            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
         withBlockEntityDo(level, pos, be -> player.openMenu(be, be::sendToMenu));

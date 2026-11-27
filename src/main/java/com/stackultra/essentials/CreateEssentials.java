@@ -3,6 +3,7 @@ package com.stackultra.essentials;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.TooltipModifier;
+import com.stackultra.essentials.compat.create.AllCreateCompat;
 import com.stackultra.essentials.content.BacktankSupport;
 import com.stackultra.essentials.content.backpack.MagneticBackpackBlockEntity;
 import com.stackultra.essentials.content.backpack.MechanicalBackpackBlockEntity;
@@ -36,6 +37,7 @@ public class CreateEssentials {
         AllMenus.register(modBus);
         AllRecipeSerializers.register(modBus);
         AllCreativeTabs.register(modBus);
+        AllCreateCompat.register(modBus);
         modBus.addListener(MechanicalBackpackBlockEntity::registerCapabilities);
         modBus.addListener(MagneticBackpackBlockEntity::registerCapabilities);
         BacktankSupport.init();

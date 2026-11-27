@@ -1,13 +1,12 @@
 package com.stackultra.essentials.content.backpack;
 
-import com.stackultra.essentials.compat.curios.CuriosBackpackIntegration;
+import com.stackultra.essentials.compat.curios.CuriosCompat;
 import com.stackultra.essentials.content.StackSyncHelper;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,14 +23,9 @@ public final class BackpackEquipment {
                 || chest.getItem() instanceof MagneticBackpackItem)
             return chest;
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                ItemStack back = CuriosBackpackIntegration.getBackBackpack(player);
-                if (!back.isEmpty())
-                    return back;
-            } catch (Throwable ignored) {
-            }
-        }
+        ItemStack back = CuriosCompat.getBackBackpack(player);
+        if (!back.isEmpty())
+            return back;
 
         return ItemStack.EMPTY;
     }
@@ -84,12 +78,7 @@ public final class BackpackEquipment {
             writers.add(stack -> inventory.setItem(slotIndex, stack));
         }
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                CuriosBackpackIntegration.collectBackSlots(player, candidates, writers);
-            } catch (Throwable ignored) {
-            }
-        }
+        CuriosCompat.collectBackSlots(player, candidates, writers);
 
         int matchIndex = StackSyncHelper.findMatchingIndex(candidates, backpack);
         if (matchIndex >= 0) {

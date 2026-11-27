@@ -1,6 +1,12 @@
 {
   "variants": {
-    "netherite=false": { "model": "createessentials:block/mechanical_backpack" },
-    "netherite=true": { "model": "createessentials:block/netherite_backpack" }
+    "facing=north,netherite=false": { "model": "createessentials:block/mechanical_backpack" },
+    "facing=east,netherite=false":  { "model": "createessentials:block/mechanical_backpack", "y": 90 },
+    "facing=south,netherite=false": { "model": "createessentials:block/mechanical_backpack", "y": 180 },
+    "facing=west,netherite=false":  { "model": "createessentials:block/mechanical_backpack", "y": 270 },
+    "facing=north,netherite=true":  { "model": "createessentials:block/netherite_backpack" },
+    "facing=east,netherite=true":   { "model": "createessentials:block/netherite_backpack", "y": 90 },
+    "facing=south,netherite=true":  { "model": "createessentials:block/netherite_backpack", "y": 180 },
+    "facing=west,netherite=true":   { "model": "createessentials:block/netherite_backpack", "y": 270 }
   }
 }

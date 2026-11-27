@@ -1,7 +1,9 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.stackultra.essentials.registry.AllItems;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -16,45 +18,79 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 import javax.annotation.Nullable;
 
 import java.util.List;
 
-public class MechanicalBackpackBlock extends Block implements EntityBlock {
+public class MechanicalBackpackBlock extends Block implements EntityBlock, IWrenchable {
 
     public static final BooleanProperty NETHERITE = BooleanProperty.create("netherite");
+    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    private static final VoxelShape SHAPE = Block.box(1.5, 0.0, 1.5, 14.5, 15.5, 13.0);
+    private static final VoxelShape SHAPE_NORTH = Block.box(1.5, 0.0, 1.5, 14.5, 15.5, 13.0);
+    private static final VoxelShape SHAPE_SOUTH = Block.box(1.5, 0.0, 3.0, 14.5, 15.5, 14.5);
+    private static final VoxelShape SHAPE_EAST = Block.box(3.0, 0.0, 1.5, 14.5, 15.5, 14.5);
+    private static final VoxelShape SHAPE_WEST = Block.box(1.5, 0.0, 1.5, 13.0, 15.5, 14.5);
 
     public MechanicalBackpackBlock(Properties properties) {
         super(properties);
-        registerDefaultState(defaultBlockState().setValue(NETHERITE, false));
+        registerDefaultState(defaultBlockState()
+                .setValue(NETHERITE, false)
+                .setValue(FACING, Direction.NORTH));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(NETHERITE);
+        builder.add(NETHERITE, FACING);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(NETHERITE,
-                context.getItemInHand().getItem() instanceof NetheriteBackpackItem);
+        return defaultBlockState()
+                .setValue(NETHERITE, context.getItemInHand().getItem() instanceof NetheriteBackpackItem)
+                .setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
+
+    @Override
+    protected BlockState rotate(BlockState state, Rotation rotation) {
+        return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
+    }
+
+    @Override
+    protected BlockState mirror(BlockState state, Mirror mirror) {
+        return state.rotate(mirror.getRotation(state.getValue(FACING)));
+    }
+
+    @Override
+    public BlockState getRotatedBlockState(BlockState originalState, Direction targetedFace) {
+        Direction current = originalState.getValue(FACING);
+        Direction next = targetedFace == Direction.DOWN ? current.getCounterClockWise() : current.getClockWise();
+        return originalState.setValue(FACING, next);
     }
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        return switch (state.getValue(FACING)) {
+            case SOUTH -> SHAPE_SOUTH;
+            case EAST -> SHAPE_EAST;
+            case WEST -> SHAPE_WEST;
+            default -> SHAPE_NORTH;
+        };
     }
 
     @Override
@@ -69,6 +105,18 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock {
 
     @Override
     protected int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
+        return 0;
+    }
+
+    @Override
+    protected boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    @Override
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be)
+            return ItemHandlerHelper.calcRedstoneFromInventory(be.getItemHandler());
         return 0;
     }
 
@@ -88,6 +136,8 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock {
 
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
+            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be)

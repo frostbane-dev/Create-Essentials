@@ -62,5 +62,8 @@
   "block.createessentials.precision_magnet.tooltip.condition2": "Filters",
   "block.createessentials.precision_magnet.tooltip.behaviour2": "Supports _Create filters_ to only pull matching items.",
   "block.createessentials.precision_magnet.tooltip.condition3": "Controls",
-  "block.createessentials.precision_magnet.tooltip.behaviour3": "Toggle with _Toggle Magnet_; open filters with _Open Magnet_."
+  "block.createessentials.precision_magnet.tooltip.behaviour3": "Toggle with _Toggle Magnet_; open filters with _Open Magnet_.",
+  "createessentials.display_source.backpack_fill_level": "Backpack Fill Level",
+  "createessentials.display_source.backpack_item_count": "Backpack Item Count",
+  "createessentials.display_source.backpack_charge": "Magnetic Charge"
 }

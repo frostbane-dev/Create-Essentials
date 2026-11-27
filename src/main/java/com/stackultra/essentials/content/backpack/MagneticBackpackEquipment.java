@@ -1,10 +1,9 @@
 package com.stackultra.essentials.content.backpack;
 
-import com.stackultra.essentials.compat.curios.CuriosBackpackIntegration;
+import com.stackultra.essentials.compat.curios.CuriosCompat;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,14 +18,9 @@ public final class MagneticBackpackEquipment {
         if (chest.getItem() instanceof MagneticBackpackItem)
             return chest;
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                ItemStack back = CuriosBackpackIntegration.getBackMagneticBackpack(player);
-                if (!back.isEmpty())
-                    return back;
-            } catch (Throwable ignored) {
-            }
-        }
+        ItemStack back = CuriosCompat.getBackMagneticBackpack(player);
+        if (!back.isEmpty())
+            return back;
 
         return ItemStack.EMPTY;
     }
@@ -59,14 +53,9 @@ public final class MagneticBackpackEquipment {
         if (chest.getItem() instanceof MagneticBackpackItem)
             addUnique(backpacks, chest);
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                ItemStack back = CuriosBackpackIntegration.getBackMagneticBackpack(player);
-                if (back.getItem() instanceof MagneticBackpackItem)
-                    addUnique(backpacks, back);
-            } catch (Throwable ignored) {
-            }
-        }
+        ItemStack back = CuriosCompat.getBackMagneticBackpack(player);
+        if (back.getItem() instanceof MagneticBackpackItem)
+            addUnique(backpacks, back);
 
         ItemStack main = player.getMainHandItem();
         if (main.getItem() instanceof MagneticBackpackItem)

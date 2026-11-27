@@ -110,6 +110,8 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
 
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
+            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
         if (!tier.hasFilterSlots())

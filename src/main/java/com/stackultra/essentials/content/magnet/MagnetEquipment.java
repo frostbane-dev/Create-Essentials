@@ -1,13 +1,11 @@
 package com.stackultra.essentials.content.magnet;
 
+import com.stackultra.essentials.compat.curios.CuriosCompat;
 import com.stackultra.essentials.content.StackSyncHelper;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,25 +49,13 @@ public final class MagnetEquipment {
         if (offhand.getItem() instanceof RotationalMagnetItem)
             magnets.add(offhand);
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                magnets.addAll(getCuriosMagnets(player));
-            } catch (Throwable ignored) {
-            }
-        }
-
+        magnets.addAll(CuriosCompat.getCuriosMagnets(player));
         return magnets;
     }
 
     public static ItemStack findCuriosMagnet(Player player) {
-        if (!ModList.get().isLoaded("curios"))
-            return ItemStack.EMPTY;
-        try {
-            List<ItemStack> curios = getCuriosMagnets(player);
-            return curios.isEmpty() ? ItemStack.EMPTY : curios.get(0);
-        } catch (Throwable ignored) {
-            return ItemStack.EMPTY;
-        }
+        List<ItemStack> curios = CuriosCompat.getCuriosMagnets(player);
+        return curios.isEmpty() ? ItemStack.EMPTY : curios.get(0);
     }
 
     public static ItemStack findEquippedMagnet(Player player) {
@@ -101,14 +87,9 @@ public final class MagnetEquipment {
         if (isPrecisionMagnet(off))
             return off;
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                for (ItemStack stack : getCuriosMagnets(player)) {
-                    if (isPrecisionMagnet(stack))
-                        return stack;
-                }
-            } catch (Throwable ignored) {
-            }
+        for (ItemStack stack : CuriosCompat.getCuriosMagnets(player)) {
+            if (isPrecisionMagnet(stack))
+                return stack;
         }
 
         for (ItemStack stack : player.getInventory().items) {
@@ -158,12 +139,7 @@ public final class MagnetEquipment {
             writers.add(stack -> inventory.setItem(slotIndex, stack));
         }
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                collectCuriosMagnetSlots(player, candidates, writers);
-            } catch (Throwable ignored) {
-            }
-        }
+        CuriosCompat.collectCuriosMagnetSlots(player, candidates, writers);
 
         int matchIndex = StackSyncHelper.findMatchingIndex(candidates, magnet);
         if (matchIndex >= 0) {
@@ -189,36 +165,5 @@ public final class MagnetEquipment {
                 return true;
         }
         return false;
-    }
-
-    private static List<ItemStack> getCuriosMagnets(Player player) {
-        return CuriosApi.getCuriosInventory(player)
-                .map(handler -> {
-                    List<ItemStack> stacks = new ArrayList<>();
-                    handler.getCurios().values().forEach(stacksHandler -> {
-                        for (int i = 0; i < stacksHandler.getSlots(); i++) {
-                            ItemStack stack = stacksHandler.getStacks().getStackInSlot(i);
-                            if (stack.getItem() instanceof RotationalMagnetItem)
-                                stacks.add(stack);
-                        }
-                    });
-                    return stacks;
-                })
-                .orElseGet(ArrayList::new);
-    }
-
-    private static void collectCuriosMagnetSlots(Player player,
-                                                 List<ItemStack> candidates,
-                                                 List<Consumer<ItemStack>> writers) {
-        CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
-            handler.getCurios().values().forEach(stacksHandler -> {
-                IDynamicStackHandler stacks = stacksHandler.getStacks();
-                for (int i = 0; i < stacks.getSlots(); i++) {
-                    final int slotIndex = i;
-                    candidates.add(stacks.getStackInSlot(i));
-                    writers.add(stack -> stacks.setStackInSlot(slotIndex, stack));
-                }
-            });
-        });
     }
 }

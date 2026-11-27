@@ -1,15 +1,16 @@
 package com.stackultra.essentials.compat.curios;
 
 import com.stackultra.essentials.CreateEssentials;
-import com.stackultra.essentials.registry.AllItems;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import top.theillusivec4.curios.api.client.CuriosRendererRegistry;
 
+/**
+ * Safe client setup subscriber containing zero direct Curios class references.
+ * Delegates to {@link CuriosClientBridge} only when Curios is installed.
+ */
 @OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = CreateEssentials.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class CuriosClientSetup {
@@ -19,13 +20,9 @@ public class CuriosClientSetup {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        if (!ModList.get().isLoaded("curios"))
+        if (!CuriosCompat.isLoaded())
             return;
 
-        event.enqueueWork(() -> {
-            CuriosRendererRegistry.register(AllItems.MECHANICAL_BACKPACK.get(), BackCurioRenderer::new);
-            CuriosRendererRegistry.register(AllItems.NETHERITE_BACKPACK.get(), BackCurioRenderer::new);
-            CuriosRendererRegistry.register(AllItems.MAGNETIC_BACKPACK.get(), BackCurioRenderer::new);
-        });
+        event.enqueueWork(CuriosClientBridge::registerRenderers);
     }
 }

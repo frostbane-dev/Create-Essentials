@@ -2,7 +2,7 @@ package com.stackultra.essentials.content.backpack;
 
 import com.simibubi.create.AllItems;
 import com.stackultra.essentials.CreateEssentials;
-import com.stackultra.essentials.compat.curios.CuriosBackpackIntegration;
+import com.stackultra.essentials.compat.curios.CuriosCompat;
 import com.stackultra.essentials.network.SyncToolboxLinksPayload;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.server.level.ServerPlayer;
@@ -12,7 +12,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -106,14 +105,9 @@ public final class PortableToolboxHandler {
      * Priority: Curios back slot -> Chest armor -> Main hand -> Offhand -> Player inventory.
      */
     public static ItemStack findPortableToolboxBackpack(Player player) {
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                ItemStack curio = CuriosBackpackIntegration.getBackBackpack(player);
-                if (BackpackHelper.isBackpack(curio))
-                    return curio;
-            } catch (Throwable ignored) {
-            }
-        }
+        ItemStack curio = CuriosCompat.getBackBackpack(player);
+        if (BackpackHelper.isBackpack(curio))
+            return curio;
 
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
         if (BackpackHelper.isBackpack(chest))

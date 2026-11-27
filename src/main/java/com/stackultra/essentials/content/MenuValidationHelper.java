@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content;
 
+import com.stackultra.essentials.compat.curios.CuriosCompat;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -10,8 +11,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.fml.ModList;
-import top.theillusivec4.curios.api.CuriosApi;
 
 /**
  * Shared container validity and open-item slot locking helpers for
@@ -54,15 +53,7 @@ public final class MenuValidationHelper {
                 return true;
         }
 
-        if (ModList.get().isLoaded("curios")) {
-            try {
-                if (isInCurios(player, target))
-                    return true;
-            } catch (Throwable ignored) {
-            }
-        }
-
-        return false;
+        return CuriosCompat.isStackInCurios(player, target);
     }
 
     /**
@@ -97,21 +88,6 @@ public final class MenuValidationHelper {
                 && ((playerInventory != null && slot.container == playerInventory)
                 || (playerInventory == null && slot.container instanceof Inventory))
                 && slot.getContainerSlot() == lockedInventorySlot;
-    }
-
-    private static boolean isInCurios(Player player, ItemStack target) {
-        return CuriosApi.getCuriosInventory(player)
-                .map(handler -> {
-                    for (var stacksHandler : handler.getCurios().values()) {
-                        var stacks = stacksHandler.getStacks();
-                        for (int i = 0; i < stacks.getSlots(); i++) {
-                            if (stacks.getStackInSlot(i) == target)
-                                return true;
-                        }
-                    }
-                    return false;
-                })
-                .orElse(false);
     }
 
     /**

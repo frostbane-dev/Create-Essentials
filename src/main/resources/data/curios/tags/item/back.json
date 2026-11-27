@@ -1,4 +1,5 @@
 {
+  "replace": false,
   "values": [
     "createessentials:mechanical_backpack",
     "createessentials:netherite_backpack",

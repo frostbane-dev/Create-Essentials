@@ -2,11 +2,10 @@ package com.stackultra.essentials.content;
 
 import com.simibubi.create.AllTags;
 import com.simibubi.create.content.equipment.armor.BacktankUtil;
+import com.stackultra.essentials.compat.curios.CuriosCompat;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
-import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,30 +35,9 @@ public final class BacktankSupport {
                 if (AllTags.AllItemTags.PRESSURIZED_AIR_SOURCES.matches(offhand))
                     stacks.add(offhand);
             }
-            if (ModList.get().isLoaded("curios")) {
-                try {
-                    stacks.addAll(getCuriosAirSources(entity));
-                } catch (Throwable ignored) {
-                }
-            }
+            stacks.addAll(CuriosCompat.getCuriosAirSources(entity));
             return stacks;
         });
-    }
-
-    private static List<ItemStack> getCuriosAirSources(LivingEntity entity) {
-        return CuriosApi.getCuriosInventory(entity)
-                .map(handler -> {
-                    List<ItemStack> stacks = new ArrayList<>();
-                    handler.getCurios().values().forEach(stacksHandler -> {
-                        for (int i = 0; i < stacksHandler.getSlots(); i++) {
-                            ItemStack stack = stacksHandler.getStacks().getStackInSlot(i);
-                            if (AllTags.AllItemTags.PRESSURIZED_AIR_SOURCES.matches(stack))
-                                stacks.add(stack);
-                        }
-                    });
-                    return stacks;
-                })
-                .orElseGet(ArrayList::new);
     }
 
     public static List<ItemStack> getBacktanks(LivingEntity entity) {
