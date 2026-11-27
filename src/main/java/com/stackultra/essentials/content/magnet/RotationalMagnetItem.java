@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.magnet;
 
+import com.stackultra.essentials.content.DropSyncHandler;
 import com.stackultra.essentials.content.MagneticEquipmentHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
 import net.minecraft.core.Holder;
@@ -43,6 +44,12 @@ public class RotationalMagnetItem extends BlockItem {
     }
 
     @Override
+    public boolean onDroppedByPlayer(ItemStack item, Player player) {
+        DropSyncHandler.markHotbarDropPending(player);
+        return super.onDroppedByPlayer(item, player);
+    }
+
+    @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (player.isShiftKeyDown() && tier.hasFilterSlots()) {
@@ -52,7 +59,7 @@ public class RotationalMagnetItem extends BlockItem {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> RotationalMagnetMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> RotationalMagnetMenu.writeItemOpenData(buf, stack, this));
+                    buf -> RotationalMagnetMenu.writeItemOpenData(buf, player, stack, this));
             return InteractionResultHolder.consume(stack);
         }
         return super.use(level, player, hand);

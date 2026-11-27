@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.Minecraft;
@@ -38,6 +39,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
             IItemHandler storageInventory,
             PortableToolboxInventory toolboxInventory,
             IItemHandler displayHandler,
+            int lockedInventorySlot,
             SortMode sortMode,
             boolean restockEnabled,
             int[] initialCounts
@@ -45,9 +47,11 @@ public class BackpackMenu extends AbstractBackpackMenu {
     }
 
     public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
+                                         Player player,
                                          ItemStack stack,
                                          PortableToolboxInventory toolbox) {
         buf.writeBoolean(false);
+        buf.writeVarInt(MenuValidationHelper.findPlayerInventorySlot(player, stack));
         buf.writeVarInt(stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME).ordinal());
         buf.writeBoolean(stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
@@ -61,7 +65,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
     private BackpackMenu(int windowId, Inventory inv, ClientInitData data) {
         super(AllMenus.BACKPACK.get(), windowId, inv,
                 data.storageInventory(), data.toolboxInventory(), data.displayHandler(),
-                ItemStack.EMPTY, data.sortMode(), data.restockEnabled());
+                ItemStack.EMPTY, data.lockedInventorySlot(), data.sortMode(), data.restockEnabled());
         this.blockEntity = data.blockEntity();
         System.arraycopy(data.initialCounts(), 0, this.syncedToolboxCounts, 0, TOOLBOX_SLOTS);
         addSlots();
@@ -71,7 +75,8 @@ public class BackpackMenu extends AbstractBackpackMenu {
     private BackpackMenu(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
         super(AllMenus.BACKPACK.get(), windowId, inv,
                 be.getItemHandler(), be.getToolboxInventory(), be.getToolboxInventory().asMenuDisplayHandler(),
-                ItemStack.EMPTY, be.getSortMode(), be.isRestockEnabled());
+                ItemStack.EMPTY, MenuValidationHelper.NO_LOCKED_SLOT,
+                be.getSortMode(), be.isRestockEnabled());
         this.blockEntity = be;
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
             this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
@@ -84,6 +89,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
         super(AllMenus.BACKPACK.get(), windowId, inv,
                 storage, toolbox, toolbox.asMenuDisplayHandler(),
                 stack,
+                MenuValidationHelper.findPlayerInventorySlot(inv.player, stack),
                 stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME),
                 stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
         this.blockEntity = null;
@@ -108,6 +114,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
     private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData) {
         boolean fromBlockEntity = extraData.readBoolean();
         MechanicalBackpackBlockEntity found = null;
+        int lockedInventorySlot = MenuValidationHelper.NO_LOCKED_SLOT;
         int[] initialCounts = new int[TOOLBOX_SLOTS];
         SortMode initialSortMode = SortMode.NAME;
         boolean initialRestock = true;
@@ -130,6 +137,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
                     initialCounts[c] = found.getToolboxInventory().getTotalCount(c);
             }
         } else {
+            lockedInventorySlot = extraData.readVarInt();
             initialSortMode = SortMode.byOrdinal(extraData.readVarInt());
             initialRestock = extraData.readBoolean();
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
@@ -149,7 +157,8 @@ public class BackpackMenu extends AbstractBackpackMenu {
         } else {
             toolbox = PortableToolboxInventory.empty();
         }
-        return new ClientInitData(found, storage, toolbox, displayHandler, initialSortMode, initialRestock, initialCounts);
+        return new ClientInitData(found, storage, toolbox, displayHandler, lockedInventorySlot,
+                initialSortMode, initialRestock, initialCounts);
     }
 
     private void addSlots() {

@@ -33,6 +33,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     private final Inventory playerInventory;
     private final ItemStackHandler filterInventory;
     private final ItemStack magnetStack;
+    private final int lockedInventorySlot;
     private final RotationalMagnetBlockEntity blockEntity;
 
     private boolean enabled;
@@ -41,9 +42,11 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     private int maxCharge;
 
     public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
+                                         Player player,
                                          ItemStack stack,
                                          RotationalMagnetItem item) {
         buf.writeBoolean(false);
+        buf.writeVarInt(MenuValidationHelper.findPlayerInventorySlot(player, stack));
         ItemContainerContents.STREAM_CODEC.encode(buf,
                 stack.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY));
         buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
@@ -69,6 +72,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
             }
             this.blockEntity = found;
             this.magnetStack = ItemStack.EMPTY;
+            this.lockedInventorySlot = MenuValidationHelper.NO_LOCKED_SLOT;
             this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
             if (found != null) {
                 found.readClient(tag, extraData.registryAccess());
@@ -87,6 +91,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
         } else {
             this.blockEntity = null;
             this.magnetStack = ItemStack.EMPTY;
+            this.lockedInventorySlot = extraData.readVarInt();
             this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
             NonNullList<ItemStack> filters = NonNullList.withSize(FILTER_SLOTS, ItemStack.EMPTY);
             ItemContainerContents.STREAM_CODEC.decode(extraData).copyInto(filters);
@@ -106,6 +111,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
         super(AllMenus.ROTATIONAL_MAGNET.get(), windowId);
         this.playerInventory = inv;
         this.magnetStack = stack;
+        this.lockedInventorySlot = MenuValidationHelper.findPlayerInventorySlot(inv.player, stack);
         this.blockEntity = null;
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
 
@@ -128,6 +134,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
         this.playerInventory = inv;
         this.blockEntity = be;
         this.magnetStack = ItemStack.EMPTY;
+        this.lockedInventorySlot = MenuValidationHelper.NO_LOCKED_SLOT;
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
 
         for (int i = 0; i < FILTER_SLOTS; i++)
@@ -231,7 +238,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
                 addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 110 + row * 18) {
                     @Override
                     public boolean mayPickup(Player player) {
-                        return isNotLockedOpenStack(getItem());
+                        return !isLockedOpenSlot(this);
                     }
                 });
             }
@@ -240,14 +247,14 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
             addSlot(new Slot(playerInventory, col, 8 + col * 18, 168) {
                 @Override
                 public boolean mayPickup(Player player) {
-                    return isNotLockedOpenStack(getItem());
+                    return !isLockedOpenSlot(this);
                 }
             });
         }
     }
 
-    private boolean isNotLockedOpenStack(ItemStack stack) {
-        return magnetStack.isEmpty() || stack != magnetStack;
+    private boolean isLockedOpenSlot(Slot slot) {
+        return MenuValidationHelper.isLockedSlot(slot, playerInventory, magnetStack, lockedInventorySlot);
     }
 
     public boolean isBlockEntityContext() {
@@ -312,9 +319,8 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
         if (!player.level().isClientSide() && !stillValid(player))
             return;
-        if (MenuValidationHelper.isLockedOpenStackClick(this, magnetStack, slotId, dragType, clickType, player)) {
-            if (!player.level().isClientSide())
-                sendAllDataToRemote();
+        if (MenuValidationHelper.isLockedOpenStackClick(
+                this, magnetStack, lockedInventorySlot, slotId, dragType, clickType, player)) {
             return;
         }
         if (slotId >= 0 && slotId < FILTER_SLOTS) {
@@ -342,12 +348,12 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
 
     @Override
     public boolean canDragTo(Slot slotIn) {
-        return slotIn.index >= FILTER_SLOTS && isNotLockedOpenStack(slotIn.getItem());
+        return slotIn.index >= FILTER_SLOTS && !isLockedOpenSlot(slotIn);
     }
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return slotIn.index >= FILTER_SLOTS && isNotLockedOpenStack(slotIn.getItem());
+        return slotIn.index >= FILTER_SLOTS && !isLockedOpenSlot(slotIn);
     }
 
     @Override

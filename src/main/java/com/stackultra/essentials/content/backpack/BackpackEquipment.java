@@ -94,15 +94,16 @@ public final class BackpackEquipment {
         int matchIndex = StackSyncHelper.findMatchingIndex(candidates, backpack);
         if (matchIndex >= 0) {
             writers.get(matchIndex).accept(backpack);
+            broadcastIfServer(player);
         }
-        broadcastIfServer(player);
     }
 
     private static void broadcastIfServer(Player player) {
         if (player.level().isClientSide())
             return;
+        // Only broadcast on the active containerMenu; vanilla transfers state to inventoryMenu on close.
+        // Calling inventoryMenu.broadcastChanges() while another container is open bypasses
+        // suppressRemoteUpdates() during handleContainerClick and leaks uncoordinated windowId=0 hotbar updates.
         player.containerMenu.broadcastChanges();
-        if (player.containerMenu != player.inventoryMenu)
-            player.inventoryMenu.broadcastChanges();
     }
 }

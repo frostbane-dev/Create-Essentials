@@ -674,7 +674,5 @@ public final class PortableToolboxHandler {
             BackpackEquipment.syncBackpack(player, backpack);
 
         player.containerMenu.broadcastChanges();
-        if (player.containerMenu != player.inventoryMenu)
-            player.inventoryMenu.broadcastChanges();
     }
 }

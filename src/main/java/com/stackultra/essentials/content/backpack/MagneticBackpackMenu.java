@@ -58,6 +58,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
             PortableToolboxInventory toolboxInventory,
             IItemHandler displayHandler,
             ItemStackHandler filterInventory,
+            int lockedInventorySlot,
             boolean enabled,
             boolean blacklist,
             boolean charging,
@@ -70,10 +71,12 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
     }
 
     public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
+                                         Player player,
                                          ItemStack stack,
                                          MagneticBackpackItem item,
                                          PortableToolboxInventory toolbox) {
         buf.writeBoolean(false);
+        buf.writeVarInt(MenuValidationHelper.findPlayerInventorySlot(player, stack));
         ItemContainerContents.STREAM_CODEC.encode(buf,
                 stack.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY));
         buf.writeBoolean(stack.getOrDefault(AllDataComponents.ENABLED, true));
@@ -94,7 +97,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
     private MagneticBackpackMenu(int windowId, Inventory inv, ClientInitData data) {
         super(AllMenus.MAGNETIC_BACKPACK.get(), windowId, inv,
                 data.storageInventory(), data.toolboxInventory(), data.displayHandler(),
-                ItemStack.EMPTY, data.sortMode(), data.restockEnabled());
+                ItemStack.EMPTY, data.lockedInventorySlot(), data.sortMode(), data.restockEnabled());
         this.blockEntity = data.blockEntity();
         this.filterInventory = data.filterInventory();
         this.enabled = data.enabled();
@@ -111,7 +114,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
     private MagneticBackpackMenu(int windowId, Inventory inv, MagneticBackpackBlockEntity be) {
         super(AllMenus.MAGNETIC_BACKPACK.get(), windowId, inv,
                 be.getItemHandler(), be.getToolboxInventory(), be.getToolboxInventory().asMenuDisplayHandler(),
-                ItemStack.EMPTY, be.getSortMode(), be.isRestockEnabled());
+                ItemStack.EMPTY, MenuValidationHelper.NO_LOCKED_SLOT, be.getSortMode(), be.isRestockEnabled());
         this.blockEntity = be;
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
         for (int i = 0; i < FILTER_SLOTS; i++)
@@ -133,6 +136,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
         super(AllMenus.MAGNETIC_BACKPACK.get(), windowId, inv,
                 storage, toolbox, toolbox.asMenuDisplayHandler(),
                 stack,
+                MenuValidationHelper.findPlayerInventorySlot(inv.player, stack),
                 stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME),
                 stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
         this.blockEntity = null;
@@ -194,13 +198,16 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
                 int maxCharge = found.getMaxCharge();
                 boolean charging = found.getSpeed() != 0 && charge < maxCharge;
                 return new ClientInitData(found, found.getItemHandler(), found.getToolboxInventory(),
-                        displayHandler, filters, found.isEnabled(), found.isBlacklist(),
+                        displayHandler, filters, MenuValidationHelper.NO_LOCKED_SLOT,
+                        found.isEnabled(), found.isBlacklist(),
                         charging, charge, maxCharge, found.getSortMode(), found.isRestockEnabled(), initialCounts);
             }
             return new ClientInitData(null, new BackpackInventory(), PortableToolboxInventory.empty(),
-                    displayHandler, filters, true, false, false, 0, 1, SortMode.NAME, true, initialCounts);
+                    displayHandler, filters, MenuValidationHelper.NO_LOCKED_SLOT,
+                    true, false, false, 0, 1, SortMode.NAME, true, initialCounts);
         }
 
+        int lockedInventorySlot = extraData.readVarInt();
         NonNullList<ItemStack> decodedFilters = NonNullList.withSize(FILTER_SLOTS, ItemStack.EMPTY);
         ItemContainerContents.STREAM_CODEC.decode(extraData).copyInto(decodedFilters);
         for (int i = 0; i < FILTER_SLOTS; i++)
@@ -215,7 +222,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
             initialCounts[c] = Math.max(0, extraData.readVarInt());
         return new ClientInitData(null, new BackpackInventory(), PortableToolboxInventory.empty(),
-                displayHandler, filters, enabled, blacklist, charging, charge, maxCharge,
+                displayHandler, filters, lockedInventorySlot, enabled, blacklist, charging, charge, maxCharge,
                 sortMode, restockEnabled, initialCounts);
     }
 

@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.stackultra.essentials.content.DropSyncHandler;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -30,6 +31,12 @@ public class MechanicalBackpackItem extends BlockItem implements Equipable {
     }
 
     @Override
+    public boolean onDroppedByPlayer(ItemStack item, Player player) {
+        DropSyncHandler.markHotbarDropPending(player);
+        return super.onDroppedByPlayer(item, player);
+    }
+
+    @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!player.isShiftKeyDown()) {
@@ -40,7 +47,7 @@ public class MechanicalBackpackItem extends BlockItem implements Equipable {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> BackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> BackpackMenu.writeItemOpenData(buf, stack, tb));
+                    buf -> BackpackMenu.writeItemOpenData(buf, player, stack, tb));
             return InteractionResultHolder.consume(stack);
         }
         return swapWithEquipmentSlot(this, level, player, hand);

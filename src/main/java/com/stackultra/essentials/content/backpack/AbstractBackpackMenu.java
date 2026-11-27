@@ -32,6 +32,7 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     protected final PortableToolboxInventory toolboxInventory;
     protected final IItemHandler toolboxSlotBacking;
     protected final ItemStack backpackStack;
+    protected final int lockedInventorySlot;
 
     protected SortMode sortMode;
     protected boolean restockEnabled;
@@ -44,6 +45,7 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
                                    PortableToolboxInventory toolboxInventory,
                                    IItemHandler toolboxSlotBacking,
                                    ItemStack backpackStack,
+                                   int lockedInventorySlot,
                                    SortMode initialSortMode,
                                    boolean initialRestockEnabled) {
         super(menuType, windowId);
@@ -52,6 +54,7 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
         this.toolboxInventory = toolboxInventory;
         this.toolboxSlotBacking = toolboxSlotBacking;
         this.backpackStack = backpackStack;
+        this.lockedInventorySlot = lockedInventorySlot;
         this.sortMode = initialSortMode != null ? initialSortMode : SortMode.NAME;
         this.restockEnabled = initialRestockEnabled;
     }
@@ -162,7 +165,7 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
                         x + col * 18, playerY + row * 18) {
                     @Override
                     public boolean mayPickup(Player player) {
-                        return isNotLockedOpenStack(getItem());
+                        return !isLockedOpenSlot(this);
                     }
                 });
             }
@@ -171,14 +174,14 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
             addSlot(new Slot(playerInventory, hotbar, x + hotbar * 18, hotbarY) {
                 @Override
                 public boolean mayPickup(Player player) {
-                    return isNotLockedOpenStack(getItem());
+                    return !isLockedOpenSlot(this);
                 }
             });
         }
     }
 
-    protected boolean isNotLockedOpenStack(ItemStack stack) {
-        return backpackStack.isEmpty() || stack != backpackStack;
+    protected boolean isLockedOpenSlot(Slot slot) {
+        return MenuValidationHelper.isLockedSlot(slot, playerInventory, backpackStack, lockedInventorySlot);
     }
 
     public boolean isToolboxSlot(int slotId) {
@@ -303,9 +306,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
         if (!player.level().isClientSide() && !stillValid(player))
             return;
-        if (MenuValidationHelper.isLockedOpenStackClick(this, backpackStack, slotId, dragType, clickType, player)) {
-            if (!player.level().isClientSide())
-                sendAllDataToRemote();
+        if (MenuValidationHelper.isLockedOpenStackClick(
+                this, backpackStack, lockedInventorySlot, slotId, dragType, clickType, player)) {
             return;
         }
         if (handleCustomSlotClick(slotId, dragType, clickType, player))
@@ -332,12 +334,12 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
 
     @Override
     public boolean canDragTo(Slot slotIn) {
-        return !isProtectedSlot(slotIn.index) && isNotLockedOpenStack(slotIn.getItem());
+        return !isProtectedSlot(slotIn.index) && !isLockedOpenSlot(slotIn);
     }
 
     @Override
     public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return !isProtectedSlot(slotIn.index) && isNotLockedOpenStack(slotIn.getItem());
+        return !isProtectedSlot(slotIn.index) && !isLockedOpenSlot(slotIn);
     }
 
     @Override
@@ -347,9 +349,9 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
         ItemStack result = ItemStack.EMPTY;
         Slot slot = this.slots.get(index);
         if (slot != null && slot.hasItem()) {
-            ItemStack stack = slot.getItem();
-            if (!isNotLockedOpenStack(stack))
+            if (isLockedOpenSlot(slot))
                 return ItemStack.EMPTY;
+            ItemStack stack = slot.getItem();
             result = stack.copy();
             if (index < STORAGE_SLOTS) {
                 if (!moveItemStackTo(stack, getPlayerSlotStart(), this.slots.size(), true))

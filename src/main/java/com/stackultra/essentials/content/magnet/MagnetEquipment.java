@@ -168,16 +168,15 @@ public final class MagnetEquipment {
         int matchIndex = StackSyncHelper.findMatchingIndex(candidates, magnet);
         if (matchIndex >= 0) {
             writers.get(matchIndex).accept(magnet);
+            broadcastIfServer(player);
         }
-        broadcastIfServer(player);
     }
 
     private static void broadcastIfServer(Player player) {
         if (player.level().isClientSide())
             return;
+        // Only broadcast on the active containerMenu; vanilla transfers state to inventoryMenu on close.
         player.containerMenu.broadcastChanges();
-        if (player.containerMenu != player.inventoryMenu)
-            player.inventoryMenu.broadcastChanges();
     }
 
     private static boolean isPrecisionMagnet(ItemStack stack) {

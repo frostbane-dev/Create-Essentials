@@ -1,5 +1,6 @@
 package com.stackultra.essentials.content.backpack;
 
+import com.stackultra.essentials.content.DropSyncHandler;
 import com.stackultra.essentials.content.MagneticEquipmentHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.registry.AllDataComponents;
@@ -36,6 +37,12 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
     }
 
     @Override
+    public boolean onDroppedByPlayer(ItemStack item, Player player) {
+        DropSyncHandler.markHotbarDropPending(player);
+        return super.onDroppedByPlayer(item, player);
+    }
+
+    @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!player.isShiftKeyDown()) {
@@ -46,7 +53,7 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> MagneticBackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> MagneticBackpackMenu.writeItemOpenData(buf, stack, this, tb));
+                    buf -> MagneticBackpackMenu.writeItemOpenData(buf, player, stack, this, tb));
             return InteractionResultHolder.consume(stack);
         }
         return swapWithEquipmentSlot(this, level, player, hand);

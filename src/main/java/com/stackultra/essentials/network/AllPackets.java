@@ -180,7 +180,7 @@ public class AllPackets {
             player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> RotationalMagnetMenu.create(id, inv, magnet),
                             magnet.getHoverName()),
-                    buf -> RotationalMagnetMenu.writeItemOpenData(buf, magnet, item));
+                    buf -> RotationalMagnetMenu.writeItemOpenData(buf, player, magnet, item));
         });
     }
 
@@ -208,7 +208,7 @@ public class AllPackets {
                 player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> MagneticBackpackMenu.create(id, inv, backpack),
                                 backpack.getHoverName()),
-                        buf -> MagneticBackpackMenu.writeItemOpenData(buf, backpack, magneticItem, tb));
+                        buf -> MagneticBackpackMenu.writeItemOpenData(buf, player, backpack, magneticItem, tb));
                 return;
             }
 
@@ -217,7 +217,7 @@ public class AllPackets {
                 player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
                                 backpack.getHoverName()),
-                        buf -> BackpackMenu.writeItemOpenData(buf, backpack, tb));
+                        buf -> BackpackMenu.writeItemOpenData(buf, player, backpack, tb));
             }
         });
     }
