@@ -132,4 +132,5 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
   - Added JUnit 5 coverage in `BlockLightingAndMagnetOrientationTest`.
 - **Refined 15-Cube Boxy-Back & Thick-Cog Magnet Geometry (`rotational_magnet`, `precision_magnet`):**
   - Replaced the tapered stepped rear arch with a cleaner square/boxy Minecraft U-bridge (`rear_bridge_left`, `rear_bridge_right`), flattened pole ends completely flush with the arm cross-section (`3.25×4.0`, zero bulging step), thickened the rotating rear cogwheel body (`2.0` voxels along Z) with shorter, stubbier prongs (`radius 3.6`), synced `RotationalMagnetBlock.SHAPE` (`8` static + `7` rotating cubes, zero-overlap `64×64` textures), and standardized all Tier 1 workspace assets under `rotational_magnet`.
+  - Synced the latest updated `create_essentials_assets/models/rotational_magnet.json` and `textures/rotational_magnet.png` into `src/main/resources/assets/createessentials/` (`textures/block/rotational_magnet.png`, split static `models/block/rotational_magnet.json` + rotating `models/block/rotational_magnet_shaft.json`, and complete `models/item/rotational_magnet.json`).
 
