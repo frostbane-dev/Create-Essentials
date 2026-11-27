@@ -84,6 +84,12 @@ public final class BacktankSupport {
         return total;
     }
 
+    public static int referenceMaxAir(List<ItemStack> backtanks) {
+        if (backtanks == null || backtanks.isEmpty())
+            return 0;
+        return BacktankUtil.maxAir(backtanks.get(0));
+    }
+
     public static void consumeAir(LivingEntity entity, List<ItemStack> backtanks, int amount) {
         int remaining = amount;
         for (ItemStack backtank : backtanks) {

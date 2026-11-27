@@ -42,6 +42,7 @@
   "createessentials.tooltip.remaining": "Remaining: %s",
   "createessentials.tooltip.status": "Status: %s",
   "createessentials.tooltip.charging": "Charging...",
+  "createessentials.tooltip.charging_tag": "(Charging)",
   "createessentials.tooltip.charge": "Charge: %s / %s (%s)",
   "createessentials.tooltip.backpack_empty": "Empty",
   "key.categories.createessentials": "Create: Essentials",

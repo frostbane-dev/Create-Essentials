@@ -80,10 +80,7 @@ public class RotationalMagnetItem extends BlockItem {
         boolean enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
         boolean charging = stack.getOrDefault(AllDataComponents.CHARGING, false);
 
-        tooltip.add(Component.translatable("createessentials.tooltip.status", ChargeDisplay.status(enabled))
-                .withStyle(ChatFormatting.GRAY));
-        if (charging)
-            tooltip.add(ChargeDisplay.chargingLine());
+        tooltip.add(ChargeDisplay.statusLine(enabled, charging));
         tooltip.add(ChargeDisplay.charge(getCharge(stack), getMaxCharge(stack)));
     }
 

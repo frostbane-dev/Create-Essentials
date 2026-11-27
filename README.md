@@ -92,6 +92,13 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
 - **Real-Time Radial Menu (`Alt`) Sync & Stale Slot Fix (`SyncToolboxLinksPayload`, `BackpackToolboxPayload`, `PortableToolboxHandler`, `PortableToolboxOverlay`, `PortableToolboxRadialScreen`, `CuriosBackpackIntegration`, `AllPackets`):**
   - Extended `SyncToolboxLinksPayload` to carry the full server-authoritative 8-compartment live snapshot (`displayItems`, exact `0..256` counts, `hasBackpack`, locked hotbar bitmask, and Restock state) pushed immediately on every GUI mutation, menu close, suction routing, equip/return, and explicit `REQUEST_SYNC` when opening the radial wheel.
   - Added automatic hotbar-link re-binding (`rebindMovedLinks`) when items are moved or sorted between toolbox compartments, unified `B` (`OpenBackpackPayload`) and `Alt` (`PortableToolboxHandler`) backpack targeting priority (**Curios → Chest → Main → Off → Inv**), hardened Curios `"back"` sync, added empty-hotbar fallback when holding the backpack, and matched `AllKeys.TOOLBELT` key release via `InputConstants.getKey`.
-- **Automated Unit Tests (`PortableToolboxSafetyAndSyncTest`):**
-  - Enabled ModDevGradle JUnit 5 testing and added 8 unit tests verifying `1`/`64`/`256` stack caps, ghost-slot zero-loss click/clear/replace/swap safety, DataComponent & BlockEntity NBT round-trips, sorting count conservation, and slot-move link re-binding/live overlay synchronization.
+- **Automated Unit Tests (`PortableToolboxSafetyAndSyncTest`, `BacktankChargeStabilityTest`):**
+  - Enabled ModDevGradle JUnit 5 testing and added 13 unit tests verifying `1`/`64`/`256` stack caps, ghost-slot zero-loss click/clear/replace/swap safety, DataComponent & BlockEntity NBT round-trips, sorting count conservation, slot-move link re-binding/live overlay synchronization, and Backtank charge/hysteresis stability.
+
+### Backtank Recharge Stability & Tooltip Jitter Fix
+- **Same-Tick Backtank Sustainment & Hysteresis (`BacktankChargeController`, `BacktankSupport`, `MagnetTickHandler`, `MagneticBackpackTickHandler`):**
+  - Extracted a shared per-stack `BacktankChargeController` that sustains active 1-tick operational drain directly from available Backtank air in the same tick (eliminating `04:59 ↔ 05:00` oscillation at 100% charge), isolates fractional air remainders per item stack, uses single-Backtank reference capacity (`BacktankSupport.referenceMaxAir`), and applies a 25-tick hysteresis window so `CHARGING` never flickers between ticks.
+- **Constant-Height Inline Charging Tag (`ChargeDisplay`, `RotationalMagnetItem`, `MagneticBackpackItem`, `en_us.json`):**
+  - Moved the hover tooltip charging indicator inline onto the `Status:` line (`Status: Enabled (Charging)`) instead of dynamically inserting/removing a separate vertical `"Charging..."` line, completely eliminating vertical tooltip and backpack preview grid jitter.
+
 

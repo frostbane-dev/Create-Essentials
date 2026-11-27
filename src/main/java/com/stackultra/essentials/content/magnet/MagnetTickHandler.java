@@ -2,6 +2,7 @@ package com.stackultra.essentials.content.magnet;
 
 import com.simibubi.create.content.logistics.filter.FilterItemStack;
 import com.stackultra.essentials.CreateEssentials;
+import com.stackultra.essentials.content.BacktankChargeController;
 import com.stackultra.essentials.content.BacktankSupport;
 import com.stackultra.essentials.content.ItemPullHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
@@ -18,43 +19,39 @@ import java.util.List;
 @EventBusSubscriber(modid = CreateEssentials.MOD_ID)
 public class MagnetTickHandler {
 
-    private static final int BACKTANK_RECHARGE_PER_TICK = 15;
-    private static double airRemainder = 0D;
-
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
         if (player.level().isClientSide())
             return;
 
+        List<ItemStack> magnets = MagnetEquipment.getCarriedMagnets(player);
+        if (magnets.isEmpty())
+            return;
+
         List<ItemStack> backtanks = BacktankSupport.getBacktanks(player);
         int availableAir = BacktankSupport.totalAir(backtanks);
-        int backtankMaxAir = BacktankSupport.totalMaxAir(backtanks);
+        int referenceMaxAir = BacktankSupport.referenceMaxAir(backtanks);
 
-        for (ItemStack magnet : MagnetEquipment.getCarriedMagnets(player)) {
+        for (ItemStack magnet : magnets) {
             if (!(magnet.getItem() instanceof RotationalMagnetItem item))
                 continue;
 
             int charge = item.getCharge(magnet);
             int max = item.getMaxCharge(magnet);
             boolean enabled = magnet.getOrDefault(AllDataComponents.ENABLED, true);
-            boolean charging = false;
 
-            if (charge < max && availableAir > 0) {
-                int before = charge;
-                charge = Math.min(max, charge + BACKTANK_RECHARGE_PER_TICK);
-                int chargeDelta = charge - before;
-                airRemainder += (chargeDelta / (double) max) * backtankMaxAir;
-                int consume = Math.min((int) airRemainder, availableAir);
-                if (consume > 0) {
-                    BacktankSupport.consumeAir(player, backtanks, consume);
-                    availableAir -= consume;
-                    airRemainder -= consume;
-                }
-                charging = true;
-            }
+            BacktankChargeController.StepResult step = BacktankChargeController.step(
+                    magnet,
+                    charge,
+                    max,
+                    enabled,
+                    availableAir,
+                    referenceMaxAir,
+                    consume -> BacktankSupport.consumeAir(player, backtanks, consume));
+            availableAir = Math.max(0, availableAir - step.airConsumed());
 
-            if (enabled && charge > 0) {
+            if (step.activePower()) {
                 double radius = item.getTier().pullRadius();
                 List<ItemStack> filters = item.getTier().hasFilterSlots()
                         ? RotationalMagnetItem.getFilters(magnet)
@@ -69,16 +66,12 @@ public class MagnetTickHandler {
 
                     ItemPullHelper.pullToFeet(itemEntity, player);
                 }
-
-                if (!charging)
-                    charge--;
             }
 
-            int clampedCharge = Math.clamp(charge, 0, max);
-            if (magnet.getOrDefault(AllDataComponents.CHARGE, 0) != clampedCharge
-                    || magnet.getOrDefault(AllDataComponents.CHARGING, false) != charging) {
-                magnet.set(AllDataComponents.CHARGE, clampedCharge);
-                magnet.set(AllDataComponents.CHARGING, charging);
+            if (magnet.getOrDefault(AllDataComponents.CHARGE, 0) != step.nextCharge()
+                    || magnet.getOrDefault(AllDataComponents.CHARGING, false) != step.charging()) {
+                magnet.set(AllDataComponents.CHARGE, step.nextCharge());
+                magnet.set(AllDataComponents.CHARGING, step.charging());
                 MagnetEquipment.syncMagnet(player, magnet);
             }
         }

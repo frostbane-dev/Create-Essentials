@@ -2,6 +2,7 @@ package com.stackultra.essentials.content.backpack;
 
 import com.simibubi.create.content.logistics.filter.FilterItemStack;
 import com.stackultra.essentials.CreateEssentials;
+import com.stackultra.essentials.content.BacktankChargeController;
 import com.stackultra.essentials.content.BacktankSupport;
 import com.stackultra.essentials.content.ItemPullHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
@@ -19,9 +20,6 @@ import java.util.List;
 @EventBusSubscriber(modid = CreateEssentials.MOD_ID)
 public class MagneticBackpackTickHandler {
 
-    private static final int BACKTANK_RECHARGE_PER_TICK = 15;
-    private static double airRemainder = 0D;
-
     private MagneticBackpackTickHandler() {
     }
 
@@ -35,9 +33,9 @@ public class MagneticBackpackTickHandler {
         if (backpacks.isEmpty())
             return;
 
-        List<ItemStack> backtanks = null;
-        int availableAir = 0;
-        int backtankMaxAir = 0;
+        List<ItemStack> backtanks = BacktankSupport.getBacktanks(player);
+        int availableAir = BacktankSupport.totalAir(backtanks);
+        int referenceMaxAir = BacktankSupport.referenceMaxAir(backtanks);
 
         for (ItemStack backpack : backpacks) {
             if (backpack.isEmpty() || !(backpack.getItem() instanceof MagneticBackpackItem item))
@@ -46,32 +44,19 @@ public class MagneticBackpackTickHandler {
             int charge = item.getCharge(backpack);
             int max = item.getMaxCharge(backpack);
             boolean enabled = backpack.getOrDefault(AllDataComponents.ENABLED, true);
-            boolean charging = false;
             boolean changed = false;
 
-            if (charge < max) {
-                if (backtanks == null) {
-                    backtanks = BacktankSupport.getBacktanks(player);
-                    availableAir = BacktankSupport.totalAir(backtanks);
-                    backtankMaxAir = BacktankSupport.totalMaxAir(backtanks);
-                }
-                if (availableAir > 0) {
-                    int before = charge;
-                    charge = Math.min(max, charge + BACKTANK_RECHARGE_PER_TICK);
-                    int chargeDelta = charge - before;
-                    airRemainder += (chargeDelta / (double) max) * backtankMaxAir;
-                    int consume = Math.min((int) airRemainder, availableAir);
-                    if (consume > 0) {
-                        BacktankSupport.consumeAir(player, backtanks, consume);
-                        availableAir -= consume;
-                        airRemainder -= consume;
-                    }
-                    changed = true;
-                    charging = true;
-                }
-            }
+            BacktankChargeController.StepResult step = BacktankChargeController.step(
+                    backpack,
+                    charge,
+                    max,
+                    enabled,
+                    availableAir,
+                    referenceMaxAir,
+                    consume -> BacktankSupport.consumeAir(player, backtanks, consume));
+            availableAir = Math.max(0, availableAir - step.airConsumed());
 
-            if (enabled && charge > 0) {
+            if (step.activePower()) {
                 double radius = MagnetTier.TIER_2.pullRadius();
                 List<ItemStack> filters = MagneticBackpackItem.getFilters(backpack);
 
@@ -99,7 +84,7 @@ public class MagneticBackpackTickHandler {
 
                     ItemStack remaining = itemEntity.getItem().copy();
 
-                    // Priority 1: matching physically populated 8-slot portable toolbox compartments
+                    // Priority 1: matching toolbox compartments (populated or empty ghost-reserved)
                     int beforeToolbox = remaining.getCount();
                     remaining = toolbox.insertIntoMatchingCompartment(remaining, false);
                     if (remaining.getCount() != beforeToolbox)
@@ -141,19 +126,16 @@ public class MagneticBackpackTickHandler {
                 if (pulledIntoToolbox && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
                     PortableToolboxHandler.onToolboxModified(serverPlayer, backpack, toolbox);
                 }
-
-                if (!charging) {
-                    charge--;
-                    changed = true;
-                }
             }
 
-            if (backpack.getOrDefault(AllDataComponents.CHARGING, false) != charging)
+            if (backpack.getOrDefault(AllDataComponents.CHARGE, 0) != step.nextCharge()
+                    || backpack.getOrDefault(AllDataComponents.CHARGING, false) != step.charging()) {
                 changed = true;
+            }
 
             if (changed) {
-                backpack.set(AllDataComponents.CHARGE, Math.clamp(charge, 0, max));
-                backpack.set(AllDataComponents.CHARGING, charging);
+                backpack.set(AllDataComponents.CHARGE, step.nextCharge());
+                backpack.set(AllDataComponents.CHARGING, step.charging());
                 MagneticBackpackEquipment.syncMagneticBackpack(player, backpack);
             }
         }

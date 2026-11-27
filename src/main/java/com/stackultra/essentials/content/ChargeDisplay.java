@@ -22,6 +22,21 @@ public final class ChargeDisplay {
                 .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.GRAY);
     }
 
+    /**
+     * Renders the item hover status line with an inline {@code (Charging)} tag when actively
+     * recharging/sustained so the tooltip line count and vertical height never shift.
+     */
+    public static Component statusLine(boolean enabled, boolean charging) {
+        var line = Component.translatable("createessentials.tooltip.status", status(enabled))
+                .withStyle(ChatFormatting.GRAY);
+        if (charging) {
+            line.append(Component.literal(" "))
+                    .append(Component.translatable("createessentials.tooltip.charging_tag")
+                            .withStyle(ChatFormatting.AQUA));
+        }
+        return line;
+    }
+
     public static Component chargingLine() {
         return Component.translatable("createessentials.tooltip.charging")
                 .withStyle(ChatFormatting.AQUA);
