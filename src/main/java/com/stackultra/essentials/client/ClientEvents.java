@@ -12,11 +12,15 @@ import com.stackultra.essentials.content.backpack.MagneticBackpackItem;
 import com.stackultra.essentials.content.backpack.MagneticBackpackScreen;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
+import com.stackultra.essentials.content.magnet.RotationalMagnetRenderer;
 import com.stackultra.essentials.content.magnet.RotationalMagnetScreen;
+import com.stackultra.essentials.content.magnet.RotationalMagnetVisual;
 import com.stackultra.essentials.network.OpenBackpackPayload;
 import com.stackultra.essentials.network.OpenMagnetPayload;
 import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
+import com.stackultra.essentials.registry.AllBlockEntities;
 import com.stackultra.essentials.registry.AllMenus;
+import dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -30,8 +34,10 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -50,6 +56,7 @@ public class ClientEvents {
     private static final int CHARGE_TOOLTIP_RIGHT_PADDING = 6;
 
     static {
+        AllPartialModels.init();
         GogglesHelper.registerViewerCheck(() -> {
             Minecraft minecraft = Minecraft.getInstance();
             return minecraft.player != null && GogglesHelper.isWearingGoggles(minecraft.player);
@@ -70,6 +77,19 @@ public class ClientEvents {
             "key.createessentials.open_backpack",
             GLFW.GLFW_KEY_B,
             "key.categories.createessentials");
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() ->
+                SimpleBlockEntityVisualizer.builder(AllBlockEntities.ROTATIONAL_MAGNET.get())
+                        .factory(RotationalMagnetVisual::new)
+                        .apply());
+    }
+
+    @SubscribeEvent
+    public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(AllBlockEntities.ROTATIONAL_MAGNET.get(), RotationalMagnetRenderer::new);
+    }
 
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
