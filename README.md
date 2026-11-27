@@ -113,9 +113,9 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
   - Added `.noOcclusion()` to backpack and magnet block properties in `AllBlocks` so non-full-cube models render cleanly without culling adjacent block faces.
 
 ### Rebuilt Industrial Magnets & Live Kinetic Shaft Rotation
-- **Compact Restrained-Industrial Horseshoe Redesign (`create_magnet` / `rotational_magnet`, `precision_magnet`):**
-  - Rebuilt Tier 1 (`rotational_magnet`) and Tier 2 (`precision_magnet`) horizontally centered on `[8, 8, 8]` with reinforced metallic pole shoes, parallel arms, raised structural collars, smooth stepped curved rear U-arches, central inner coupling brace, compact rear bearing collar, single Create-style 8-tooth cogwheel, and standard `4×4` kinetic shaft flush to `Z = 16`.
-  - Updated editable Blockbench `.bbmodel` files in `create_essentials_assets/bbmodel/` with clean 4-group outliners (`magnet_poles`, `magnet_arms`, `static_housing`, `rotating_shaft`) and zero-overlap `64×64` 16x pixel-art textures.
+- **Clean 20-Cube Horseshoe Silhouette (`create_magnet` / `rotational_magnet`, `precision_magnet`):**
+  - Synced Tier 1 (`rotational_magnet`) directly from the refined 20-cube `create_magnet.bbmodel` (14 static + 6 rotating, strictly within `[0, 16]` bounds) and aligned Tier 2 (`precision_magnet`) to the exact same clean 20-cube silhouette in dark volcanic Netherite, forged iron shoes, gilded brass accents, and subtle inner polarity indicators.
+  - Preserved clean 4-group Blockbench outliners (`magnet_poles`, `magnet_arms`, `static_housing`, `rotating_shaft`), `64×64` 16x pixel-art textures, and single rear Create cogwheel + `4×4` kinetic shaft flush to `Z = 16`.
 - **Split Kinematics & In-Game Rotation (`AllPartialModels`, `RotationalMagnetVisual`, `RotationalMagnetRenderer`, `ClientEvents`, `RotationalMagnetBlock`):**
-  - Split in-world block models (`models/block/rotational_magnet.json`, `precision_magnet.json`) into static bodies plus rotating partial models (`models/block/rotational_magnet_shaft.json`, `precision_magnet_shaft.json`) while keeping complete assembled item models in `models/item/`.
+  - Split in-world block models (`models/block/rotational_magnet.json`, `precision_magnet.json`) into 14-cube static bodies plus 6-cube rotating partial models (`models/block/rotational_magnet_shaft.json`, `precision_magnet_shaft.json`) while keeping complete 20-cube assembled item models in `models/item/`.
   - Implemented GPU-instanced Flywheel rotation (`RotationalMagnetVisual`) and `KineticBlockEntityRenderer` fallback (`RotationalMagnetRenderer`), registered both in `ClientEvents`, and aligned `RotationalMagnetBlock.hasShaftTowards` strictly with the rear `facing.getOpposite()` shaft face.
