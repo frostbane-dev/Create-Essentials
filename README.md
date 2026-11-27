@@ -136,4 +136,5 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
 - **Shared Rear Wheel Assembly & Subtle Pixel-Art Corner Chamfer (`rotational_magnet`, `precision_magnet`):**
   - Transferred `rotational_magnet`'s exact `static_housing` and `rotating_shaft` geometry, pivots, UV rects, and `408` wheel pixels into `precision_magnet` (pruning `124` leftover unreferenced pixels from both `64×64` atlases).
   - Applied a crisp 1-voxel outer rear corner chamfer (`rear_bridge_*_main` + `rear_bridge_*_back`, `16` total cubes = `10` static + `6` rotating) with exact proportional UVs across all `.bbmodel`, block, shaft partial, item `.json`, and `.png` files in both `create_essentials_assets/` and `src/main/resources/assets/createessentials/`.
+  - Recolored only the `64` upper `kinetic_shaft` texels on both `rotational_magnet.png` and `precision_magnet.png` (plus embedded `.bbmodel` textures) to match Create's `netherite_backtank.png` shaft cap and slate-plum side palette with zero geometry, UV, JSON, or code changes.
 
