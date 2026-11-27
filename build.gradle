@@ -63,6 +63,11 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
 }
 
 sourceSets.main.resources {
@@ -79,6 +84,13 @@ dependencies {
     compileOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}")
 
     runtimeOnly("mezz.jei:jei-$minecraft_version-neoforge:$jei_version") { transitive = false }
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+test {
+    useJUnitPlatform()
 }
 
 processResources {

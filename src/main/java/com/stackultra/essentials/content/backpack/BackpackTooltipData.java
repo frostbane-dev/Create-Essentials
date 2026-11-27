@@ -74,6 +74,15 @@ public record BackpackTooltipData(
                     return false;
             }
         }
+        ItemContainerContents tbFilters = stack.get(ExtraDataComponents.TOOLBOX_FILTERS);
+        if (tbFilters != null) {
+            NonNullList<ItemStack> rawFilters = NonNullList.withSize(PortableToolboxInventory.COMPARTMENTS, ItemStack.EMPTY);
+            tbFilters.copyInto(rawFilters);
+            for (ItemStack entry : rawFilters) {
+                if (entry != null && !entry.isEmpty())
+                    return false;
+            }
+        }
         return true;
     }
 
@@ -109,13 +118,18 @@ public record BackpackTooltipData(
                 copied.add(ItemStack.EMPTY);
         }
 
-        // Portable 8-compartment toolbox snapshot (physically stored items only)
+        // Portable 8-compartment toolbox snapshot (physical items + reserved empty ghost filters)
         List<ToolboxSlotEntry> toolboxEntries = new ArrayList<>(PortableToolboxInventory.COMPARTMENTS);
         boolean hasToolbox = false;
         ItemContainerContents tbContents = stack.get(ExtraDataComponents.TOOLBOX_CONTENTS);
         NonNullList<ItemStack> backing = NonNullList.withSize(PortableToolboxInventory.BACKING_SLOTS, ItemStack.EMPTY);
         if (tbContents != null)
             tbContents.copyInto(backing);
+
+        ItemContainerContents tbFilters = stack.get(ExtraDataComponents.TOOLBOX_FILTERS);
+        NonNullList<ItemStack> filterSlots = NonNullList.withSize(PortableToolboxInventory.COMPARTMENTS, ItemStack.EMPTY);
+        if (tbFilters != null)
+            tbFilters.copyInto(filterSlots);
 
         for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++) {
             int total = 0;
@@ -134,7 +148,13 @@ public record BackpackTooltipData(
                 toolboxEntries.add(new ToolboxSlotEntry(sample, total));
                 hasToolbox = true;
             } else {
-                toolboxEntries.add(new ToolboxSlotEntry(ItemStack.EMPTY, 0));
+                ItemStack filter = filterSlots.get(c);
+                if (filter != null && !filter.isEmpty()) {
+                    toolboxEntries.add(new ToolboxSlotEntry(filter.copyWithCount(1), 0));
+                    hasToolbox = true;
+                } else {
+                    toolboxEntries.add(new ToolboxSlotEntry(ItemStack.EMPTY, 0));
+                }
             }
         }
 

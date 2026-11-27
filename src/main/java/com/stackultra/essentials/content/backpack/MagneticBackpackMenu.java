@@ -38,12 +38,12 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     private static final int FILTER_X = -20;
     private static final int FILTER_Y = 5;
     private static final int STORAGE_X = 8;
-    private static final int STORAGE_Y = 42;
-    // 8x1 horizontal bottom toolbox bar centered beneath the 176x191 main window
+    private static final int STORAGE_Y = 37;
+    // 8x1 horizontal toolbox bar positioned directly beneath the 27-slot storage grid and above player inventory
     public static final int TOOLBOX_X = 17;
-    public static final int TOOLBOX_Y = 210;
-    private static final int PLAYER_Y = 109;
-    private static final int HOTBAR_Y = 167;
+    public static final int TOOLBOX_Y = 114;
+    private static final int PLAYER_Y = 150;
+    private static final int HOTBAR_Y = 208;
 
     private final Inventory playerInventory;
     private final IItemHandler storageInventory;
@@ -69,7 +69,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         this.backpackStack = ItemStack.EMPTY;
         this.storageInventory = be.getItemHandler();
         this.toolboxInventory = be.getToolboxInventory();
-        this.toolboxSlotBacking = this.toolboxInventory;
+        this.toolboxSlotBacking = this.toolboxInventory.asMenuDisplayHandler();
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
         for (int i = 0; i < FILTER_SLOTS; i++)
             this.filterInventory.setStackInSlot(i, be.getFilterInventory().getStackInSlot(i).copy());
@@ -94,7 +94,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
                 () -> MagneticBackpackEquipment.syncMagneticBackpack(inv.player, stack));
         this.toolboxInventory = PortableToolboxInventory.forStack(stack,
                 () -> MagneticBackpackEquipment.syncMagneticBackpack(inv.player, stack));
-        this.toolboxSlotBacking = this.toolboxInventory;
+        this.toolboxSlotBacking = this.toolboxInventory.asMenuDisplayHandler();
         this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
         NonNullList<ItemStack> filters = MagneticBackpackItem.getFilterSlots(stack);
         for (int i = 0; i < FILTER_SLOTS; i++)
@@ -143,9 +143,10 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
                 this.maxCharge = found.getMaxCharge();
                 this.sortMode = found.getSortMode();
                 this.restockEnabled = found.isRestockEnabled();
+                IItemHandler menuView = found.getToolboxInventory().asMenuDisplayHandler();
                 for (int c = 0; c < TOOLBOX_SLOTS; c++) {
                     this.syncedToolboxCounts[c] = found.getToolboxInventory().getTotalCount(c);
-                    displayHandler.setStackInSlot(c, found.getToolboxInventory().getStackInSlot(c));
+                    displayHandler.setStackInSlot(c, menuView.getStackInSlot(c));
                 }
             } else {
                 this.storageInventory = new BackpackInventory();
@@ -435,7 +436,11 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
             blockEntity.setChanged();
             blockEntity.sendData();
         } else if (!backpackStack.isEmpty()) {
+            toolboxInventory.save(backpackStack);
             MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
+            if (player instanceof ServerPlayer serverPlayer) {
+                PortableToolboxHandler.onToolboxModified(serverPlayer, backpackStack, toolboxInventory);
+            }
         }
         broadcastChanges();
     }
@@ -535,6 +540,18 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     public void removed(Player player) {
         super.removed(player);
         persistFilters(player);
+        if (!player.level().isClientSide()) {
+            if (blockEntity != null) {
+                blockEntity.setChanged();
+                blockEntity.sendData();
+            } else if (!backpackStack.isEmpty()) {
+                toolboxInventory.save(backpackStack);
+                MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
+                if (player instanceof ServerPlayer serverPlayer) {
+                    PortableToolboxHandler.onToolboxModified(serverPlayer, backpackStack, toolboxInventory);
+                }
+            }
+        }
     }
 
     @Override

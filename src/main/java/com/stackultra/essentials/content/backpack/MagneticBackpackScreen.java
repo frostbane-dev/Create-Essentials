@@ -29,30 +29,41 @@ import java.util.List;
 public class MagneticBackpackScreen extends AbstractSimiContainerScreen<MagneticBackpackMenu> {
 
     private static final int WINDOW_WIDTH = 176;
-    private static final int WINDOW_HEIGHT = 191;
-    private static final int BOTTOM_TAB_HEIGHT = 42;
+    private static final int WINDOW_HEIGHT = 232;
+
+    private static final int GRID_LEFT = 7;
+    private static final int GRID_RIGHT = 169;
+    private static final int GRID_WIDTH = GRID_RIGHT - GRID_LEFT;
 
     private static final int TITLE_Y = 6;
     private static final int UTILITY_BTN_SIZE = 12;
     private static final int UTILITY_BTN_GAP = 1;
     private static final int UTILITY_BTN_Y = 4;
-    private static final int UTILITY_START_X = 169 - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
+    private static final int UTILITY_START_X = GRID_RIGHT - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
 
+    // Sleek control row aligned flush with the 9-slot column edges [7..86) and [90..169)
     private static final int BUTTON_Y = 19;
-    private static final int BUTTON_W = 78;
-    private static final int BUTTON_H = 18;
+    private static final int BUTTON_W = 79;
+    private static final int BUTTON_H = 14;
+    private static final int BUTTON_LEFT_X = GRID_LEFT;
+    private static final int BUTTON_RIGHT_X = GRID_RIGHT - BUTTON_W;
 
     // Left 3-slot filter panel aligned flush with the top-left corner of the main window
     private static final int LEFT_TAB_WIDTH = 25;
     private static final int LEFT_TAB_TOP = 0;
     private static final int LEFT_TAB_HEIGHT = 62;
 
+    // Toolbox section directly beneath storage [36..90) and above player inventory [139..225)
+    private static final int DIVIDER_STORAGE_Y = 93;
     private static final int TOOLBOX_TITLE_X = 8;
-    private static final int TOOLBOX_TITLE_Y = WINDOW_HEIGHT + 5;
-    private static final int RESTOCK_BTN_X = 92;
-    private static final int RESTOCK_BTN_Y = WINDOW_HEIGHT + 2;
-    private static final int RESTOCK_BTN_W = 76;
+    private static final int TOOLBOX_TITLE_Y = 100;
+    private static final int RESTOCK_BTN_W = 74;
     private static final int RESTOCK_BTN_H = 14;
+    private static final int RESTOCK_BTN_X = GRID_RIGHT - RESTOCK_BTN_W;
+    private static final int RESTOCK_BTN_Y = 97;
+    private static final int DIVIDER_PLAYER_Y = 134;
+
+    private static final float GHOST_PREVIEW_ALPHA = 0.40F;
 
     private static final int COLOR_BLACKLIST = 0xFFD66BFF;
     private static final int COLOR_WHITELIST = 0xFF78B8FF;
@@ -68,8 +79,6 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     protected void init() {
         setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         super.init();
-        // Center main window + bottom toolbox bar cleanly on screen
-        this.topPos = Math.max(4, (this.height - (WINDOW_HEIGHT + BOTTOM_TAB_HEIGHT)) / 2);
 
         utilityButtons.clear();
         int step = UTILITY_BTN_SIZE + UTILITY_BTN_GAP;
@@ -118,7 +127,7 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
         for (DarkIconButton btn : utilityButtons)
             addRenderableWidget(btn);
 
-        DarkTextButton toggle = new DarkTextButton(leftPos + 8, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
+        DarkTextButton toggle = new DarkTextButton(leftPos + BUTTON_LEFT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> {
                     boolean enabled = menu.isEnabled();
                     return Component.translatable("createessentials.gui.magnet_status",
@@ -131,7 +140,7 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
                     PacketDistributor.sendToServer(togglePayload());
                 });
 
-        DarkTextButton blacklist = new DarkTextButton(leftPos + 90, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
+        DarkTextButton blacklist = new DarkTextButton(leftPos + BUTTON_RIGHT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> Component.translatable(menu.isBlacklist()
                         ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
                 () -> menu.isBlacklist() ? COLOR_BLACKLIST : COLOR_WHITELIST,
@@ -174,22 +183,21 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
         boolean inLeftTab = mouseX >= guiLeft - LEFT_TAB_WIDTH && mouseX < guiLeft
                 && mouseY >= guiTop + LEFT_TAB_TOP && mouseY < guiTop + LEFT_TAB_TOP + LEFT_TAB_HEIGHT;
-        boolean inBottomTab = mouseX >= guiLeft && mouseX < guiLeft + imageWidth
-                && mouseY >= guiTop + imageHeight && mouseY < guiTop + imageHeight + BOTTOM_TAB_HEIGHT;
-        return !inLeftTab && !inBottomTab && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
+        return !inLeftTab && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
     }
 
     @Override
     public List<Rect2i> getExtraAreas() {
         return List.of(
-                new Rect2i(leftPos - LEFT_TAB_WIDTH, topPos + LEFT_TAB_TOP, LEFT_TAB_WIDTH, LEFT_TAB_HEIGHT),
-                new Rect2i(leftPos, topPos + imageHeight, imageWidth, BOTTOM_TAB_HEIGHT));
+                new Rect2i(leftPos - LEFT_TAB_WIDTH, topPos + LEFT_TAB_TOP, LEFT_TAB_WIDTH, LEFT_TAB_HEIGHT));
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
-        DarkGuiStyling.drawPanelWithLeftAndBottomTabs(graphics, leftPos, topPos, imageWidth, imageHeight,
-                LEFT_TAB_WIDTH, LEFT_TAB_TOP, LEFT_TAB_HEIGHT, BOTTOM_TAB_HEIGHT);
+        DarkGuiStyling.drawPanelWithLeftTab(graphics, leftPos, topPos, imageWidth, imageHeight,
+                LEFT_TAB_WIDTH, LEFT_TAB_TOP, LEFT_TAB_HEIGHT);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_STORAGE_Y, GRID_WIDTH);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_PLAYER_Y, GRID_WIDTH);
 
         for (Slot slot : menu.slots)
             DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
@@ -214,6 +222,8 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
                 graphics.renderItem(stack, slot.x, slot.y);
                 graphics.renderItemDecorations(font, stack, slot.x, slot.y, "");
                 DarkGuiStyling.drawCompactCount(graphics, font, total, slot.x, slot.y);
+            } else if (!stack.isEmpty()) {
+                DarkGuiStyling.drawGhostItem(graphics, stack, slot.x, slot.y, GHOST_PREVIEW_ALPHA);
             }
             return;
         }
@@ -223,23 +233,35 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         String titleText = title.getString();
-        int maxTitle = UTILITY_START_X - 8 - 3;
+        int maxTitle = UTILITY_START_X - 8 - 4;
         if (font.width(titleText) > maxTitle)
             titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
         graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
 
+        graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
+                leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
+
         Slot playerSlot = menu.slots.get(MagneticBackpackMenu.PLAYER_SLOT_START);
         graphics.drawString(font, playerInventoryTitle, leftPos + playerSlot.x, topPos + playerSlot.y - 11,
                 DarkGuiStyling.COLOR_TEXT_DIM, true);
-
-        graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
-                leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
 
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int x, int y) {
+        if (menu.getCarried().isEmpty() && hoveredSlot != null && menu.isToolboxSlot(hoveredSlot.index)) {
+            int compartment = hoveredSlot.index - MagneticBackpackMenu.TOOLBOX_SLOT_START;
+            if (menu.getToolboxCount(compartment) == 0 && hoveredSlot.hasItem()) {
+                ItemStack ghost = hoveredSlot.getItem();
+                graphics.renderComponentTooltip(font, List.of(
+                        ghost.getHoverName().copy().withStyle(ChatFormatting.GRAY),
+                        Component.translatable("createessentials.gui.reserved_hint")
+                                .withStyle(ChatFormatting.DARK_GRAY)), x, y);
+                return;
+            }
+        }
+
         super.renderTooltip(graphics, x, y);
         if (!menu.getCarried().isEmpty())
             return;

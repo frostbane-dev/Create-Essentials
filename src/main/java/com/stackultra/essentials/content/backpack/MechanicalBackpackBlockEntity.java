@@ -48,7 +48,7 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         if (this.sortMode == resolved)
             return;
         this.sortMode = resolved;
-        setChanged();
+        markChanged();
     }
 
     public boolean isRestockEnabled() {
@@ -59,7 +59,11 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         if (this.restockEnabled == restockEnabled)
             return;
         this.restockEnabled = restockEnabled;
-        setChanged();
+        markChanged();
+    }
+
+    public void syncToClients() {
+        markChanged();
     }
 
     private void markChanged() {

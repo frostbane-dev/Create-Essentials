@@ -79,6 +79,7 @@ public class MagnetTickHandler {
                     || magnet.getOrDefault(AllDataComponents.CHARGING, false) != charging) {
                 magnet.set(AllDataComponents.CHARGE, clampedCharge);
                 magnet.set(AllDataComponents.CHARGING, charging);
+                MagnetEquipment.syncMagnet(player, magnet);
             }
         }
     }

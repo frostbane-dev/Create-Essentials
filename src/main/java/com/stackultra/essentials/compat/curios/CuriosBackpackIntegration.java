@@ -44,29 +44,31 @@ public final class CuriosBackpackIntegration {
     }
 
     public static void syncBackMagneticBackpack(Player player, ItemStack backpack) {
-        CuriosApi.getCuriosInventory(player)
-                .flatMap(handler -> handler.getStacksHandler("back"))
-                .ifPresent(handler -> {
-                    IDynamicStackHandler stacks = handler.getStacks();
-                    for (int i = 0; i < stacks.getSlots(); i++) {
-                        if (stacks.getStackInSlot(i) == backpack) {
-                            stacks.setStackInSlot(i, backpack);
-                            return;
-                        }
-                    }
-                });
+        syncBackBackpack(player, backpack);
     }
 
     public static void syncBackBackpack(Player player, ItemStack backpack) {
+        if (backpack == null || backpack.isEmpty())
+            return;
         CuriosApi.getCuriosInventory(player)
                 .flatMap(handler -> handler.getStacksHandler("back"))
                 .ifPresent(handler -> {
                     IDynamicStackHandler stacks = handler.getStacks();
+                    int fallbackSlot = -1;
+                    int matchCount = 0;
                     for (int i = 0; i < stacks.getSlots(); i++) {
-                        if (stacks.getStackInSlot(i) == backpack) {
+                        ItemStack existing = stacks.getStackInSlot(i);
+                        if (existing == backpack) {
                             stacks.setStackInSlot(i, backpack);
                             return;
                         }
+                        if (!existing.isEmpty() && existing.getItem() == backpack.getItem()) {
+                            fallbackSlot = i;
+                            matchCount++;
+                        }
+                    }
+                    if (matchCount == 1 && fallbackSlot >= 0) {
+                        stacks.setStackInSlot(fallbackSlot, backpack);
                     }
                 });
     }

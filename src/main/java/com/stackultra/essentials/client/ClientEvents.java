@@ -1,5 +1,6 @@
 package com.stackultra.essentials.client;
 
+import com.mojang.datafixers.util.Either;
 import com.simibubi.create.AllKeys;
 import com.simibubi.create.content.equipment.toolbox.ToolboxBlockEntity;
 import com.simibubi.create.content.equipment.toolbox.ToolboxHandler;
@@ -7,8 +8,10 @@ import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.GogglesHelper;
 import com.stackultra.essentials.content.backpack.BackpackScreen;
 import com.stackultra.essentials.content.backpack.BackpackTooltipData;
+import com.stackultra.essentials.content.backpack.MagneticBackpackItem;
 import com.stackultra.essentials.content.backpack.MagneticBackpackScreen;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
+import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
 import com.stackultra.essentials.content.magnet.RotationalMagnetScreen;
 import com.stackultra.essentials.network.OpenBackpackPayload;
 import com.stackultra.essentials.network.OpenMagnetPayload;
@@ -16,7 +19,9 @@ import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
 import com.stackultra.essentials.registry.AllMenus;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -41,6 +46,8 @@ import java.util.List;
 
 @EventBusSubscriber(modid = CreateEssentials.MOD_ID, value = Dist.CLIENT)
 public class ClientEvents {
+
+    private static final int CHARGE_TOOLTIP_RIGHT_PADDING = 6;
 
     static {
         GogglesHelper.registerViewerCheck(() -> {
@@ -81,6 +88,7 @@ public class ClientEvents {
     @SubscribeEvent
     public static void registerTooltipComponents(RegisterClientTooltipComponentFactoriesEvent event) {
         event.register(BackpackTooltipData.class, ClientBackpackTooltip::new);
+        event.register(TooltipWidthGuard.class, TooltipWidthGuard.Client::new);
     }
 
     @SubscribeEvent
@@ -94,6 +102,36 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         PortableToolboxOverlay.clear();
+    }
+
+    @SubscribeEvent
+    public static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
+        ItemStack stack = event.getItemStack();
+        if (stack.isEmpty())
+            return;
+        if (!(stack.getItem() instanceof RotationalMagnetItem || stack.getItem() instanceof MagneticBackpackItem))
+            return;
+
+        Font font = Minecraft.getInstance().font;
+        if (font == null)
+            return;
+
+        int maxTextWidth = 0;
+        for (Either<FormattedText, net.minecraft.world.inventory.tooltip.TooltipComponent> element : event.getTooltipElements()) {
+            int w = element.map(font::width, component -> 0);
+            if (w > maxTextWidth)
+                maxTextWidth = w;
+        }
+        if (maxTextWidth <= 0)
+            return;
+
+        int safeWidth = maxTextWidth + CHARGE_TOOLTIP_RIGHT_PADDING;
+        int currentMax = event.getMaxWidth();
+        if (currentMax > 0 && currentMax < safeWidth) {
+            int screenLimit = Math.max(currentMax, event.getScreenWidth() - 16);
+            event.setMaxWidth(Math.min(screenLimit, safeWidth));
+        }
+        event.getTooltipElements().add(Either.right(new TooltipWidthGuard(safeWidth)));
     }
 
     @SubscribeEvent

@@ -1,8 +1,10 @@
 package com.stackultra.essentials.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.simibubi.create.AllKeys;
 import com.simibubi.create.content.equipment.toolbox.RadialToolboxMenu;
 import com.simibubi.create.content.equipment.toolbox.ToolboxBlockEntity;
+import com.stackultra.essentials.content.backpack.BackpackTooltipData;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.backpack.PortableToolboxInventory;
 import com.stackultra.essentials.network.BackpackToolboxPayload;
@@ -22,7 +24,8 @@ import java.util.List;
 
 /**
  * Clean Create-style 8-slot radial toolbox wheel for the portable backpack toolbox.
- * Renders directly over the live game view with no rectangular backdrop fill.
+ * Reads real-time server-authoritative compartment state (refreshing live on open) so
+ * slot moves, ghost reservations, and equip/return actions are always 100% consistent.
  */
 @OnlyIn(Dist.CLIENT)
 public class PortableToolboxRadialScreen extends Screen {
@@ -36,7 +39,7 @@ public class PortableToolboxRadialScreen extends Screen {
     private static final int SLOT_BOX_SIZE = 24;
 
     private final List<ToolboxBlockEntity> nearbyWorldToolboxes;
-    private final PortableToolboxInventory snapshot;
+    private final PortableToolboxInventory fallbackSnapshot;
     private final BackpackTooltipPalette palette;
 
     private int hoveredSelection = RETURN_SELECTION;
@@ -47,15 +50,18 @@ public class PortableToolboxRadialScreen extends Screen {
     public PortableToolboxRadialScreen(ItemStack backpackStack, List<ToolboxBlockEntity> nearbyWorldToolboxes) {
         super(backpackStack.getHoverName());
         this.nearbyWorldToolboxes = nearbyWorldToolboxes;
-        this.snapshot = PortableToolboxInventory.forStack(backpackStack);
+        this.fallbackSnapshot = PortableToolboxInventory.forStack(backpackStack);
         BackpackTooltipPalette resolved = BackpackTooltipPalette.resolveForStack(backpackStack);
         this.palette = resolved != null ? resolved : BackpackTooltipPalette.resolve(
-                com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL, null, -1);
+                BackpackTooltipData.Tier.MECHANICAL, null, -1);
     }
 
     @Override
     protected void init() {
         super.init();
+        // Immediately request fresh authoritative state from server in case Curios/inventory changed
+        PacketDistributor.sendToServer(BackpackToolboxPayload.requestSync());
+
         if (!nearbyWorldToolboxes.isEmpty()) {
             int btnW = 108;
             int btnH = 16;
@@ -78,6 +84,20 @@ public class PortableToolboxRadialScreen extends Screen {
             mc.setScreen(new RadialToolboxMenu(nearbyWorldToolboxes,
                     RadialToolboxMenu.State.SELECT_BOX, null));
         }
+    }
+
+    private ItemStack getLiveDisplayItem(int compartment) {
+        if (PortableToolboxOverlay.hasSyncedData() && PortableToolboxOverlay.hasSyncedBackpack()) {
+            return PortableToolboxOverlay.getSyncedDisplayItem(compartment);
+        }
+        return fallbackSnapshot.getDisplayTemplate(compartment);
+    }
+
+    private int getLiveCount(int compartment) {
+        if (PortableToolboxOverlay.hasSyncedData() && PortableToolboxOverlay.hasSyncedBackpack()) {
+            return PortableToolboxOverlay.getSyncedCount(compartment);
+        }
+        return fallbackSnapshot.getTotalCount(compartment);
     }
 
     @Override
@@ -141,12 +161,14 @@ public class PortableToolboxRadialScreen extends Screen {
         int itemY = ny - 8;
         DarkGuiStyling.drawSlot(g, itemX, itemY);
 
-        int count = snapshot.getTotalCount(compartment);
-        ItemStack template = snapshot.getTemplate(compartment);
-        if (count > 0 && !template.isEmpty()) {
-            g.renderItem(template, itemX, itemY);
-            g.renderItemDecorations(font, template, itemX, itemY, "");
+        int count = getLiveCount(compartment);
+        ItemStack display = getLiveDisplayItem(compartment);
+        if (count > 0 && !display.isEmpty()) {
+            g.renderItem(display, itemX, itemY);
+            g.renderItemDecorations(font, display, itemX, itemY, "");
             DarkGuiStyling.drawCompactCount(g, font, count, itemX, itemY);
+        } else if (!display.isEmpty()) {
+            DarkGuiStyling.drawGhostItem(g, display, itemX, itemY, 0.40F);
         }
     }
 
@@ -169,11 +191,15 @@ public class PortableToolboxRadialScreen extends Screen {
                     .withStyle(ChatFormatting.GRAY);
         }
         if (selection >= 0 && selection < COMPARTMENTS) {
-            int count = snapshot.getTotalCount(selection);
-            ItemStack template = snapshot.getTemplate(selection);
-            if (count > 0 && !template.isEmpty()) {
-                return Component.literal(template.getHoverName().getString() + " (" + count + ")")
+            int count = getLiveCount(selection);
+            ItemStack display = getLiveDisplayItem(selection);
+            if (count > 0 && !display.isEmpty()) {
+                return Component.literal(display.getHoverName().getString() + " (" + count + ")")
                         .withStyle(ChatFormatting.WHITE);
+            }
+            if (!display.isEmpty()) {
+                return Component.literal(display.getHoverName().getString() + " (0)")
+                        .withStyle(ChatFormatting.GRAY);
             }
             return Component.translatable("createessentials.tooltip.backpack_empty")
                     .withStyle(ChatFormatting.DARK_GRAY);
@@ -211,7 +237,7 @@ public class PortableToolboxRadialScreen extends Screen {
         if (hoveredSelection == RETURN_SELECTION) {
             PacketDistributor.sendToServer(BackpackToolboxPayload.returnHeld(hotbarSlot));
         } else if (hoveredSelection >= 0 && hoveredSelection < COMPARTMENTS) {
-            if (snapshot.getTotalCount(hoveredSelection) > 0) {
+            if (getLiveCount(hoveredSelection) > 0) {
                 PacketDistributor.sendToServer(BackpackToolboxPayload.equip(hoveredSelection, hotbarSlot));
             }
         }
@@ -262,7 +288,9 @@ public class PortableToolboxRadialScreen extends Screen {
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        if (AllKeys.TOOLBELT.doesModifierAndCodeMatch(keyCode)) {
+        InputConstants.Key released = InputConstants.getKey(keyCode, scanCode);
+        if (AllKeys.TOOLBELT.getKeybind().getKey().equals(released)
+                || AllKeys.TOOLBELT.doesModifierAndCodeMatch(keyCode)) {
             commitSelection();
             onClose();
             return true;
@@ -274,9 +302,17 @@ public class PortableToolboxRadialScreen extends Screen {
     public void tick() {
         super.tick();
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || PortableToolboxHandler.findPortableToolboxBackpack(mc.player).isEmpty()) {
+        if (mc.player == null) {
             actionCommitted = true;
             onClose();
+            return;
         }
+        ItemStack liveBackpack = PortableToolboxHandler.findPortableToolboxBackpack(mc.player);
+        if (liveBackpack.isEmpty()) {
+            actionCommitted = true;
+            onClose();
+            return;
+        }
+        fallbackSnapshot.load(liveBackpack);
     }
 }

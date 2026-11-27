@@ -190,61 +190,47 @@ public class AllPackets {
                 .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED), true);
     }
 
-    private static ItemStack findMechanicalBackpack(ServerPlayer player) {
-        ItemStack main = player.getMainHandItem();
-        if (main.getItem() instanceof MechanicalBackpackItem)
-            return main;
-        ItemStack off = player.getOffhandItem();
-        if (off.getItem() instanceof MechanicalBackpackItem)
-            return off;
-        ItemStack equipped = BackpackEquipment.findEquippedBackpack(player);
-        if (!equipped.isEmpty() && equipped.getItem() instanceof MechanicalBackpackItem)
-            return equipped;
-        for (ItemStack stack : player.getInventory().items) {
-            if (stack.getItem() instanceof MechanicalBackpackItem)
-                return stack;
-        }
-        return ItemStack.EMPTY;
-    }
-
     private static void handleOpenBackpack(OpenBackpackPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player))
                 return;
 
-            ItemStack magnetic = MagneticBackpackEquipment.findCarriedMagneticBackpack(player);
-            if (!magnetic.isEmpty()) {
-                MagneticBackpackItem magneticItem = (MagneticBackpackItem) magnetic.getItem();
-                PortableToolboxInventory tb = PortableToolboxInventory.forStack(magnetic);
+            // Unify backpack targeting with PortableToolboxHandler (Curios -> Chest -> Main -> Off -> Inv)
+            // so pressing B and Alt always interact with the exact same backpack instance.
+            ItemStack backpack = com.stackultra.essentials.content.backpack.PortableToolboxHandler
+                    .findPortableToolboxBackpack(player);
+            if (backpack.isEmpty())
+                return;
+
+            if (backpack.getItem() instanceof MagneticBackpackItem magneticItem) {
+                PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
                 player.openMenu(new SimpleMenuProvider(
-                                (id, inv, p) -> MagneticBackpackMenu.create(id, inv, magnetic),
-                                magnetic.getHoverName()),
+                                (id, inv, p) -> MagneticBackpackMenu.create(id, inv, backpack),
+                                backpack.getHoverName()),
                         buf -> {
                             buf.writeBoolean(false);
                             ItemContainerContents.STREAM_CODEC.encode(buf,
-                                    magnetic.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY));
-                            buf.writeBoolean(magnetic.getOrDefault(AllDataComponents.ENABLED, true));
-                            buf.writeVarInt(magneticItem.getCharge(magnetic));
-                            buf.writeVarInt(magneticItem.getMaxCharge(magnetic));
+                                    backpack.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY));
+                            buf.writeBoolean(backpack.getOrDefault(AllDataComponents.ENABLED, true));
+                            buf.writeVarInt(magneticItem.getCharge(backpack));
+                            buf.writeVarInt(magneticItem.getMaxCharge(backpack));
                             for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
                                 buf.writeVarInt(tb.getTotalCount(c));
                         });
                 return;
             }
 
-            ItemStack backpack = findMechanicalBackpack(player);
-            if (backpack.isEmpty())
-                return;
-
-            PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
-            player.openMenu(new SimpleMenuProvider(
-                            (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
-                            backpack.getHoverName()),
-                    buf -> {
-                        buf.writeBoolean(false);
-                        for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
-                            buf.writeVarInt(tb.getTotalCount(c));
-                    });
+            if (backpack.getItem() instanceof MechanicalBackpackItem) {
+                PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
+                player.openMenu(new SimpleMenuProvider(
+                                (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
+                                backpack.getHoverName()),
+                        buf -> {
+                            buf.writeBoolean(false);
+                            for (int c = 0; c < PortableToolboxInventory.COMPARTMENTS; c++)
+                                buf.writeVarInt(tb.getTotalCount(c));
+                        });
+            }
         });
     }
 }

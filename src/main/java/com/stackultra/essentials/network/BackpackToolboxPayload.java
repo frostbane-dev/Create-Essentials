@@ -19,7 +19,8 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
     public enum Action {
         EQUIP_COMPARTMENT,
         RETURN_HELD,
-        TOGGLE_RESTOCK;
+        TOGGLE_RESTOCK,
+        REQUEST_SYNC;
 
         private static final Action[] VALUES = values();
 
@@ -53,6 +54,10 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
         return new BackpackToolboxPayload(Action.TOGGLE_RESTOCK.ordinal(), 0, 0);
     }
 
+    public static BackpackToolboxPayload requestSync() {
+        return new BackpackToolboxPayload(Action.REQUEST_SYNC.ordinal(), 0, 0);
+    }
+
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
@@ -81,6 +86,7 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
                         return;
                     menu.setRestockEnabled(!menu.isRestockEnabled(), player);
                 }
+                case REQUEST_SYNC -> PortableToolboxHandler.handleSyncRequest(player);
             }
         });
     }

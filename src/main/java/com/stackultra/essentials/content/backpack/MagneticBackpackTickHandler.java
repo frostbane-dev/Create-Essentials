@@ -138,6 +138,10 @@ public class MagneticBackpackTickHandler {
                     player.containerMenu.broadcastChanges();
                 }
 
+                if (pulledIntoToolbox && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                    PortableToolboxHandler.onToolboxModified(serverPlayer, backpack, toolbox);
+                }
+
                 if (!charging) {
                     charge--;
                     changed = true;

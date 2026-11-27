@@ -23,10 +23,16 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
     private static final int WINDOW_WIDTH = 176;
     private static final int WINDOW_HEIGHT = 192;
 
+    private static final int GRID_LEFT = 7;
+    private static final int GRID_RIGHT = 169;
+    private static final int GRID_WIDTH = GRID_RIGHT - GRID_LEFT;
+
     private static final int TITLE_Y = 7;
-    private static final int BUTTON_Y = 20;
-    private static final int BUTTON_W = 78;
-    private static final int BUTTON_H = 18;
+    private static final int BUTTON_Y = 21;
+    private static final int BUTTON_W = 79;
+    private static final int BUTTON_H = 14;
+    private static final int BUTTON_LEFT_X = GRID_LEFT;
+    private static final int BUTTON_RIGHT_X = GRID_RIGHT - BUTTON_W;
     private static final int FILTER_LABEL_Y = 44;
     private static final int TIMER_Y = 80;
     private static final int DIVIDER_Y = 94;
@@ -43,7 +49,7 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
         setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         super.init();
 
-        DarkTextButton toggle = new DarkTextButton(leftPos + 8, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
+        DarkTextButton toggle = new DarkTextButton(leftPos + BUTTON_LEFT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> {
                     boolean enabled = menu.isEnabled();
                     return Component.translatable("createessentials.gui.magnet_status",
@@ -56,7 +62,7 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
                     PacketDistributor.sendToServer(togglePayload());
                 });
 
-        DarkTextButton blacklist = new DarkTextButton(leftPos + 90, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
+        DarkTextButton blacklist = new DarkTextButton(leftPos + BUTTON_RIGHT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> Component.translatable(menu.isBlacklist()
                         ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
                 () -> menu.isBlacklist() ? COLOR_BLACKLIST : COLOR_WHITELIST,
@@ -86,7 +92,7 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
         DarkGuiStyling.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight);
-        DarkGuiStyling.drawDivider(graphics, leftPos + 6, topPos + DIVIDER_Y, imageWidth - 12);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_Y, GRID_WIDTH);
 
         for (Slot slot : menu.slots)
             DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);

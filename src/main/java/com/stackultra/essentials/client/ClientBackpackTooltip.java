@@ -99,6 +99,8 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
                         graphics.renderItem(entry.displayStack(), itemX, itemY);
                         graphics.renderItemDecorations(font, entry.displayStack(), itemX, itemY, "");
                         DarkGuiStyling.drawCompactCount(graphics, font, entry.count(), itemX, itemY);
+                    } else if (!entry.displayStack().isEmpty()) {
+                        DarkGuiStyling.drawGhostItem(graphics, entry.displayStack(), itemX, itemY, 0.40F);
                     }
                 }
             }

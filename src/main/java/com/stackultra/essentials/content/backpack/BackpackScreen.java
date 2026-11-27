@@ -25,20 +25,27 @@ import java.util.List;
 public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
 
     private static final int WINDOW_WIDTH = 176;
-    private static final int WINDOW_HEIGHT = 167;
-    private static final int BOTTOM_TAB_HEIGHT = 42;
+    private static final int WINDOW_HEIGHT = 213;
+
+    private static final int GRID_LEFT = 7;
+    private static final int GRID_RIGHT = 169;
+    private static final int GRID_WIDTH = GRID_RIGHT - GRID_LEFT;
 
     private static final int UTILITY_BTN_SIZE = 12;
     private static final int UTILITY_BTN_GAP = 1;
     private static final int UTILITY_BTN_Y = 4;
-    private static final int UTILITY_START_X = 169 - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
+    private static final int UTILITY_START_X = GRID_RIGHT - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
 
+    private static final int DIVIDER_STORAGE_Y = 74;
     private static final int TOOLBOX_TITLE_X = 8;
-    private static final int TOOLBOX_TITLE_Y = WINDOW_HEIGHT + 5;
-    private static final int RESTOCK_BTN_X = 92;
-    private static final int RESTOCK_BTN_Y = WINDOW_HEIGHT + 2;
-    private static final int RESTOCK_BTN_W = 76;
+    private static final int TOOLBOX_TITLE_Y = 81;
+    private static final int RESTOCK_BTN_W = 74;
     private static final int RESTOCK_BTN_H = 14;
+    private static final int RESTOCK_BTN_X = GRID_RIGHT - RESTOCK_BTN_W;
+    private static final int RESTOCK_BTN_Y = 78;
+    private static final int DIVIDER_PLAYER_Y = 115;
+
+    private static final float GHOST_PREVIEW_ALPHA = 0.40F;
 
     private final List<DarkIconButton> utilityButtons = new ArrayList<>(4);
     private DarkTextButton restockButton;
@@ -51,8 +58,6 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
     protected void init() {
         setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         super.init();
-        // Center main window + bottom toolbox bar cleanly on screen
-        this.topPos = Math.max(4, (this.height - (WINDOW_HEIGHT + BOTTOM_TAB_HEIGHT)) / 2);
 
         utilityButtons.clear();
         int step = UTILITY_BTN_SIZE + UTILITY_BTN_GAP;
@@ -115,20 +120,15 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
     }
 
     @Override
-    protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
-        boolean inBottomTab = mouseX >= guiLeft && mouseX < guiLeft + imageWidth
-                && mouseY >= guiTop + imageHeight && mouseY < guiTop + imageHeight + BOTTOM_TAB_HEIGHT;
-        return !inBottomTab && super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
-    }
-
-    @Override
     public List<Rect2i> getExtraAreas() {
-        return List.of(new Rect2i(leftPos, topPos + imageHeight, imageWidth, BOTTOM_TAB_HEIGHT));
+        return List.of();
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
-        DarkGuiStyling.drawPanelWithBottomTab(graphics, leftPos, topPos, imageWidth, imageHeight, BOTTOM_TAB_HEIGHT);
+        DarkGuiStyling.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_STORAGE_Y, GRID_WIDTH);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_PLAYER_Y, GRID_WIDTH);
 
         for (Slot slot : menu.slots)
             DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
@@ -143,6 +143,8 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
                 graphics.renderItem(stack, slot.x, slot.y);
                 graphics.renderItemDecorations(font, stack, slot.x, slot.y, "");
                 DarkGuiStyling.drawCompactCount(graphics, font, total, slot.x, slot.y);
+            } else if (!stack.isEmpty()) {
+                DarkGuiStyling.drawGhostItem(graphics, stack, slot.x, slot.y, GHOST_PREVIEW_ALPHA);
             }
             return;
         }
@@ -152,23 +154,35 @@ public class BackpackScreen extends AbstractSimiContainerScreen<BackpackMenu> {
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         String titleText = title.getString();
-        int maxTitle = UTILITY_START_X - 8 - 3;
+        int maxTitle = UTILITY_START_X - 8 - 4;
         if (font.width(titleText) > maxTitle)
             titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
         graphics.drawString(font, titleText, leftPos + 8, topPos + 6, DarkGuiStyling.COLOR_TITLE, true);
 
+        graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
+                leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
+
         int playerY = menu.slots.get(BackpackMenu.PLAYER_SLOT_START).y;
         graphics.drawString(font, playerInventoryTitle, leftPos + 8, topPos + playerY - 11,
                 DarkGuiStyling.COLOR_TEXT_DIM, true);
-
-        graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
-                leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
 
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int x, int y) {
+        if (menu.getCarried().isEmpty() && hoveredSlot != null && menu.isToolboxSlot(hoveredSlot.index)) {
+            int compartment = hoveredSlot.index - BackpackMenu.TOOLBOX_SLOT_START;
+            if (menu.getToolboxCount(compartment) == 0 && hoveredSlot.hasItem()) {
+                ItemStack ghost = hoveredSlot.getItem();
+                graphics.renderComponentTooltip(font, List.of(
+                        ghost.getHoverName().copy().withStyle(ChatFormatting.GRAY),
+                        Component.translatable("createessentials.gui.reserved_hint")
+                                .withStyle(ChatFormatting.DARK_GRAY)), x, y);
+                return;
+            }
+        }
+
         super.renderTooltip(graphics, x, y);
         if (!menu.getCarried().isEmpty())
             return;
