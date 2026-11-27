@@ -101,4 +101,9 @@ NeoForge mod for Minecraft **1.21.1** adding Create-inspired Mechanical, Netheri
 - **Constant-Height Inline Charging Tag (`ChargeDisplay`, `RotationalMagnetItem`, `MagneticBackpackItem`, `en_us.json`):**
   - Moved the hover tooltip charging indicator inline onto the `Status:` line (`Status: Enabled (Charging)`) instead of dynamically inserting/removing a separate vertical `"Charging..."` line, completely eliminating vertical tooltip and backpack preview grid jitter.
 
-
+### 3D Blockbench Assets & 16x Pixel-Art Textures (`create_essentials_assets/`)
+- **Editable Blockbench Projects, Java Block JSONs, and Zero-Overlap 64×64 Atlases:**
+  - Added complete, Blockbench-ready `.bbmodel` (v4.10 `java_block`), Minecraft Java `.json`, and 16x pixel-density `.png` texture deliverables under `create_essentials_assets/{bbmodel,models,textures}/` with `[0, 16]` block bounds, organized outliner groups, zero UV overlap, and exact `[8, 8, 8]` Create shaft centering:
+    - **`mechanical_backpack` & `netherite_mechanical_backpack`:** Sculpted leather/brass and Netherite-armored backpacks with visible 3D recessed rear cogwheels, upper side gear windows, bellowed side pockets, and front-mounted Create-style toolboxes (**no shoulder straps, no kinetic shaft**).
+    - **`create_magnet` & `precision_magnet`:** Curved U-shaped crimson/cobalt and Tier 2 Netherite/gold-trimmed horseshoe magnets with open front U-arches and rear/back curved-face 3D Create brass cogwheel housings + centered `4×4` spinning shafts (`X: [6, 10], Y: [6, 10], Z: [12.5, 16]`).
+    - **`magnetic_backpack`:** Netherite-accented backpack with integrated side polarity indicator plates, sculpted lower side U-magnet pods, front Create-style toolbox, **no shoulder straps**, and a **top-mounted vertical spinning shaft** + horizontal 3D cogwheel input (`X: [6, 10], Y: [13.75, 16], Z: [6, 10]`).
