@@ -5,8 +5,8 @@
     64
   ],
   "textures": {
-    "0": "createessentials:block/create_magnet",
-    "particle": "createessentials:block/create_magnet"
+    "0": "createessentials:block/rotational_magnet",
+    "particle": "createessentials:block/rotational_magnet"
   },
   "elements": [
     {
