@@ -41,8 +41,8 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
     private static final VoxelShape SHAPE = Shapes.or(
-            Block.box(2.0, 0.0, 5.5, 14.0, 12.0, 10.5),
-            Block.box(4.0, 12.0, 4.0, 12.0, 16.0, 12.0));
+            Block.box(2.25, 0.0, 6.0, 13.75, 11.5, 10.0),
+            Block.box(4.25, 11.5, 4.25, 11.75, 16.0, 11.75));
 
     private final MagnetTier tier;
 
