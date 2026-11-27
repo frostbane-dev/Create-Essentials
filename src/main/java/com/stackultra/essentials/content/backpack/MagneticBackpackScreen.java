@@ -5,6 +5,7 @@ import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.stackultra.essentials.client.DarkGuiStyling;
 import com.stackultra.essentials.client.DarkIconButton;
 import com.stackultra.essentials.client.DarkTextButton;
+import com.stackultra.essentials.content.ChargeDisplay;
 import com.stackultra.essentials.network.BackpackActionPayload;
 import com.stackultra.essentials.network.BackpackToolboxPayload;
 import com.stackultra.essentials.network.BlacklistTogglePayload;
@@ -29,7 +30,7 @@ import java.util.List;
 public class MagneticBackpackScreen extends AbstractSimiContainerScreen<MagneticBackpackMenu> {
 
     private static final int WINDOW_WIDTH = 176;
-    private static final int WINDOW_HEIGHT = 232;
+    private static final int WINDOW_HEIGHT = 246;
 
     private static final int GRID_LEFT = 7;
     private static final int GRID_RIGHT = 169;
@@ -48,25 +49,32 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     private static final int BUTTON_LEFT_X = GRID_LEFT;
     private static final int BUTTON_RIGHT_X = GRID_RIGHT - BUTTON_W;
 
+    // Compact live charge / remaining-time readout directly below the magnet control row
+    private static final int CHARGE_TEXT_Y = 36;
+    private static final int CHARGE_BAR_Y = 46;
+    private static final int CHARGE_BAR_H = 2;
+
     // Left 3-slot filter panel aligned flush with the top-left corner of the main window
     private static final int LEFT_TAB_WIDTH = 25;
     private static final int LEFT_TAB_TOP = 0;
     private static final int LEFT_TAB_HEIGHT = 62;
 
-    // Toolbox section directly beneath storage [36..90) and above player inventory [139..225)
-    private static final int DIVIDER_STORAGE_Y = 93;
+    // Toolbox section directly beneath storage [50..104) and above player inventory [153..239)
+    private static final int DIVIDER_STORAGE_Y = 107;
     private static final int TOOLBOX_TITLE_X = 8;
-    private static final int TOOLBOX_TITLE_Y = 100;
+    private static final int TOOLBOX_TITLE_Y = 114;
     private static final int RESTOCK_BTN_W = 74;
     private static final int RESTOCK_BTN_H = 14;
     private static final int RESTOCK_BTN_X = GRID_RIGHT - RESTOCK_BTN_W;
-    private static final int RESTOCK_BTN_Y = 97;
-    private static final int DIVIDER_PLAYER_Y = 134;
+    private static final int RESTOCK_BTN_Y = 111;
+    private static final int DIVIDER_PLAYER_Y = 148;
 
     private static final float GHOST_PREVIEW_ALPHA = 0.40F;
 
     private static final int COLOR_BLACKLIST = 0xFFD66BFF;
     private static final int COLOR_WHITELIST = 0xFF78B8FF;
+    private static final int COLOR_CHARGE_LOW = 0xFFF2C24C;
+    private static final int COLOR_CHARGE_CRITICAL = 0xFFE05A5A;
 
     private final List<DarkIconButton> utilityButtons = new ArrayList<>(4);
     private DarkTextButton restockButton;
@@ -199,6 +207,13 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
         DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_STORAGE_Y, GRID_WIDTH);
         DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_PLAYER_Y, GRID_WIDTH);
 
+        int charge = Math.max(0, menu.getCharge());
+        int maxCharge = Math.max(1, menu.getMaxCharge());
+        float ratio = Math.clamp((float) charge / (float) maxCharge, 0.0F, 1.0F);
+        int barColor = chargeBarColor(ratio);
+        DarkGuiStyling.drawHorizontalBar(graphics, leftPos + GRID_LEFT, topPos + CHARGE_BAR_Y,
+                GRID_WIDTH, CHARGE_BAR_H, ratio, barColor);
+
         for (Slot slot : menu.slots)
             DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
 
@@ -238,6 +253,15 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
             titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
         graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
 
+        int charge = Math.max(0, menu.getCharge());
+        int seconds = charge / 20;
+        String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);
+        Component timeText = Component.translatable("createessentials.gui.time_remaining", remaining);
+        int textColor = menu.isCharging()
+                ? DarkGuiStyling.COLOR_BAR
+                : (charge <= 0 ? COLOR_CHARGE_CRITICAL : DarkGuiStyling.COLOR_TEXT);
+        graphics.drawCenteredString(font, timeText, leftPos + imageWidth / 2, topPos + CHARGE_TEXT_Y, textColor);
+
         graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
                 leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
 
@@ -266,6 +290,15 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
         if (!menu.getCarried().isEmpty())
             return;
 
+        if (isHoveringChargeBar(x, y)) {
+            List<Component> lines = new ArrayList<>(2);
+            lines.add(ChargeDisplay.charge(Math.max(0, menu.getCharge()), Math.max(1, menu.getMaxCharge())));
+            if (menu.isCharging())
+                lines.add(ChargeDisplay.chargingLine());
+            graphics.renderComponentTooltip(font, lines, x, y);
+            return;
+        }
+
         if (restockButton != null && restockButton.isHovered()) {
             boolean on = menu.isRestockEnabled();
             graphics.renderComponentTooltip(font, List.of(
@@ -283,5 +316,18 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
                 break;
             }
         }
+    }
+
+    private boolean isHoveringChargeBar(int mouseX, int mouseY) {
+        return mouseX >= leftPos + GRID_LEFT && mouseX < leftPos + GRID_RIGHT
+                && mouseY >= topPos + CHARGE_TEXT_Y - 1 && mouseY <= topPos + CHARGE_BAR_Y + CHARGE_BAR_H + 1;
+    }
+
+    private static int chargeBarColor(float ratio) {
+        if (ratio <= 0.05F)
+            return COLOR_CHARGE_CRITICAL;
+        if (ratio <= 0.20F)
+            return COLOR_CHARGE_LOW;
+        return DarkGuiStyling.COLOR_BAR;
     }
 }

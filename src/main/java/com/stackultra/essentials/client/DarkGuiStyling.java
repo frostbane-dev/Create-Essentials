@@ -128,6 +128,13 @@ public final class DarkGuiStyling {
             graphics.fill(x, y + h - filled, x + w, y + h, COLOR_BAR);
     }
 
+    public static void drawHorizontalBar(GuiGraphics graphics, int x, int y, int w, int h, float ratio, int fillColor) {
+        graphics.fill(x, y, x + w, y + h, COLOR_BAR_BG);
+        int filled = Mth.clamp(Math.round(w * Mth.clamp(ratio, 0.0F, 1.0F)), 0, w);
+        if (filled > 0)
+            graphics.fill(x, y, x + filled, y + h, fillColor);
+    }
+
     public static void drawGhostItem(GuiGraphics graphics, ItemStack stack, int x, int y, float alpha) {
         float clamped = Mth.clamp(alpha, 0.0F, 1.0F);
         graphics.renderItem(stack, x, y);

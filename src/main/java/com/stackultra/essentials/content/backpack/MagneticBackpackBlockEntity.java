@@ -2,9 +2,9 @@ package com.stackultra.essentials.content.backpack;
 
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
-import com.simibubi.create.content.logistics.filter.FilterItemStack;
 import com.simibubi.create.foundation.utility.CreateLang;
-import com.stackultra.essentials.content.ChargeDisplay;
+import com.stackultra.essentials.content.KineticChargeHelper;
+import com.stackultra.essentials.content.MagnetFilterHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.registry.AllBlockEntities;
 import com.stackultra.essentials.registry.AllDataComponents;
@@ -12,13 +12,9 @@ import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -39,14 +35,13 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     private final BackpackInventory inventory;
     private final PortableToolboxInventory toolboxInventory;
     private final ItemStackHandler filterInventory;
+    private final KineticChargeHelper.KineticChargeState kineticCharge = new KineticChargeHelper.KineticChargeState();
     private int charge = 0;
     private boolean enabled = true;
     private boolean blacklist = false;
     private SortMode sortMode = SortMode.NAME;
     private boolean restockEnabled = true;
     private int capacityEnchantLevel = 0;
-    private boolean wasFull;
-    private float chargeAccumulator = 0F;
 
     public MagneticBackpackBlockEntity(BlockPos pos, BlockState state) {
         super(AllBlockEntities.MAGNETIC_BACKPACK.get(), pos, state);
@@ -97,70 +92,18 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         super.tick();
         if (level == null || level.isClientSide) return;
 
-        int maxCharge = getMaxCharge();
-        if (getSpeed() != 0 && charge < maxCharge) {
-            chargeAccumulator += Math.abs(getSpeed()) / 10.0F;
-            int add = (int) chargeAccumulator;
-            if (add > 0) {
-                charge = Math.min(maxCharge, charge + add);
-                chargeAccumulator -= add;
-                setChanged();
-                sendData();
-            }
-            spawnChargingParticles();
-        } else {
-            chargeAccumulator = 0F;
+        KineticChargeHelper.TickResult result = kineticCharge.tick(charge, getMaxCharge(), getSpeed());
+        if (result.chargeChanged()) {
+            charge = result.nextCharge();
+            setChanged();
+            sendData();
         }
-
-        if (charge >= maxCharge) {
-            if (!wasFull) {
-                wasFull = true;
-                spawnFullChargeParticles();
-            }
-        } else {
-            wasFull = false;
+        if (result.activelyCharging()) {
+            KineticChargeHelper.spawnChargingParticles(level, getBlockPos());
         }
-    }
-
-    private void spawnChargingParticles() {
-        if (!(level instanceof ServerLevel serverLevel))
-            return;
-        double cx = getBlockPos().getX() + 0.5;
-        double cy = getBlockPos().getY() + 0.5;
-        double cz = getBlockPos().getZ() + 0.5;
-        for (int i = 0; i < 2; i++) {
-            double yaw = serverLevel.random.nextDouble() * Math.PI * 2.0;
-            double pitch = (serverLevel.random.nextDouble() - 0.5) * Math.PI;
-            double dx = Math.cos(yaw) * Math.cos(pitch);
-            double dy = Math.sin(pitch);
-            double dz = Math.sin(yaw) * Math.cos(pitch);
-            double r = 0.8;
-            double x = cx + dx * r;
-            double y = cy + dy * r;
-            double z = cz + dz * r;
-            serverLevel.sendParticles(ParticleTypes.CLOUD, x, y, z, 0, -dx * 0.15, -dy * 0.15, -dz * 0.15, 1.0);
+        if (result.reachedFull()) {
+            KineticChargeHelper.spawnFullChargeParticles(level, getBlockPos());
         }
-    }
-
-    private void spawnFullChargeParticles() {
-        if (!(level instanceof ServerLevel serverLevel))
-            return;
-        double cx = getBlockPos().getX() + 0.5;
-        double cy = getBlockPos().getY() + 0.5;
-        double cz = getBlockPos().getZ() + 0.5;
-        for (int i = 0; i < 24; i++) {
-            double yaw = serverLevel.random.nextDouble() * Math.PI * 2.0;
-            double pitch = (serverLevel.random.nextDouble() - 0.5) * Math.PI;
-            double dx = Math.cos(yaw) * Math.cos(pitch);
-            double dy = Math.sin(pitch);
-            double dz = Math.sin(yaw) * Math.cos(pitch);
-            double r = 0.55;
-            double x = cx + dx * r;
-            double y = cy + dy * r;
-            double z = cz + dz * r;
-            serverLevel.sendParticles(ParticleTypes.END_ROD, x, y, z, 0, dx * 0.25, dy * 0.25, dz * 0.25, 1.0);
-        }
-        serverLevel.playSound(null, cx, cy, cz, SoundEvents.NOTE_BLOCK_CHIME, SoundSource.BLOCKS, 0.6F, 1.2F);
     }
 
     public int getCharge() {
@@ -239,21 +182,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     }
 
     public boolean test(ItemStack stack) {
-        boolean any = false;
-        boolean matches = false;
-        for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++) {
-            ItemStack filter = filterInventory.getStackInSlot(i);
-            if (filter.isEmpty())
-                continue;
-            any = true;
-            if (FilterItemStack.of(filter).test(level, stack)) {
-                matches = true;
-                break;
-            }
-        }
-        if (!any)
-            return true;
-        return blacklist ? !matches : matches;
+        return MagnetFilterHelper.matchesFilter(level, filterInventory, stack, blacklist);
     }
 
     public void loadFromStack(ItemStack stack) {
@@ -265,7 +194,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         setBlacklist(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
         setSortMode(stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME));
         setRestockEnabled(stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
-        wasFull = charge >= getMaxCharge();
+        kineticCharge.syncFullState(charge, getMaxCharge());
         List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
         for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
             filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i) : ItemStack.EMPTY);
@@ -316,7 +245,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
             sortMode = SortMode.byName(tag.getString("SortMode"));
         if (tag.contains("Restock"))
             restockEnabled = tag.getBoolean("Restock");
-        wasFull = charge >= getMaxCharge();
+        kineticCharge.syncFullState(charge, getMaxCharge());
         if (tag.contains("Filters"))
             filterInventory.deserializeNBT(registries, tag.getCompound("Filters"));
         if (tag.contains("Inventory"))
@@ -347,23 +276,7 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         CreateLang.blockName(getBlockState()).style(ChatFormatting.GOLD).forGoggles(tooltip);
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
-        CreateLang.builder()
-                .add(Component.translatable(enabled
-                        ? "createessentials.gui.enabled"
-                        : "createessentials.gui.disabled"))
-                .style(enabled ? ChatFormatting.GREEN : ChatFormatting.RED)
-                .forGoggles(tooltip, 1);
-
-        int max = getMaxCharge();
-        if (getSpeed() != 0 && charge < max) {
-            CreateLang.builder()
-                    .add(ChargeDisplay.chargingLine())
-                    .forGoggles(tooltip, 1);
-        }
-
-        CreateLang.builder()
-                .add(ChargeDisplay.charge(charge, max))
-                .forGoggles(tooltip, 1);
+        KineticChargeHelper.appendGoggleTooltip(tooltip, enabled, getSpeed(), charge, getMaxCharge());
         return true;
     }
 }

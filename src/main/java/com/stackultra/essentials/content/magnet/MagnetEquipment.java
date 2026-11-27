@@ -1,7 +1,7 @@
 package com.stackultra.essentials.content.magnet;
 
+import com.stackultra.essentials.content.StackSyncHelper;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -11,6 +11,7 @@ import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class MagnetEquipment {
 
@@ -119,6 +120,10 @@ public final class MagnetEquipment {
     }
 
     public static void syncMagnet(Player player, ItemStack magnet) {
+        if (magnet == null || magnet.isEmpty())
+            return;
+
+        // Fast path: exact reference identity on live inventory / hand slots
         if (player.getMainHandItem() == magnet) {
             player.setItemInHand(InteractionHand.MAIN_HAND, magnet);
             broadcastIfServer(player);
@@ -127,12 +132,6 @@ public final class MagnetEquipment {
 
         if (player.getOffhandItem() == magnet) {
             player.setItemInHand(InteractionHand.OFF_HAND, magnet);
-            broadcastIfServer(player);
-            return;
-        }
-
-        if (player.getItemBySlot(EquipmentSlot.CHEST) == magnet) {
-            player.setItemSlot(EquipmentSlot.CHEST, magnet);
             broadcastIfServer(player);
             return;
         }
@@ -146,11 +145,29 @@ public final class MagnetEquipment {
             }
         }
 
+        // Unified fallback across every unique physical magnet slot (inventory.items already includes main hand)
+        List<ItemStack> candidates = new ArrayList<>();
+        List<Consumer<ItemStack>> writers = new ArrayList<>();
+
+        candidates.add(player.getOffhandItem());
+        writers.add(stack -> player.setItemInHand(InteractionHand.OFF_HAND, stack));
+
+        for (int i = 0; i < inventory.items.size(); i++) {
+            final int slotIndex = i;
+            candidates.add(inventory.items.get(i));
+            writers.add(stack -> inventory.setItem(slotIndex, stack));
+        }
+
         if (ModList.get().isLoaded("curios")) {
             try {
-                syncCuriosMagnet(player, magnet);
+                collectCuriosMagnetSlots(player, candidates, writers);
             } catch (Throwable ignored) {
             }
+        }
+
+        int matchIndex = StackSyncHelper.findMatchingIndex(candidates, magnet);
+        if (matchIndex >= 0) {
+            writers.get(matchIndex).accept(magnet);
         }
         broadcastIfServer(player);
     }
@@ -191,15 +208,16 @@ public final class MagnetEquipment {
                 .orElseGet(ArrayList::new);
     }
 
-    private static void syncCuriosMagnet(Player player, ItemStack magnet) {
+    private static void collectCuriosMagnetSlots(Player player,
+                                                 List<ItemStack> candidates,
+                                                 List<Consumer<ItemStack>> writers) {
         CuriosApi.getCuriosInventory(player).ifPresent(handler -> {
             handler.getCurios().values().forEach(stacksHandler -> {
                 IDynamicStackHandler stacks = stacksHandler.getStacks();
                 for (int i = 0; i < stacks.getSlots(); i++) {
-                    if (stacks.getStackInSlot(i) == magnet) {
-                        stacks.setStackInSlot(i, magnet);
-                        return;
-                    }
+                    final int slotIndex = i;
+                    candidates.add(stacks.getStackInSlot(i));
+                    writers.add(stack -> stacks.setStackInSlot(slotIndex, stack));
                 }
             });
         });

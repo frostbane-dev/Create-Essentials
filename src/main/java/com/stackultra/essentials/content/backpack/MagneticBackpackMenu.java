@@ -38,12 +38,12 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     private static final int FILTER_X = -20;
     private static final int FILTER_Y = 5;
     private static final int STORAGE_X = 8;
-    private static final int STORAGE_Y = 37;
+    private static final int STORAGE_Y = 51;
     // 8x1 horizontal toolbox bar positioned directly beneath the 27-slot storage grid and above player inventory
     public static final int TOOLBOX_X = 17;
-    public static final int TOOLBOX_Y = 114;
-    private static final int PLAYER_Y = 150;
-    private static final int HOTBAR_Y = 208;
+    public static final int TOOLBOX_Y = 128;
+    private static final int PLAYER_Y = 164;
+    private static final int HOTBAR_Y = 222;
 
     private final Inventory playerInventory;
     private final IItemHandler storageInventory;
@@ -56,6 +56,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
 
     private boolean enabled;
     private boolean blacklist;
+    private boolean charging;
     private int charge;
     private int maxCharge;
     private SortMode sortMode = SortMode.NAME;
@@ -77,6 +78,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         this.blacklist = be.isBlacklist();
         this.charge = be.getCharge();
         this.maxCharge = be.getMaxCharge();
+        this.charging = be.getSpeed() != 0 && this.charge < this.maxCharge;
         this.sortMode = be.getSortMode();
         this.restockEnabled = be.isRestockEnabled();
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
@@ -104,6 +106,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
         this.blacklist = stack.getOrDefault(ExtraDataComponents.BLACKLIST, false);
         this.charge = item.getCharge(stack);
         this.maxCharge = item.getMaxCharge(stack);
+        this.charging = stack.getOrDefault(AllDataComponents.CHARGING, false);
         this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
         this.restockEnabled = stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
@@ -141,6 +144,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
                 this.blacklist = found.isBlacklist();
                 this.charge = found.getCharge();
                 this.maxCharge = found.getMaxCharge();
+                this.charging = found.getSpeed() != 0 && this.charge < this.maxCharge;
                 this.sortMode = found.getSortMode();
                 this.restockEnabled = found.isRestockEnabled();
                 IItemHandler menuView = found.getToolboxInventory().asMenuDisplayHandler();
@@ -156,6 +160,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
                 this.blacklist = false;
                 this.charge = 0;
                 this.maxCharge = 1;
+                this.charging = false;
                 this.sortMode = SortMode.NAME;
                 this.restockEnabled = true;
             }
@@ -173,6 +178,7 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
             this.blacklist = false;
             this.charge = extraData.readVarInt();
             this.maxCharge = extraData.readVarInt();
+            this.charging = false;
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 this.syncedToolboxCounts[c] = Math.max(0, extraData.readVarInt());
             this.sortMode = SortMode.NAME;
@@ -250,6 +256,54 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
             @Override
             public void set(int value) {
                 restockEnabled = value != 0;
+            }
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                if (blockEntity != null)
+                    return blockEntity.getCharge();
+                if (!backpackStack.isEmpty() && backpackStack.getItem() instanceof MagneticBackpackItem item)
+                    return item.getCharge(backpackStack);
+                return charge;
+            }
+
+            @Override
+            public void set(int value) {
+                charge = Math.max(0, value);
+            }
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                if (blockEntity != null)
+                    return blockEntity.getMaxCharge();
+                if (!backpackStack.isEmpty() && backpackStack.getItem() instanceof MagneticBackpackItem item)
+                    return item.getMaxCharge(backpackStack);
+                return maxCharge;
+            }
+
+            @Override
+            public void set(int value) {
+                maxCharge = Math.max(1, value);
+            }
+        });
+
+        addDataSlot(new DataSlot() {
+            @Override
+            public int get() {
+                if (blockEntity != null)
+                    return blockEntity.getSpeed() != 0 && blockEntity.getCharge() < blockEntity.getMaxCharge() ? 1 : 0;
+                if (!backpackStack.isEmpty())
+                    return backpackStack.getOrDefault(AllDataComponents.CHARGING, false) ? 1 : 0;
+                return charging ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                charging = value != 0;
             }
         });
 
@@ -350,11 +404,19 @@ public class MagneticBackpackMenu extends AbstractContainerMenu implements IBack
     }
 
     public int getCharge() {
-        return blockEntity != null ? blockEntity.getCharge() : charge;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.getCharge() : charge;
     }
 
     public int getMaxCharge() {
-        return blockEntity != null ? blockEntity.getMaxCharge() : maxCharge;
+        return blockEntity != null && !playerInventory.player.level().isClientSide()
+                ? blockEntity.getMaxCharge() : maxCharge;
+    }
+
+    public boolean isCharging() {
+        if (blockEntity != null && !playerInventory.player.level().isClientSide())
+            return blockEntity.getSpeed() != 0 && blockEntity.getCharge() < blockEntity.getMaxCharge();
+        return charging;
     }
 
     @Override
