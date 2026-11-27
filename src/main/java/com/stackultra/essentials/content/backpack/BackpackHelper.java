@@ -34,4 +34,23 @@ public final class BackpackHelper {
             return true;
         return stack.getCapability(Capabilities.ItemHandler.ITEM) != null;
     }
+
+    /**
+     * Truncates a GUI title string to fit strictly within {@code maxWidth} pixels, appending
+     * {@code "..."} without trailing spaces when clipping is required.
+     */
+    public static String truncateTitle(String rawTitle,
+                                       int maxWidth,
+                                       java.util.function.ToIntFunction<String> widthFn,
+                                       java.util.function.BiFunction<String, Integer, String> substrFn) {
+        if (rawTitle == null || rawTitle.isEmpty() || maxWidth <= 0)
+            return "";
+        if (widthFn.applyAsInt(rawTitle) <= maxWidth)
+            return rawTitle;
+        int ellipsisWidth = widthFn.applyAsInt("...");
+        if (ellipsisWidth >= maxWidth)
+            return "...";
+        String clipped = substrFn.apply(rawTitle, maxWidth - ellipsisWidth).stripTrailing();
+        return clipped + "...";
+    }
 }

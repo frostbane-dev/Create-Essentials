@@ -184,10 +184,11 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
 
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        String titleText = title.getString();
-        int maxTitle = UTILITY_START_X - 8 - 4;
-        if (font.width(titleText) > maxTitle)
-            titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
+        int maxTitleWidth = utilityButtons.isEmpty()
+                ? (imageWidth - 16)
+                : (UTILITY_START_X - 8 - 4);
+        String titleText = BackpackHelper.truncateTitle(
+                title.getString(), maxTitleWidth, font::width, font::plainSubstrByWidth);
         graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
 
         renderExtraForeground(graphics, mouseX, mouseY, partialTicks);

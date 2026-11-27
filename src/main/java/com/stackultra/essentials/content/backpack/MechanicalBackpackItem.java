@@ -44,10 +44,12 @@ public class MechanicalBackpackItem extends BlockItem implements Equipable {
                 return InteractionResultHolder.success(stack);
 
             PortableToolboxInventory tb = PortableToolboxInventory.forStack(stack);
-            player.openMenu(new SimpleMenuProvider(
+            if (player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> BackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> BackpackMenu.writeItemOpenData(buf, player, stack, tb));
+                    buf -> BackpackMenu.writeItemOpenData(buf, player, stack, tb)).isPresent()) {
+                BackpackSounds.playOpenSound(player);
+            }
             return InteractionResultHolder.consume(stack);
         }
         return swapWithEquipmentSlot(this, level, player, hand);

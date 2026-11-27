@@ -148,6 +148,83 @@ public class PortableToolboxInventory implements IItemHandlerModifiable {
         }
     }
 
+    public void copyFrom(PortableToolboxInventory source) {
+        for (int i = 0; i < BACKING_SLOTS; i++)
+            stacks.set(i, ItemStack.EMPTY);
+        for (int c = 0; c < COMPARTMENTS; c++)
+            filters.set(c, ItemStack.EMPTY);
+
+        if (source != null) {
+            for (int i = 0; i < BACKING_SLOTS; i++) {
+                ItemStack s = source.stacks.get(i);
+                if (!s.isEmpty())
+                    stacks.set(i, s.copy());
+            }
+            for (int c = 0; c < COMPARTMENTS; c++) {
+                ItemStack f = source.filters.get(c);
+                if (!f.isEmpty())
+                    filters.set(c, f.copy());
+            }
+        }
+        for (int c = 0; c < COMPARTMENTS; c++) {
+            settleSilent(c);
+        }
+        notifyChanged();
+    }
+
+    public static PortableToolboxInventory copyOf(PortableToolboxInventory source) {
+        PortableToolboxInventory copy = empty();
+        copy.copyFrom(source);
+        return copy;
+    }
+
+    public net.neoforged.neoforge.items.ItemStackHandler toBackingItemsHandler() {
+        net.neoforged.neoforge.items.ItemStackHandler handler =
+                new net.neoforged.neoforge.items.ItemStackHandler(BACKING_SLOTS);
+        for (int i = 0; i < BACKING_SLOTS; i++) {
+            ItemStack s = stacks.get(i);
+            if (!s.isEmpty())
+                handler.setStackInSlot(i, s.copy());
+        }
+        return handler;
+    }
+
+    public net.neoforged.neoforge.items.ItemStackHandler toFiltersHandler() {
+        net.neoforged.neoforge.items.ItemStackHandler handler =
+                new net.neoforged.neoforge.items.ItemStackHandler(COMPARTMENTS);
+        for (int c = 0; c < COMPARTMENTS; c++) {
+            ItemStack f = filters.get(c);
+            if (!f.isEmpty())
+                handler.setStackInSlot(c, f.copy());
+        }
+        return handler;
+    }
+
+    public static PortableToolboxInventory fromHandlers(net.neoforged.neoforge.items.IItemHandler backingItems,
+                                                        net.neoforged.neoforge.items.IItemHandler savedFilters) {
+        PortableToolboxInventory inv = empty();
+        if (backingItems != null) {
+            int limit = Math.min(BACKING_SLOTS, backingItems.getSlots());
+            for (int i = 0; i < limit; i++) {
+                ItemStack s = backingItems.getStackInSlot(i);
+                if (!s.isEmpty())
+                    inv.stacks.set(i, s.copy());
+            }
+        }
+        if (savedFilters != null) {
+            int limit = Math.min(COMPARTMENTS, savedFilters.getSlots());
+            for (int c = 0; c < limit; c++) {
+                ItemStack f = savedFilters.getStackInSlot(c);
+                if (!f.isEmpty())
+                    inv.filters.set(c, f.copyWithCount(1));
+            }
+        }
+        for (int c = 0; c < COMPARTMENTS; c++) {
+            inv.settleSilent(c);
+        }
+        return inv;
+    }
+
     /**
      * Returns a 1-count copy of the reserved filter for {@code compartment} (present for both
      * populated compartments and empty ghost-reserved compartments), or {@link ItemStack#EMPTY}

@@ -50,10 +50,12 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
                 return InteractionResultHolder.success(stack);
 
             PortableToolboxInventory tb = PortableToolboxInventory.forStack(stack);
-            player.openMenu(new SimpleMenuProvider(
+            if (player.openMenu(new SimpleMenuProvider(
                             (id, inv, p) -> MagneticBackpackMenu.create(id, inv, stack),
                             stack.getHoverName()),
-                    buf -> MagneticBackpackMenu.writeItemOpenData(buf, player, stack, this, tb));
+                    buf -> MagneticBackpackMenu.writeItemOpenData(buf, player, stack, this, tb)).isPresent()) {
+                BackpackSounds.playOpenSound(player);
+            }
             return InteractionResultHolder.consume(stack);
         }
         return swapWithEquipmentSlot(this, level, player, hand);

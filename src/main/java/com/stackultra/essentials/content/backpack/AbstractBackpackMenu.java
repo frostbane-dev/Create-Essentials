@@ -62,6 +62,28 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     @Nullable
     protected abstract BlockEntity getBackingBlockEntity();
 
+    protected boolean isMountedContext() {
+        return false;
+    }
+
+    protected boolean isMountedValid(Player player) {
+        return false;
+    }
+
+    protected SortMode readMountedSortMode() {
+        return sortMode;
+    }
+
+    protected void writeMountedSortMode(SortMode mode) {
+    }
+
+    protected boolean readMountedRestockEnabled() {
+        return restockEnabled;
+    }
+
+    protected void writeMountedRestockEnabled(boolean enabled) {
+    }
+
     protected abstract SortMode readBlockEntitySortMode();
 
     protected abstract void writeBlockEntitySortMode(SortMode mode);
@@ -102,6 +124,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
+                if (isMountedContext())
+                    return readMountedSortMode().ordinal();
                 return getBackingBlockEntity() != null ? readBlockEntitySortMode().ordinal() : sortMode.ordinal();
             }
 
@@ -114,6 +138,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
+                if (isMountedContext())
+                    return readMountedRestockEnabled() ? 1 : 0;
                 if (getBackingBlockEntity() != null)
                     return readBlockEntityRestockEnabled() ? 1 : 0;
                 if (!backpackStack.isEmpty())
@@ -212,6 +238,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
 
     @Override
     public SortMode getSortMode() {
+        if (isMountedContext() && !playerInventory.player.level().isClientSide())
+            return readMountedSortMode();
         return getBackingBlockEntity() != null && !playerInventory.player.level().isClientSide()
                 ? readBlockEntitySortMode() : sortMode;
     }
@@ -220,6 +248,11 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     public void setSortMode(SortMode mode, Player player) {
         SortMode resolved = mode != null ? mode : SortMode.NAME;
         this.sortMode = resolved;
+        if (isMountedContext()) {
+            writeMountedSortMode(resolved);
+            broadcastChanges();
+            return;
+        }
         BlockEntity be = getBackingBlockEntity();
         if (be != null) {
             if (!be.isRemoved())
@@ -233,6 +266,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
 
     @Override
     public boolean isRestockEnabled() {
+        if (isMountedContext() && !playerInventory.player.level().isClientSide())
+            return readMountedRestockEnabled();
         return getBackingBlockEntity() != null && !playerInventory.player.level().isClientSide()
                 ? readBlockEntityRestockEnabled() : restockEnabled;
     }
@@ -240,6 +275,11 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     @Override
     public void setRestockEnabled(boolean enabled, Player player) {
         this.restockEnabled = enabled;
+        if (isMountedContext()) {
+            writeMountedRestockEnabled(enabled);
+            broadcastChanges();
+            return;
+        }
         BlockEntity be = getBackingBlockEntity();
         if (be != null) {
             if (!be.isRemoved())
@@ -390,6 +430,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     public boolean stillValid(Player player) {
         if (player.level().isClientSide())
             return true;
+        if (isMountedContext())
+            return isMountedValid(player);
         BlockEntity be = getBackingBlockEntity();
         return be != null
                 ? MenuValidationHelper.isBlockEntityValid(player, be)

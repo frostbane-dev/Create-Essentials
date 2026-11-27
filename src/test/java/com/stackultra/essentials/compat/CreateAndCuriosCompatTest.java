@@ -204,35 +204,54 @@ class CreateAndCuriosCompatTest {
         assertEquals(1, mountedMech.insertItem(1, shulker, false).getCount());
         assertTrue(mountedMech.getStackInSlot(1).isEmpty());
 
-        // Simulate Contraption harvesting items into mounted backpack
+        // Simulate Contraption harvesting items into mounted 27-slot storage AND live GUI edits to the 8-slot toolbox
         assertTrue(mountedMech.insertItem(1, new ItemStack(Items.WHEAT, 64), false).isEmpty());
+        // Insert 200 items (> 64 multi-stack) into toolbox compartment 3 and a ghost filter into compartment 4
+        assertTrue(mountedMech.getToolboxInventory().insertIntoCompartment(3, new ItemStack(Items.OAK_PLANKS, 64), false).isEmpty());
+        assertTrue(mountedMech.getToolboxInventory().insertIntoCompartment(3, new ItemStack(Items.OAK_PLANKS, 64), false).isEmpty());
+        assertTrue(mountedMech.getToolboxInventory().insertIntoCompartment(3, new ItemStack(Items.OAK_PLANKS, 64), false).isEmpty());
+        assertTrue(mountedMech.getToolboxInventory().insertIntoCompartment(3, new ItemStack(Items.OAK_PLANKS, 8), false).isEmpty());
+        assertEquals(200, mountedMech.getToolboxInventory().getTotalCount(3));
+        assertTrue(mountedMech.getToolboxInventory().insertIntoCompartment(4, new ItemStack(Items.REDSTONE_TORCH, 1), false).isEmpty());
+        assertEquals(1, mountedMech.getToolboxInventory().extractFromCompartment(4, 1, false).getCount());
+        assertTrue(mountedMech.getToolboxInventory().isReservedEmpty(4));
+        // Mounted toolbox must also reject nested containers
+        assertFalse(mountedMech.getToolboxInventory().canAccept(5, new ItemStack(AllItems.MECHANICAL_BACKPACK.get())));
+        assertFalse(mountedMech.getToolboxInventory().canAccept(5, new ItemStack(Items.SHULKER_BOX)));
+        mountedMech.setSortMode(SortMode.MOD);
+        mountedMech.setRestockEnabled(true);
 
-        // Codec encode -> decode round-trip via MountedItemStorage.CODEC
+        // Codec encode -> decode round-trip via MountedItemStorage.CODEC (persists 27 slots + 8 toolbox compartments + ghost filters)
         DataResult<Tag> encoded = MountedItemStorage.CODEC.encodeStart(nbtOps, mountedMech);
         assertTrue(encoded.result().isPresent(), "Mounted storage must encode cleanly: " + encoded.error());
         DataResult<MountedItemStorage> decoded = MountedItemStorage.CODEC.parse(nbtOps, encoded.result().get());
         assertTrue(decoded.result().isPresent(), "Mounted storage must decode cleanly: " + decoded.error());
-        assertInstanceOf(BackpackMountedStorage.class, decoded.result().get());
+        BackpackMountedStorage decodedMech = assertInstanceOf(BackpackMountedStorage.class, decoded.result().get());
+        assertEquals(200, decodedMech.getToolboxInventory().getTotalCount(3), "Codec must preserve multi-stack (>64) toolbox compartments");
+        assertTrue(decodedMech.getToolboxInventory().isReservedEmpty(1), "Codec must preserve pre-existing ghost filter");
+        assertTrue(decodedMech.getToolboxInventory().isReservedEmpty(4), "Codec must preserve newly reserved ghost filter");
 
         // Simulate Contraption disassembly: restore BE from StructureBlockInfo NBT, then unmount storage
         MechanicalBackpackBlockEntity restoredMech = new MechanicalBackpackBlockEntity(BlockPos.ZERO, netheriteState);
         restoredMech.loadWithComponents(savedMechNbt, registries);
-        decoded.result().get().unmount(null, netheriteState, BlockPos.ZERO, restoredMech);
+        decodedMech.unmount(null, netheriteState, BlockPos.ZERO, restoredMech);
 
         assertEquals(40, restoredMech.getInventory().getStackInSlot(0).getCount());
         assertEquals(64, restoredMech.getInventory().getStackInSlot(1).getCount());
         assertTrue(restoredMech.isNetherite());
         assertEquals("Train Cargo", restoredMech.getDisplayName().getString());
-        assertEquals(SortMode.COUNT, restoredMech.getSortMode());
-        assertFalse(restoredMech.isRestockEnabled());
+        assertEquals(SortMode.MOD, restoredMech.getSortMode());
+        assertTrue(restoredMech.isRestockEnabled());
         assertEquals(32, restoredMech.getToolboxInventory().getTotalCount(0));
         assertTrue(restoredMech.getToolboxInventory().isReservedEmpty(1), "Toolbox ghost filter must survive contraption");
+        assertEquals(200, restoredMech.getToolboxInventory().getTotalCount(3), "Unmounted toolbox items must persist with zero loss");
+        assertTrue(restoredMech.getToolboxInventory().isReservedEmpty(4), "Mounted-created ghost filter must survive unmount");
 
         ItemStack droppedMech = new ItemStack(AllItems.NETHERITE_BACKPACK.get());
         restoredMech.saveToStack(droppedMech);
         assertEquals(new DyedItemColor(0x2288CC, true), droppedMech.get(DataComponents.DYED_COLOR));
 
-        // 2. Magnetic Backpack preserves charge, filters, enabled/blacklist, toolbox, and updated storage
+        // 2. Magnetic Backpack preserves charge, filters, enabled/blacklist, updated 8-slot toolbox, and updated storage
         BlockState magState = AllBlocks.MAGNETIC_BACKPACK.get().defaultBlockState();
         ItemStack placedMag = new ItemStack(AllItems.MAGNETIC_BACKPACK.get());
         placedMag.set(AllDataComponents.CHARGE, 4321);
@@ -250,6 +269,7 @@ class CreateAndCuriosCompatTest {
                 .mount(null, magState, BlockPos.ZERO, magBe);
         assertNotNull(mountedMag);
         assertTrue(mountedMag.insertItem(0, new ItemStack(Items.RAW_IRON, 19), false).isEmpty());
+        assertTrue(mountedMag.getToolboxInventory().insertIntoCompartment(2, new ItemStack(Items.SCAFFOLDING, 48), false).isEmpty());
 
         MagneticBackpackBlockEntity restoredMag = new MagneticBackpackBlockEntity(BlockPos.ZERO, magState);
         restoredMag.loadWithComponents(savedMagNbt, registries);
@@ -261,7 +281,32 @@ class CreateAndCuriosCompatTest {
         assertTrue(restoredMag.isBlacklist());
         assertEquals("Drill Vacuum", restoredMag.getDisplayName().getString());
         assertEquals(Items.COBBLESTONE, restoredMag.getFilterInventory().getStackInSlot(0).getItem());
-        assertEquals(16, restoredMag.getToolboxInventory().getTotalCount(2));
+        assertEquals(64, restoredMag.getToolboxInventory().getTotalCount(2));
+    }
+
+    @Test
+    void backpackBlocksMatchCreateToolboxSoundTypeAndTitleTruncationPreventsOverflow() {
+        // Exact Create Toolbox SoundType (SoundType.WOOD) on both Mechanical/Netherite and Magnetic Backpack blocks
+        assertEquals(net.minecraft.world.level.block.SoundType.WOOD,
+                AllBlocks.MECHANICAL_BACKPACK.get().defaultBlockState().getSoundType(null, BlockPos.ZERO, null));
+        assertEquals(net.minecraft.world.level.block.SoundType.WOOD,
+                AllBlocks.MAGNETIC_BACKPACK.get().defaultBlockState().getSoundType(null, BlockPos.ZERO, null));
+
+        // Monospace 6px/char font simulation matching standard Minecraft glyph widths (maxTitleWidth = 106px)
+        java.util.function.ToIntFunction<String> widthFn = s -> s.length() * 6;
+        java.util.function.BiFunction<String, Integer, String> substrFn =
+                (s, maxPx) -> s.substring(0, Math.min(s.length(), Math.max(0, maxPx / 6)));
+
+        String longTitle = "Moving Netherite Mechanical Backpack";
+        String truncated = com.stackultra.essentials.content.backpack.BackpackHelper
+                .truncateTitle(longTitle, 106, widthFn, substrFn);
+        assertTrue(widthFn.applyAsInt(truncated) <= 106, "Truncated title must never exceed maxWidth");
+        assertTrue(truncated.endsWith("..."), "Overflowing title must end with ellipsis");
+        assertFalse(truncated.endsWith(" ..."), "Truncated title must trim trailing space before ellipsis");
+
+        String shortTitle = "Backpack";
+        assertEquals(shortTitle, com.stackultra.essentials.content.backpack.BackpackHelper
+                .truncateTitle(shortTitle, 106, widthFn, substrFn));
     }
 
     @Test

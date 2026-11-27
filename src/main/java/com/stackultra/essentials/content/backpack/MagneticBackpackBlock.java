@@ -137,7 +137,10 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (level.isClientSide)
             return InteractionResult.SUCCESS;
-        withBlockEntityDo(level, pos, be -> player.openMenu(be, be::sendToMenu));
+        withBlockEntityDo(level, pos, be -> {
+            if (player.openMenu(be, be::sendToMenu).isPresent())
+                BackpackSounds.playOpenSound(level, pos);
+        });
         return InteractionResult.SUCCESS;
     }
 
@@ -147,7 +150,10 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
-        withBlockEntityDo(level, pos, be -> player.openMenu(be, be::sendToMenu));
+        withBlockEntityDo(level, pos, be -> {
+            if (player.openMenu(be, be::sendToMenu).isPresent())
+                BackpackSounds.playOpenSound(level, pos);
+        });
         return ItemInteractionResult.SUCCESS;
     }
 

@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 
 /**
  * {@link MountedItemStorageType} mounting placed {@link MechanicalBackpackBlockEntity} and
- * {@link MagneticBackpackBlockEntity} 27-slot inventories onto Create Contraptions.
+ * {@link MagneticBackpackBlockEntity} 27-slot inventories and 8-compartment toolboxes onto Create Contraptions.
  */
 public class BackpackMountedStorageType extends MountedItemStorageType<BackpackMountedStorage> {
 
@@ -24,10 +24,20 @@ public class BackpackMountedStorageType extends MountedItemStorageType<BackpackM
     @Nullable
     public BackpackMountedStorage mount(Level level, BlockState state, BlockPos pos, @Nullable BlockEntity be) {
         if (be instanceof MechanicalBackpackBlockEntity mechBe) {
-            return BackpackMountedStorage.fromHandler(this, mechBe.getInventory());
+            return BackpackMountedStorage.fromBlockEntity(
+                    this,
+                    mechBe.getInventory(),
+                    mechBe.getToolboxInventory(),
+                    mechBe.getSortMode(),
+                    mechBe.isRestockEnabled());
         }
         if (be instanceof MagneticBackpackBlockEntity magBe) {
-            return BackpackMountedStorage.fromHandler(this, magBe.getInventory());
+            return BackpackMountedStorage.fromBlockEntity(
+                    this,
+                    magBe.getInventory(),
+                    magBe.getToolboxInventory(),
+                    magBe.getSortMode(),
+                    magBe.isRestockEnabled());
         }
         return null;
     }

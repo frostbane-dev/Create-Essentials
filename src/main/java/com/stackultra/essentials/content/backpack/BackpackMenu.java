@@ -16,6 +16,10 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
 
 import javax.annotation.Nullable;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class BackpackMenu extends AbstractBackpackMenu {
 
@@ -33,6 +37,16 @@ public class BackpackMenu extends AbstractBackpackMenu {
 
     @Nullable
     private final MechanicalBackpackBlockEntity blockEntity;
+    @Nullable
+    private final Predicate<Player> mountedValidity;
+    @Nullable
+    private final Supplier<SortMode> mountedSortGetter;
+    @Nullable
+    private final Consumer<SortMode> mountedSortSetter;
+    @Nullable
+    private final BooleanSupplier mountedRestockGetter;
+    @Nullable
+    private final Consumer<Boolean> mountedRestockSetter;
 
     private record ClientInitData(
             @Nullable MechanicalBackpackBlockEntity blockEntity,
@@ -58,6 +72,18 @@ public class BackpackMenu extends AbstractBackpackMenu {
             buf.writeVarInt(toolbox.getTotalCount(c));
     }
 
+    public static void writeMountedOpenData(RegistryFriendlyByteBuf buf,
+                                            PortableToolboxInventory toolbox,
+                                            SortMode sortMode,
+                                            boolean restockEnabled) {
+        buf.writeBoolean(false);
+        buf.writeVarInt(MenuValidationHelper.NO_LOCKED_SLOT);
+        buf.writeVarInt((sortMode != null ? sortMode : SortMode.NAME).ordinal());
+        buf.writeBoolean(restockEnabled);
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            buf.writeVarInt(toolbox.getTotalCount(c));
+    }
+
     public BackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
         this(windowId, inv, decodeClientData(extraData));
     }
@@ -67,6 +93,11 @@ public class BackpackMenu extends AbstractBackpackMenu {
                 data.storageInventory(), data.toolboxInventory(), data.displayHandler(),
                 ItemStack.EMPTY, data.lockedInventorySlot(), data.sortMode(), data.restockEnabled());
         this.blockEntity = data.blockEntity();
+        this.mountedValidity = null;
+        this.mountedSortGetter = null;
+        this.mountedSortSetter = null;
+        this.mountedRestockGetter = null;
+        this.mountedRestockSetter = null;
         System.arraycopy(data.initialCounts(), 0, this.syncedToolboxCounts, 0, TOOLBOX_SLOTS);
         addSlots();
         addCommonStateDataSlots();
@@ -78,6 +109,11 @@ public class BackpackMenu extends AbstractBackpackMenu {
                 ItemStack.EMPTY, MenuValidationHelper.NO_LOCKED_SLOT,
                 be.getSortMode(), be.isRestockEnabled());
         this.blockEntity = be;
+        this.mountedValidity = null;
+        this.mountedSortGetter = null;
+        this.mountedSortSetter = null;
+        this.mountedRestockGetter = null;
+        this.mountedRestockSetter = null;
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
             this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
         addSlots();
@@ -93,6 +129,38 @@ public class BackpackMenu extends AbstractBackpackMenu {
                 stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME),
                 stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
         this.blockEntity = null;
+        this.mountedValidity = null;
+        this.mountedSortGetter = null;
+        this.mountedSortSetter = null;
+        this.mountedRestockGetter = null;
+        this.mountedRestockSetter = null;
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
+        addSlots();
+        addCommonStateDataSlots();
+    }
+
+    private BackpackMenu(int windowId,
+                         Inventory inv,
+                         BackpackInventory storage,
+                         PortableToolboxInventory toolbox,
+                         Predicate<Player> mountedValidity,
+                         Supplier<SortMode> mountedSortGetter,
+                         Consumer<SortMode> mountedSortSetter,
+                         BooleanSupplier mountedRestockGetter,
+                         Consumer<Boolean> mountedRestockSetter) {
+        super(AllMenus.BACKPACK.get(), windowId, inv,
+                storage, toolbox, toolbox.asMenuDisplayHandler(),
+                ItemStack.EMPTY,
+                MenuValidationHelper.NO_LOCKED_SLOT,
+                mountedSortGetter.get(),
+                mountedRestockGetter.getAsBoolean());
+        this.blockEntity = null;
+        this.mountedValidity = mountedValidity;
+        this.mountedSortGetter = mountedSortGetter;
+        this.mountedSortSetter = mountedSortSetter;
+        this.mountedRestockGetter = mountedRestockGetter;
+        this.mountedRestockSetter = mountedRestockSetter;
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
             this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
         addSlots();
@@ -109,6 +177,19 @@ public class BackpackMenu extends AbstractBackpackMenu {
         PortableToolboxInventory toolbox = PortableToolboxInventory.forStack(stack,
                 () -> BackpackEquipment.syncBackpack(inv.player, stack));
         return new BackpackMenu(windowId, inv, stack, storage, toolbox);
+    }
+
+    public static BackpackMenu createMounted(int windowId,
+                                             Inventory inv,
+                                             BackpackInventory storage,
+                                             PortableToolboxInventory toolbox,
+                                             Predicate<Player> validityCheck,
+                                             Supplier<SortMode> sortGetter,
+                                             Consumer<SortMode> sortSetter,
+                                             BooleanSupplier restockGetter,
+                                             Consumer<Boolean> restockSetter) {
+        return new BackpackMenu(windowId, inv, storage, toolbox, validityCheck,
+                sortGetter, sortSetter, restockGetter, restockSetter);
     }
 
     private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData) {
@@ -171,6 +252,38 @@ public class BackpackMenu extends AbstractBackpackMenu {
     @Override
     protected BlockEntity getBackingBlockEntity() {
         return blockEntity;
+    }
+
+    @Override
+    protected boolean isMountedContext() {
+        return mountedValidity != null;
+    }
+
+    @Override
+    protected boolean isMountedValid(Player player) {
+        return mountedValidity != null && mountedValidity.test(player);
+    }
+
+    @Override
+    protected SortMode readMountedSortMode() {
+        return mountedSortGetter != null ? mountedSortGetter.get() : sortMode;
+    }
+
+    @Override
+    protected void writeMountedSortMode(SortMode mode) {
+        if (mountedSortSetter != null)
+            mountedSortSetter.accept(mode);
+    }
+
+    @Override
+    protected boolean readMountedRestockEnabled() {
+        return mountedRestockGetter != null ? mountedRestockGetter.getAsBoolean() : restockEnabled;
+    }
+
+    @Override
+    protected void writeMountedRestockEnabled(boolean enabled) {
+        if (mountedRestockSetter != null)
+            mountedRestockSetter.accept(enabled);
     }
 
     @Override

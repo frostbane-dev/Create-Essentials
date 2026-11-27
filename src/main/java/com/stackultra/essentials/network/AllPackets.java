@@ -205,19 +205,23 @@ public class AllPackets {
 
             if (backpack.getItem() instanceof MagneticBackpackItem magneticItem) {
                 PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
-                player.openMenu(new SimpleMenuProvider(
+                if (player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> MagneticBackpackMenu.create(id, inv, backpack),
                                 backpack.getHoverName()),
-                        buf -> MagneticBackpackMenu.writeItemOpenData(buf, player, backpack, magneticItem, tb));
+                        buf -> MagneticBackpackMenu.writeItemOpenData(buf, player, backpack, magneticItem, tb)).isPresent()) {
+                    com.stackultra.essentials.content.backpack.BackpackSounds.playOpenSound(player);
+                }
                 return;
             }
 
             if (backpack.getItem() instanceof MechanicalBackpackItem) {
                 PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
-                player.openMenu(new SimpleMenuProvider(
+                if (player.openMenu(new SimpleMenuProvider(
                                 (id, inv, p) -> BackpackMenu.create(id, inv, backpack),
                                 backpack.getHoverName()),
-                        buf -> BackpackMenu.writeItemOpenData(buf, player, backpack, tb));
+                        buf -> BackpackMenu.writeItemOpenData(buf, player, backpack, tb)).isPresent()) {
+                    com.stackultra.essentials.content.backpack.BackpackSounds.playOpenSound(player);
+                }
             }
         });
     }

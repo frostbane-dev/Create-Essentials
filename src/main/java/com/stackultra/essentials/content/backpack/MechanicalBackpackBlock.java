@@ -129,8 +129,10 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (level.isClientSide)
             return InteractionResult.SUCCESS;
-        if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be)
-            player.openMenu(be, be::sendToMenu);
+        if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be) {
+            if (player.openMenu(be, be::sendToMenu).isPresent())
+                BackpackSounds.playOpenSound(level, pos);
+        }
         return InteractionResult.SUCCESS;
     }
 
@@ -140,8 +142,10 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
-        if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be)
-            player.openMenu(be, be::sendToMenu);
+        if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be) {
+            if (player.openMenu(be, be::sendToMenu).isPresent())
+                BackpackSounds.playOpenSound(level, pos);
+        }
         return ItemInteractionResult.SUCCESS;
     }
 

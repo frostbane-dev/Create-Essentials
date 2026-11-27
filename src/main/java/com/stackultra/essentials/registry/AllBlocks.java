@@ -1,6 +1,7 @@
 package com.stackultra.essentials.registry;
 
 import com.stackultra.essentials.CreateEssentials;
+import com.stackultra.essentials.content.backpack.BackpackSounds;
 import com.stackultra.essentials.content.backpack.MagneticBackpackBlock;
 import com.stackultra.essentials.content.backpack.MechanicalBackpackBlock;
 import com.stackultra.essentials.content.magnet.MagnetTier;
@@ -23,10 +24,10 @@ public class AllBlocks {
             BLOCKS.register("precision_magnet", () -> new RotationalMagnetBlock(MagnetTier.TIER_2, magnetProperties()));
 
     public static final DeferredBlock<MechanicalBackpackBlock> MECHANICAL_BACKPACK =
-            BLOCKS.register("mechanical_backpack", () -> new MechanicalBackpackBlock(backpackProperties()));
+            BLOCKS.register("mechanical_backpack", () -> new MechanicalBackpackBlock(backpackProperties(MapColor.WOOD)));
 
     public static final DeferredBlock<MagneticBackpackBlock> MAGNETIC_BACKPACK =
-            BLOCKS.register("magnetic_backpack", () -> new MagneticBackpackBlock(magnetProperties()));
+            BLOCKS.register("magnetic_backpack", () -> new MagneticBackpackBlock(backpackProperties(MapColor.METAL)));
 
     private static BlockBehaviour.Properties magnetProperties() {
         return BlockBehaviour.Properties.of()
@@ -39,15 +40,15 @@ public class AllBlocks {
                 .sound(SoundType.METAL);
     }
 
-    private static BlockBehaviour.Properties backpackProperties() {
+    private static BlockBehaviour.Properties backpackProperties(MapColor mapColor) {
         return BlockBehaviour.Properties.of()
-                .mapColor(MapColor.WOOD)
+                .mapColor(mapColor)
                 .instabreak()
                 .noOcclusion()
                 .isViewBlocking((state, level, pos) -> false)
                 .isSuffocating((state, level, pos) -> false)
                 .isRedstoneConductor((state, level, pos) -> false)
-                .sound(SoundType.WOOD);
+                .sound(BackpackSounds.BLOCK_SOUND_TYPE);
     }
 
     public static void register(IEventBus bus) {
