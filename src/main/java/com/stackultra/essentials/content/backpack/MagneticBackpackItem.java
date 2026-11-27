@@ -1,18 +1,13 @@
 package com.stackultra.essentials.content.backpack;
 
-import com.simibubi.create.AllEnchantments;
-import com.stackultra.essentials.content.ChargeDisplay;
-import com.stackultra.essentials.content.GogglesHelper;
+import com.stackultra.essentials.content.MagneticEquipmentHelper;
 import com.stackultra.essentials.content.magnet.MagnetTier;
 import com.stackultra.essentials.registry.AllDataComponents;
-import com.stackultra.essentials.registry.ExtraDataComponents;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.SimpleMenuProvider;
@@ -24,20 +19,17 @@ import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class MagneticBackpackItem extends BlockItem implements Equipable {
 
-    public static final int BAR_COLOR = 0xFFFFFF;
-    public static final int FILTER_SLOTS = 3;
+    public static final int BAR_COLOR = MagneticEquipmentHelper.BAR_COLOR;
+    public static final int FILTER_SLOTS = MagneticEquipmentHelper.FILTER_SLOTS;
 
     public MagneticBackpackItem(Block block, Properties properties) {
         super(block, properties);
@@ -90,13 +82,7 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
-        if (GogglesHelper.isViewerWearingGoggles()) {
-            boolean enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
-            boolean charging = stack.getOrDefault(AllDataComponents.CHARGING, false);
-
-            tooltip.add(ChargeDisplay.statusLine(enabled, charging));
-            tooltip.add(ChargeDisplay.charge(getCharge(stack), getMaxCharge(stack)));
-        }
+        MagneticEquipmentHelper.appendGogglesChargeTooltip(stack, getCharge(stack), getMaxCharge(stack), tooltip);
         BackpackTooltipData.appendEmptyHint(stack, tooltip);
     }
 
@@ -117,7 +103,7 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
 
     @Override
     public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
-        return enchantment.is(AllEnchantments.CAPACITY) || super.supportsEnchantment(stack, enchantment);
+        return MagneticEquipmentHelper.supportsCapacity(enchantment) || super.supportsEnchantment(stack, enchantment);
     }
 
     @Override
@@ -127,7 +113,7 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
 
     @Override
     public int getBarWidth(ItemStack stack) {
-        return Math.round(13.0F * Mth.clamp(getCharge(stack) / (float) getMaxCharge(stack), 0, 1));
+        return MagneticEquipmentHelper.getBarWidth(getCharge(stack), getMaxCharge(stack));
     }
 
     @Override
@@ -140,40 +126,22 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
     }
 
     public int getCharge(ItemStack stack) {
-        return Math.min(stack.getOrDefault(AllDataComponents.CHARGE, 0), getMaxCharge(stack));
+        return MagneticEquipmentHelper.getCharge(stack, getMaxCharge(stack));
     }
 
     public static int getCapacityLevel(ItemStack stack) {
-        ItemEnchantments enchantments = stack.getTagEnchantments();
-        for (Holder<Enchantment> enchantment : enchantments.keySet()) {
-            if (enchantment.is(AllEnchantments.CAPACITY))
-                return enchantments.getLevel(enchantment);
-        }
-        return 0;
+        return MagneticEquipmentHelper.getCapacityLevel(stack);
     }
 
     public static NonNullList<ItemStack> getFilterSlots(ItemStack stack) {
-        ItemContainerContents contents =
-                stack.getOrDefault(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.EMPTY);
-        NonNullList<ItemStack> slots = NonNullList.withSize(FILTER_SLOTS, ItemStack.EMPTY);
-        contents.copyInto(slots);
-        return slots;
+        return MagneticEquipmentHelper.getFilterSlots(stack, AllDataComponents.BACKPACK_FILTERS, FILTER_SLOTS);
     }
 
     public static List<ItemStack> getFilters(ItemStack stack) {
-        NonNullList<ItemStack> slots = getFilterSlots(stack);
-        List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
-        for (ItemStack entry : slots) {
-            if (!entry.isEmpty())
-                filters.add(entry.copy());
-        }
-        return filters;
+        return MagneticEquipmentHelper.getFilters(stack, AllDataComponents.BACKPACK_FILTERS, FILTER_SLOTS);
     }
 
     public static void setFilters(ItemStack stack, List<ItemStack> filters) {
-        List<ItemStack> slots = new ArrayList<>(FILTER_SLOTS);
-        for (int i = 0; i < FILTER_SLOTS; i++)
-            slots.add(i < filters.size() ? filters.get(i).copy() : ItemStack.EMPTY);
-        stack.set(AllDataComponents.BACKPACK_FILTERS, ItemContainerContents.fromItems(slots));
+        MagneticEquipmentHelper.setFilters(stack, AllDataComponents.BACKPACK_FILTERS, FILTER_SLOTS, filters);
     }
 }

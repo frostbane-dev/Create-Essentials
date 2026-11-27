@@ -1,6 +1,5 @@
 package com.stackultra.essentials.content.backpack;
 
-import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
 import net.minecraft.client.Minecraft;
@@ -8,25 +7,18 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.DataSlot;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
-import net.neoforged.neoforge.items.SlotItemHandler;
 
 import javax.annotation.Nullable;
 
-public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu {
+public class BackpackMenu extends AbstractBackpackMenu {
 
-    public static final int BACKPACK_SLOTS = BackpackInventory.SLOTS;
-    public static final int TOOLBOX_SLOTS = PortableToolboxInventory.COMPARTMENTS;
+    public static final int BACKPACK_SLOTS = STORAGE_SLOTS;
     public static final int TOOLBOX_SLOT_START = BACKPACK_SLOTS;
     public static final int PLAYER_SLOT_START = BACKPACK_SLOTS + TOOLBOX_SLOTS;
 
@@ -38,17 +30,19 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     public static final int PLAYER_Y = 131;
     public static final int HOTBAR_Y = 189;
 
-    private final Inventory playerInventory;
-    private final IItemHandler backpackInventory;
-    private final PortableToolboxInventory toolboxInventory;
-    private final IItemHandler toolboxSlotBacking;
     @Nullable
     private final MechanicalBackpackBlockEntity blockEntity;
-    private final ItemStack backpackStack;
 
-    private SortMode sortMode;
-    private boolean restockEnabled;
-    private final int[] syncedToolboxCounts = new int[TOOLBOX_SLOTS];
+    private record ClientInitData(
+            @Nullable MechanicalBackpackBlockEntity blockEntity,
+            IItemHandler storageInventory,
+            PortableToolboxInventory toolboxInventory,
+            IItemHandler displayHandler,
+            SortMode sortMode,
+            boolean restockEnabled,
+            int[] initialCounts
+    ) {
+    }
 
     public static void writeItemOpenData(RegistryFriendlyByteBuf buf,
                                          ItemStack stack,
@@ -61,13 +55,63 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
     }
 
     public BackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
-        super(AllMenus.BACKPACK.get(), windowId);
-        this.playerInventory = inv;
+        this(windowId, inv, decodeClientData(extraData));
+    }
+
+    private BackpackMenu(int windowId, Inventory inv, ClientInitData data) {
+        super(AllMenus.BACKPACK.get(), windowId, inv,
+                data.storageInventory(), data.toolboxInventory(), data.displayHandler(),
+                ItemStack.EMPTY, data.sortMode(), data.restockEnabled());
+        this.blockEntity = data.blockEntity();
+        System.arraycopy(data.initialCounts(), 0, this.syncedToolboxCounts, 0, TOOLBOX_SLOTS);
+        addSlots();
+        addCommonStateDataSlots();
+    }
+
+    private BackpackMenu(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
+        super(AllMenus.BACKPACK.get(), windowId, inv,
+                be.getItemHandler(), be.getToolboxInventory(), be.getToolboxInventory().asMenuDisplayHandler(),
+                ItemStack.EMPTY, be.getSortMode(), be.isRestockEnabled());
+        this.blockEntity = be;
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
+        addSlots();
+        addCommonStateDataSlots();
+    }
+
+    private BackpackMenu(int windowId, Inventory inv, ItemStack stack,
+                         BackpackInventory storage, PortableToolboxInventory toolbox) {
+        super(AllMenus.BACKPACK.get(), windowId, inv,
+                storage, toolbox, toolbox.asMenuDisplayHandler(),
+                stack,
+                stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME),
+                stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
+        this.blockEntity = null;
+        for (int c = 0; c < TOOLBOX_SLOTS; c++)
+            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
+        addSlots();
+        addCommonStateDataSlots();
+    }
+
+    public static BackpackMenu create(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
+        return new BackpackMenu(windowId, inv, be);
+    }
+
+    public static BackpackMenu create(int windowId, Inventory inv, ItemStack stack) {
+        BackpackInventory storage = BackpackInventory.forStack(stack,
+                () -> BackpackEquipment.syncBackpack(inv.player, stack));
+        PortableToolboxInventory toolbox = PortableToolboxInventory.forStack(stack,
+                () -> BackpackEquipment.syncBackpack(inv.player, stack));
+        return new BackpackMenu(windowId, inv, stack, storage, toolbox);
+    }
+
+    private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData) {
         boolean fromBlockEntity = extraData.readBoolean();
         MechanicalBackpackBlockEntity found = null;
         int[] initialCounts = new int[TOOLBOX_SLOTS];
         SortMode initialSortMode = SortMode.NAME;
         boolean initialRestock = true;
+
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
@@ -91,363 +135,72 @@ public class BackpackMenu extends AbstractContainerMenu implements IBackpackMenu
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 initialCounts[c] = Math.max(0, extraData.readVarInt());
         }
-        this.blockEntity = found;
-        this.backpackStack = ItemStack.EMPTY;
-        this.backpackInventory = found != null ? found.getItemHandler() : new BackpackInventory();
 
+        IItemHandler storage = found != null ? found.getItemHandler() : new BackpackInventory();
         // Client-side toolbox slots use a dedicated display handler so vanilla ClientboundContainerSetSlotPacket
         // (which clamps ItemStack counts to maxStackSize) NEVER overwrites a placed BlockEntity's 4-stack backing!
         ItemStackHandler displayHandler = new ItemStackHandler(TOOLBOX_SLOTS);
+        PortableToolboxInventory toolbox;
         if (found != null) {
-            this.toolboxInventory = found.getToolboxInventory();
-            IItemHandler menuView = found.getToolboxInventory().asMenuDisplayHandler();
+            toolbox = found.getToolboxInventory();
+            IItemHandler menuView = toolbox.asMenuDisplayHandler();
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 displayHandler.setStackInSlot(c, menuView.getStackInSlot(c));
         } else {
-            this.toolboxInventory = PortableToolboxInventory.empty();
+            toolbox = PortableToolboxInventory.empty();
         }
-        this.sortMode = initialSortMode;
-        this.restockEnabled = initialRestock;
-        this.toolboxSlotBacking = displayHandler;
-        System.arraycopy(initialCounts, 0, this.syncedToolboxCounts, 0, TOOLBOX_SLOTS);
-
-        addBackpackSlots();
-        addToolboxSlots();
-        addPlayerSlots();
-        addStateDataSlots();
+        return new ClientInitData(found, storage, toolbox, displayHandler, initialSortMode, initialRestock, initialCounts);
     }
 
-    private BackpackMenu(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
-        super(AllMenus.BACKPACK.get(), windowId);
-        this.playerInventory = inv;
-        this.blockEntity = be;
-        this.backpackStack = ItemStack.EMPTY;
-        this.backpackInventory = be.getItemHandler();
-        this.toolboxInventory = be.getToolboxInventory();
-        this.toolboxSlotBacking = this.toolboxInventory.asMenuDisplayHandler();
-        this.sortMode = be.getSortMode();
-        this.restockEnabled = be.isRestockEnabled();
-        for (int c = 0; c < TOOLBOX_SLOTS; c++)
-            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
-        addBackpackSlots();
-        addToolboxSlots();
-        addPlayerSlots();
-        addStateDataSlots();
+    private void addSlots() {
+        addStorageSlots(STORAGE_X, STORAGE_Y);
+        addToolboxSlots(TOOLBOX_X, TOOLBOX_Y);
+        addPlayerInventorySlots(STORAGE_X, PLAYER_Y, HOTBAR_Y);
     }
 
-    private BackpackMenu(int windowId, Inventory inv, ItemStack stack) {
-        super(AllMenus.BACKPACK.get(), windowId);
-        this.playerInventory = inv;
-        this.blockEntity = null;
-        this.backpackStack = stack;
-        this.backpackInventory = BackpackInventory.forStack(stack,
-                () -> BackpackEquipment.syncBackpack(inv.player, stack));
-        this.toolboxInventory = PortableToolboxInventory.forStack(stack,
-                () -> BackpackEquipment.syncBackpack(inv.player, stack));
-        this.toolboxSlotBacking = this.toolboxInventory.asMenuDisplayHandler();
-        this.sortMode = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
-        this.restockEnabled = stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
-        for (int c = 0; c < TOOLBOX_SLOTS; c++)
-            this.syncedToolboxCounts[c] = this.toolboxInventory.getTotalCount(c);
-        addBackpackSlots();
-        addToolboxSlots();
-        addPlayerSlots();
-        addStateDataSlots();
-    }
-
-    public static BackpackMenu create(int windowId, Inventory inv, MechanicalBackpackBlockEntity be) {
-        return new BackpackMenu(windowId, inv, be);
-    }
-
-    public static BackpackMenu create(int windowId, Inventory inv, ItemStack stack) {
-        return new BackpackMenu(windowId, inv, stack);
-    }
-
-    private void addStateDataSlots() {
-        addDataSlot(new DataSlot() {
-            @Override
-            public int get() {
-                return blockEntity != null ? blockEntity.getSortMode().ordinal() : sortMode.ordinal();
-            }
-
-            @Override
-            public void set(int value) {
-                sortMode = SortMode.byOrdinal(value);
-            }
-        });
-
-        addDataSlot(new DataSlot() {
-            @Override
-            public int get() {
-                if (blockEntity != null)
-                    return blockEntity.isRestockEnabled() ? 1 : 0;
-                if (!backpackStack.isEmpty())
-                    return backpackStack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true) ? 1 : 0;
-                return restockEnabled ? 1 : 0;
-            }
-
-            @Override
-            public void set(int value) {
-                restockEnabled = value != 0;
-            }
-        });
-
-        for (int c = 0; c < TOOLBOX_SLOTS; c++) {
-            final int compartment = c;
-            addDataSlot(new DataSlot() {
-                @Override
-                public int get() {
-                    return toolboxInventory.getTotalCount(compartment);
-                }
-
-                @Override
-                public void set(int value) {
-                    syncedToolboxCounts[compartment] = Math.max(0, value);
-                }
-            });
-        }
-    }
-
-    private void addBackpackSlots() {
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                int index = row * 9 + col;
-                addSlot(new SlotItemHandler(backpackInventory, index,
-                        STORAGE_X + col * 18, STORAGE_Y + row * 18));
-            }
-        }
-    }
-
-    private void addToolboxSlots() {
-        for (int c = 0; c < TOOLBOX_SLOTS; c++) {
-            addSlot(new SlotItemHandler(toolboxSlotBacking, c, TOOLBOX_X + c * 18, TOOLBOX_Y));
-        }
-    }
-
-    private void addPlayerSlots() {
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9,
-                        STORAGE_X + col * 18, PLAYER_Y + row * 18) {
-                    @Override
-                    public boolean mayPickup(Player player) {
-                        return isNotLockedOpenStack(getItem());
-                    }
-                });
-            }
-        }
-        for (int hotbar = 0; hotbar < 9; hotbar++) {
-            addSlot(new Slot(playerInventory, hotbar, STORAGE_X + hotbar * 18, HOTBAR_Y) {
-                @Override
-                public boolean mayPickup(Player player) {
-                    return isNotLockedOpenStack(getItem());
-                }
-            });
-        }
-    }
-
-    private boolean isNotLockedOpenStack(ItemStack stack) {
-        return backpackStack.isEmpty() || stack != backpackStack;
-    }
-
-    public boolean isToolboxSlot(int slotId) {
-        return slotId >= TOOLBOX_SLOT_START && slotId < PLAYER_SLOT_START;
-    }
-
-    public BackpackInventory getBackpackInventory() {
-        return backpackInventory instanceof BackpackInventory inv ? inv : null;
+    @Nullable
+    @Override
+    protected BlockEntity getBackingBlockEntity() {
+        return blockEntity;
     }
 
     @Override
-    public SortMode getSortMode() {
-        return blockEntity != null && !playerInventory.player.level().isClientSide()
-                ? blockEntity.getSortMode() : sortMode;
+    protected SortMode readBlockEntitySortMode() {
+        return blockEntity.getSortMode();
     }
 
     @Override
-    public void setSortMode(SortMode mode, Player player) {
-        SortMode resolved = mode != null ? mode : SortMode.NAME;
-        this.sortMode = resolved;
-        if (blockEntity != null) {
-            if (!blockEntity.isRemoved())
-                blockEntity.setSortMode(resolved);
-        } else if (!backpackStack.isEmpty()) {
-            backpackStack.set(ExtraDataComponents.SORT_MODE, resolved);
-            BackpackEquipment.syncBackpack(player, backpackStack);
-        }
-        broadcastChanges();
+    protected void writeBlockEntitySortMode(SortMode mode) {
+        blockEntity.setSortMode(mode);
     }
 
     @Override
-    public boolean isRestockEnabled() {
-        return blockEntity != null && !playerInventory.player.level().isClientSide()
-                ? blockEntity.isRestockEnabled() : restockEnabled;
+    protected boolean readBlockEntityRestockEnabled() {
+        return blockEntity.isRestockEnabled();
     }
 
     @Override
-    public void setRestockEnabled(boolean enabled, Player player) {
-        this.restockEnabled = enabled;
-        if (blockEntity != null) {
-            if (!blockEntity.isRemoved())
-                blockEntity.setRestockEnabled(enabled);
-        } else if (!backpackStack.isEmpty()) {
-            backpackStack.set(ExtraDataComponents.TOOLBOX_RESTOCK, enabled);
-            BackpackEquipment.syncBackpack(player, backpackStack);
-            if (player instanceof ServerPlayer serverPlayer) {
-                PortableToolboxHandler.notifyRestockToggled(serverPlayer, backpackStack);
-            }
-        }
-        broadcastChanges();
+    protected void writeBlockEntityRestockEnabled(boolean enabled) {
+        blockEntity.setRestockEnabled(enabled);
     }
 
     @Override
-    public int getToolboxCount(int compartment) {
-        if (compartment < 0 || compartment >= TOOLBOX_SLOTS)
-            return 0;
-        if (playerInventory.player.level().isClientSide())
-            return syncedToolboxCounts[compartment];
-        return toolboxInventory.getTotalCount(compartment);
+    protected void syncBlockEntity() {
+        blockEntity.syncToClients();
     }
 
     @Override
-    public PortableToolboxInventory getToolboxInventory() {
-        return toolboxInventory;
+    protected void syncItemStack(Player player, ItemStack stack) {
+        BackpackEquipment.syncBackpack(player, stack);
     }
 
     @Override
-    public boolean isBackingStack(ItemStack stack) {
-        return blockEntity == null && !backpackStack.isEmpty() && backpackStack == stack;
-    }
-
-    public ItemStack getBackpackStack() {
-        return backpackStack;
+    public int getToolboxSlotStart() {
+        return TOOLBOX_SLOT_START;
     }
 
     @Override
-    public void transferMatchingToStorage(Player player) {
-        if (BackpackInventoryOps.transferMatchingToStorage(
-                this, toolboxInventory, 0, BACKPACK_SLOTS, PLAYER_SLOT_START, this.slots.size(),
-                player, backpackStack.isEmpty() ? null : backpackStack)) {
-            syncBacking(player);
-        }
-    }
-
-    @Override
-    public void transferMatchingToInventory(Player player) {
-        if (BackpackInventoryOps.transferMatchingToInventory(
-                this, toolboxInventory, 0, BACKPACK_SLOTS, PLAYER_SLOT_START, this.slots.size(), player)) {
-            syncBacking(player);
-        }
-    }
-
-    @Override
-    public void sortStorage(Player player) {
-        if (BackpackInventoryOps.sortStorage(this, toolboxInventory, 0, BACKPACK_SLOTS, getSortMode())) {
-            syncBacking(player);
-        }
-    }
-
-    private void syncBacking(Player player) {
-        if (blockEntity != null) {
-            if (!blockEntity.isRemoved())
-                blockEntity.syncToClients();
-        } else if (!backpackStack.isEmpty()) {
-            toolboxInventory.save(backpackStack);
-            BackpackEquipment.syncBackpack(player, backpackStack);
-            if (player instanceof ServerPlayer serverPlayer) {
-                PortableToolboxHandler.onToolboxModified(serverPlayer, backpackStack, toolboxInventory);
-            }
-        }
-        broadcastChanges();
-    }
-
-    @Override
-    public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
-        if (!player.level().isClientSide() && !stillValid(player))
-            return;
-        if (MenuValidationHelper.isLockedOpenStackClick(this, backpackStack, slotId, dragType, clickType, player)) {
-            if (!player.level().isClientSide())
-                sendAllDataToRemote();
-            return;
-        }
-        if (isToolboxSlot(slotId)) {
-            // Allow drag-split state machine to finish cleanly without touching toolbox slots (canDragTo is false)
-            if (clickType == ClickType.QUICK_CRAFT) {
-                super.clicked(slotId, dragType, clickType, player);
-                return;
-            }
-            if (!player.level().isClientSide()) {
-                int compartment = slotId - TOOLBOX_SLOT_START;
-                if (BackpackInventoryOps.handleToolboxSlotClick(
-                        this, toolboxInventory, compartment, dragType, clickType, player,
-                        PLAYER_SLOT_START, this.slots.size(),
-                        backpackStack.isEmpty() ? null : backpackStack)) {
-                    syncBacking(player);
-                }
-            }
-            return;
-        }
-        super.clicked(slotId, dragType, clickType, player);
-    }
-
-    @Override
-    public boolean canDragTo(Slot slotIn) {
-        return !isToolboxSlot(slotIn.index) && isNotLockedOpenStack(slotIn.getItem());
-    }
-
-    @Override
-    public boolean canTakeItemForPickAll(ItemStack stack, Slot slotIn) {
-        return !isToolboxSlot(slotIn.index) && isNotLockedOpenStack(slotIn.getItem());
-    }
-
-    @Override
-    public ItemStack quickMoveStack(Player player, int index) {
-        if (isToolboxSlot(index))
-            return ItemStack.EMPTY;
-        ItemStack result = ItemStack.EMPTY;
-        Slot slot = this.slots.get(index);
-        if (slot != null && slot.hasItem()) {
-            ItemStack stack = slot.getItem();
-            if (!isNotLockedOpenStack(stack))
-                return ItemStack.EMPTY;
-            result = stack.copy();
-            if (index < BACKPACK_SLOTS) {
-                if (!moveItemStackTo(stack, PLAYER_SLOT_START, this.slots.size(), true))
-                    return ItemStack.EMPTY;
-            } else if (!moveItemStackTo(stack, 0, BACKPACK_SLOTS, false)) {
-                return ItemStack.EMPTY;
-            }
-            if (stack.isEmpty())
-                slot.setByPlayer(ItemStack.EMPTY);
-            else
-                slot.setChanged();
-        }
-        return result;
-    }
-
-    @Override
-    public void removed(Player player) {
-        super.removed(player);
-        if (!player.level().isClientSide()) {
-            if (blockEntity != null) {
-                if (!blockEntity.isRemoved())
-                    blockEntity.syncToClients();
-            } else if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
-                toolboxInventory.save(backpackStack);
-                BackpackEquipment.syncBackpack(player, backpackStack);
-                if (player instanceof ServerPlayer serverPlayer) {
-                    PortableToolboxHandler.onToolboxModified(serverPlayer, backpackStack, toolboxInventory);
-                }
-            }
-        }
-    }
-
-    @Override
-    public boolean stillValid(Player player) {
-        if (player.level().isClientSide())
-            return true;
-        return blockEntity != null
-                ? MenuValidationHelper.isBlockEntityValid(player, blockEntity)
-                : MenuValidationHelper.isPlayerCarryingStack(player, backpackStack);
+    public int getPlayerSlotStart() {
+        return PLAYER_SLOT_START;
     }
 }

@@ -1,13 +1,9 @@
 package com.stackultra.essentials.content.backpack;
 
 import com.simibubi.create.AllItems;
-import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.stackultra.essentials.client.DarkGuiStyling;
-import com.stackultra.essentials.client.DarkIconButton;
 import com.stackultra.essentials.client.DarkTextButton;
 import com.stackultra.essentials.content.ChargeDisplay;
-import com.stackultra.essentials.network.BackpackActionPayload;
-import com.stackultra.essentials.network.BackpackToolboxPayload;
 import com.stackultra.essentials.network.BlacklistTogglePayload;
 import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
 import net.minecraft.ChatFormatting;
@@ -22,25 +18,13 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
-public class MagneticBackpackScreen extends AbstractSimiContainerScreen<MagneticBackpackMenu> {
+public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackpackMenu> {
 
-    private static final int WINDOW_WIDTH = 176;
     private static final int WINDOW_HEIGHT = 246;
-
-    private static final int GRID_LEFT = 7;
-    private static final int GRID_RIGHT = 169;
-    private static final int GRID_WIDTH = GRID_RIGHT - GRID_LEFT;
-
-    private static final int TITLE_Y = 6;
-    private static final int UTILITY_BTN_SIZE = 12;
-    private static final int UTILITY_BTN_GAP = 1;
-    private static final int UTILITY_BTN_Y = 4;
-    private static final int UTILITY_START_X = GRID_RIGHT - (UTILITY_BTN_SIZE * 4 + UTILITY_BTN_GAP * 3);
 
     // Sleek control row aligned flush with the 9-slot column edges [7..86) and [90..169)
     private static final int BUTTON_Y = 19;
@@ -61,80 +45,46 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
 
     // Toolbox section directly beneath storage [50..104) and above player inventory [153..239)
     private static final int DIVIDER_STORAGE_Y = 107;
-    private static final int TOOLBOX_TITLE_X = 8;
     private static final int TOOLBOX_TITLE_Y = 114;
-    private static final int RESTOCK_BTN_W = 74;
-    private static final int RESTOCK_BTN_H = 14;
-    private static final int RESTOCK_BTN_X = GRID_RIGHT - RESTOCK_BTN_W;
     private static final int RESTOCK_BTN_Y = 111;
     private static final int DIVIDER_PLAYER_Y = 148;
-
-    private static final float GHOST_PREVIEW_ALPHA = 0.40F;
 
     private static final int COLOR_BLACKLIST = 0xFFD66BFF;
     private static final int COLOR_WHITELIST = 0xFF78B8FF;
     private static final int COLOR_CHARGE_LOW = 0xFFF2C24C;
     private static final int COLOR_CHARGE_CRITICAL = 0xFFE05A5A;
 
-    private final List<DarkIconButton> utilityButtons = new ArrayList<>(4);
-    private DarkTextButton restockButton;
-
     public MagneticBackpackScreen(MagneticBackpackMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
     }
 
     @Override
-    protected void init() {
-        setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-        super.init();
+    protected int getWindowHeight() {
+        return WINDOW_HEIGHT;
+    }
 
-        utilityButtons.clear();
-        int step = UTILITY_BTN_SIZE + UTILITY_BTN_GAP;
-        int bx = leftPos + UTILITY_START_X;
-        int by = topPos + UTILITY_BTN_Y;
+    @Override
+    protected int getStorageDividerY() {
+        return DIVIDER_STORAGE_Y;
+    }
 
-        DarkIconButton toStorage = new DarkIconButton(bx, by, UTILITY_BTN_SIZE,
-                DarkIconButton.Icon.TRANSFER_TO_STORAGE,
-                () -> "",
-                () -> List.of(Component.translatable("createessentials.gui.transfer_to_storage")
-                        .withStyle(ChatFormatting.GREEN)),
-                () -> PacketDistributor.sendToServer(BackpackActionPayload.transferToStorage()));
+    @Override
+    protected int getToolboxTitleY() {
+        return TOOLBOX_TITLE_Y;
+    }
 
-        DarkIconButton toInventory = new DarkIconButton(bx + step, by, UTILITY_BTN_SIZE,
-                DarkIconButton.Icon.TRANSFER_TO_INVENTORY,
-                () -> "",
-                () -> List.of(Component.translatable("createessentials.gui.transfer_to_inventory")
-                        .withStyle(ChatFormatting.RED)),
-                () -> PacketDistributor.sendToServer(BackpackActionPayload.transferToInventory()));
+    @Override
+    protected int getRestockButtonY() {
+        return RESTOCK_BTN_Y;
+    }
 
-        DarkIconButton sortBtn = new DarkIconButton(bx + step * 2, by, UTILITY_BTN_SIZE,
-                DarkIconButton.Icon.SORT,
-                () -> "",
-                () -> List.of(
-                        Component.translatable("createessentials.gui.sort").withStyle(ChatFormatting.GOLD),
-                        Component.translatable("createessentials.gui.sort_by",
-                                Component.translatable(menu.getSortMode().translationKey()))
-                                .withStyle(ChatFormatting.GRAY)),
-                () -> PacketDistributor.sendToServer(BackpackActionPayload.sort()));
+    @Override
+    protected int getPlayerDividerY() {
+        return DIVIDER_PLAYER_Y;
+    }
 
-        DarkIconButton sortModeBtn = new DarkIconButton(bx + step * 3, by, UTILITY_BTN_SIZE,
-                DarkIconButton.Icon.TEXT_BADGE,
-                () -> menu.getSortMode().shortBadge(),
-                () -> List.of(
-                        Component.translatable("createessentials.gui.sort_by",
-                                Component.translatable(menu.getSortMode().translationKey())
-                                        .withStyle(ChatFormatting.GREEN)),
-                        Component.translatable("createessentials.gui.sort_mode_hint")
-                                .withStyle(ChatFormatting.GRAY)),
-                () -> PacketDistributor.sendToServer(BackpackActionPayload.setSortMode(menu.getSortMode().next())));
-
-        utilityButtons.add(toStorage);
-        utilityButtons.add(toInventory);
-        utilityButtons.add(sortBtn);
-        utilityButtons.add(sortModeBtn);
-        for (DarkIconButton btn : utilityButtons)
-            addRenderableWidget(btn);
-
+    @Override
+    protected void initExtraWidgets() {
         DarkTextButton toggle = new DarkTextButton(leftPos + BUTTON_LEFT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> {
                     boolean enabled = menu.isEnabled();
@@ -159,18 +109,6 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
 
         addRenderableWidget(toggle);
         addRenderableWidget(blacklist);
-
-        restockButton = new DarkTextButton(
-                leftPos + RESTOCK_BTN_X, topPos + RESTOCK_BTN_Y, RESTOCK_BTN_W, RESTOCK_BTN_H,
-                () -> {
-                    boolean on = menu.isRestockEnabled();
-                    return Component.translatable("createessentials.gui.restock_btn",
-                            Component.translatable(on ? "createessentials.gui.on" : "createessentials.gui.off")
-                                    .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED));
-                },
-                () -> DarkGuiStyling.COLOR_TEXT,
-                () -> PacketDistributor.sendToServer(BackpackToolboxPayload.toggleRestock()));
-        addRenderableWidget(restockButton);
     }
 
     private RotationalMagnetTogglePayload togglePayload() {
@@ -201,22 +139,23 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     }
 
     @Override
-    protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
+    protected void renderPanelBackground(GuiGraphics graphics) {
         DarkGuiStyling.drawPanelWithLeftTab(graphics, leftPos, topPos, imageWidth, imageHeight,
                 LEFT_TAB_WIDTH, LEFT_TAB_TOP, LEFT_TAB_HEIGHT);
-        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_STORAGE_Y, GRID_WIDTH);
-        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + DIVIDER_PLAYER_Y, GRID_WIDTH);
+    }
 
+    @Override
+    protected void renderExtraBgBeforeSlots(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
         int charge = Math.max(0, menu.getCharge());
         int maxCharge = Math.max(1, menu.getMaxCharge());
         float ratio = Math.clamp((float) charge / (float) maxCharge, 0.0F, 1.0F);
         int barColor = chargeBarColor(ratio);
         DarkGuiStyling.drawHorizontalBar(graphics, leftPos + GRID_LEFT, topPos + CHARGE_BAR_Y,
                 GRID_WIDTH, CHARGE_BAR_H, ratio, barColor);
+    }
 
-        for (Slot slot : menu.slots)
-            DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
-
+    @Override
+    protected void renderExtraBgAfterSlots(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
         // Left-side magnet filter ghost hints
         ItemStack ghost = AllItems.FILTER.asStack();
         for (int i = 0; i < MagneticBackpackMenu.FILTER_SLOTS; i++) {
@@ -229,30 +168,7 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
     }
 
     @Override
-    protected void renderSlotContents(GuiGraphics graphics, ItemStack stack, Slot slot, @Nullable String countString) {
-        if (menu.isToolboxSlot(slot.index)) {
-            int compartment = slot.index - MagneticBackpackMenu.TOOLBOX_SLOT_START;
-            int total = menu.getToolboxCount(compartment);
-            if (!stack.isEmpty() && total > 0) {
-                graphics.renderItem(stack, slot.x, slot.y);
-                graphics.renderItemDecorations(font, stack, slot.x, slot.y, "");
-                DarkGuiStyling.drawCompactCount(graphics, font, total, slot.x, slot.y);
-            } else if (!stack.isEmpty()) {
-                DarkGuiStyling.drawGhostItem(graphics, stack, slot.x, slot.y, GHOST_PREVIEW_ALPHA);
-            }
-            return;
-        }
-        super.renderSlotContents(graphics, stack, slot, countString);
-    }
-
-    @Override
-    protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        String titleText = title.getString();
-        int maxTitle = UTILITY_START_X - 8 - 4;
-        if (font.width(titleText) > maxTitle)
-            titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
-        graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
-
+    protected void renderExtraForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         int charge = Math.max(0, menu.getCharge());
         int seconds = charge / 20;
         String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);
@@ -261,61 +177,18 @@ public class MagneticBackpackScreen extends AbstractSimiContainerScreen<Magnetic
                 ? DarkGuiStyling.COLOR_BAR
                 : (charge <= 0 ? COLOR_CHARGE_CRITICAL : DarkGuiStyling.COLOR_TEXT);
         graphics.drawCenteredString(font, timeText, leftPos + imageWidth / 2, topPos + CHARGE_TEXT_Y, textColor);
-
-        graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
-                leftPos + TOOLBOX_TITLE_X, topPos + TOOLBOX_TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
-
-        Slot playerSlot = menu.slots.get(MagneticBackpackMenu.PLAYER_SLOT_START);
-        graphics.drawString(font, playerInventoryTitle, leftPos + playerSlot.x, topPos + playerSlot.y - 11,
-                DarkGuiStyling.COLOR_TEXT_DIM, true);
-
-        super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
 
     @Override
-    protected void renderTooltip(GuiGraphics graphics, int x, int y) {
-        if (menu.getCarried().isEmpty() && hoveredSlot != null && menu.isToolboxSlot(hoveredSlot.index)) {
-            int compartment = hoveredSlot.index - MagneticBackpackMenu.TOOLBOX_SLOT_START;
-            if (menu.getToolboxCount(compartment) == 0 && hoveredSlot.hasItem()) {
-                ItemStack ghost = hoveredSlot.getItem();
-                graphics.renderComponentTooltip(font, List.of(
-                        ghost.getHoverName().copy().withStyle(ChatFormatting.GRAY),
-                        Component.translatable("createessentials.gui.reserved_hint")
-                                .withStyle(ChatFormatting.DARK_GRAY)), x, y);
-                return;
-            }
-        }
-
-        super.renderTooltip(graphics, x, y);
-        if (!menu.getCarried().isEmpty())
-            return;
-
-        if (isHoveringChargeBar(x, y)) {
-            List<Component> lines = new ArrayList<>(2);
-            lines.add(ChargeDisplay.charge(Math.max(0, menu.getCharge()), Math.max(1, menu.getMaxCharge())));
-            if (menu.isCharging())
-                lines.add(ChargeDisplay.chargingLine());
-            graphics.renderComponentTooltip(font, lines, x, y);
-            return;
-        }
-
-        if (restockButton != null && restockButton.isHovered()) {
-            boolean on = menu.isRestockEnabled();
-            graphics.renderComponentTooltip(font, List.of(
-                    Component.translatable("createessentials.gui.restock_status",
-                            Component.translatable(on ? "createessentials.gui.on" : "createessentials.gui.off")
-                                    .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED)),
-                    Component.translatable("createessentials.gui.restock_hint")
-                            .withStyle(ChatFormatting.GRAY)), x, y);
-            return;
-        }
-
-        for (DarkIconButton btn : utilityButtons) {
-            if (btn.isHovered()) {
-                graphics.renderComponentTooltip(font, btn.getTooltipLines(), x, y);
-                break;
-            }
-        }
+    protected boolean renderExtraTooltip(GuiGraphics graphics, int x, int y) {
+        if (!isHoveringChargeBar(x, y))
+            return false;
+        List<Component> lines = new ArrayList<>(2);
+        lines.add(ChargeDisplay.charge(Math.max(0, menu.getCharge()), Math.max(1, menu.getMaxCharge())));
+        if (menu.isCharging())
+            lines.add(ChargeDisplay.chargingLine());
+        graphics.renderComponentTooltip(font, lines, x, y);
+        return true;
     }
 
     private boolean isHoveringChargeBar(int mouseX, int mouseY) {
