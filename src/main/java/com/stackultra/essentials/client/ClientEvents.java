@@ -96,6 +96,16 @@ public class ClientEvents {
             SimpleBlockEntityVisualizer.builder(AllBlockEntities.MAGNETIC_BACKPACK.get())
                     .factory(MagneticBackpackVisual::new)
                     .apply();
+
+            ResourceLocation colorProp = ResourceLocation.fromNamespaceAndPath(CreateEssentials.MOD_ID, "color");
+            net.minecraft.client.renderer.item.ItemPropertyFunction colorFn =
+                    (stack, level, entity, seed) -> com.stackultra.essentials.content.backpack.BackpackColorHelper.getModelPropertyValue(stack);
+            net.minecraft.client.renderer.item.ItemProperties.register(
+                    com.stackultra.essentials.registry.AllItems.MECHANICAL_BACKPACK.get(), colorProp, colorFn);
+            net.minecraft.client.renderer.item.ItemProperties.register(
+                    com.stackultra.essentials.registry.AllItems.NETHERITE_BACKPACK.get(), colorProp, colorFn);
+            net.minecraft.client.renderer.item.ItemProperties.register(
+                    com.stackultra.essentials.registry.AllItems.MAGNETIC_BACKPACK.get(), colorProp, colorFn);
         });
     }
 

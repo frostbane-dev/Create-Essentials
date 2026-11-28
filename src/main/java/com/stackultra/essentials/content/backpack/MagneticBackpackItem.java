@@ -79,9 +79,10 @@ public class MagneticBackpackItem extends BlockItem implements Equipable {
 
     @Override
     public Component getName(ItemStack stack) {
-        if (getCharge(stack) == 0)
-            return Component.translatable("item.createessentials.magnetic_backpack.empty");
-        return super.getName(stack);
+        Component base = getCharge(stack) == 0
+                ? Component.translatable("item.createessentials.magnetic_backpack.empty")
+                : super.getName(stack);
+        return BackpackColorHelper.coloredName(stack, base);
     }
 
     @Override

@@ -49,6 +49,8 @@ public class MagneticBackpackRecipe extends ShapedRecipe {
                     output.set(ExtraDataComponents.TOOLBOX_RESTOCK, stack.get(ExtraDataComponents.TOOLBOX_RESTOCK));
                 if (stack.has(ExtraDataComponents.SORT_MODE))
                     output.set(ExtraDataComponents.SORT_MODE, stack.get(ExtraDataComponents.SORT_MODE));
+                if (stack.has(ExtraDataComponents.BACKPACK_COLOR))
+                    output.set(ExtraDataComponents.BACKPACK_COLOR, stack.get(ExtraDataComponents.BACKPACK_COLOR));
                 if (stack.has(DataComponents.DYED_COLOR))
                     output.set(DataComponents.DYED_COLOR, stack.get(DataComponents.DYED_COLOR));
             } else if (stack.getItem() instanceof RotationalMagnetItem magnet && magnet.getTier() == MagnetTier.TIER_2) {

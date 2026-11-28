@@ -15,6 +15,7 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -36,6 +37,12 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         super(AllBlockEntities.MECHANICAL_BACKPACK.get(), pos, state);
         this.netherite = state.hasProperty(MechanicalBackpackBlock.NETHERITE)
                 && state.getValue(MechanicalBackpackBlock.NETHERITE);
+        if (state.hasProperty(MechanicalBackpackBlock.COLOR)) {
+            DyeColor stateColor = state.getValue(MechanicalBackpackBlock.COLOR);
+            if (stateColor != DyeColor.BROWN) {
+                this.preservedComponents.setBackpackColorIfAbsent(stateColor);
+            }
+        }
         this.inventory = BackpackInventory.forBlockEntity(this::markChanged);
         this.toolboxInventory = PortableToolboxInventory.forBlockEntity(this::markChanged);
     }
@@ -185,8 +192,9 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         Component customName = preservedComponents.getCustomName();
         if (customName != null)
             return customName;
-        return Component.translatable(netherite
+        Component baseName = Component.translatable(netherite
                 ? "item.createessentials.netherite_backpack"
                 : getBlockState().getBlock().getDescriptionId());
+        return BackpackColorHelper.coloredName(preservedComponents.getBackpackColor(), baseName);
     }
 }

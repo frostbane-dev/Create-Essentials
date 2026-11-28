@@ -15,7 +15,7 @@ public class NetheriteBackpackItem extends MechanicalBackpackItem {
 
     @Override
     public Component getName(ItemStack stack) {
-        return Component.translatable("item.createessentials.netherite_backpack");
+        return BackpackColorHelper.coloredName(stack, Component.translatable("item.createessentials.netherite_backpack"));
     }
 
     @Override

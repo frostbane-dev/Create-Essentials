@@ -70,5 +70,6 @@
   "createessentials.configuration.section.createessentials.client.toml": "Client Settings",
   "createessentials.configuration.section.createessentials.client.toml.title": "Create: Essentials Client Settings",
   "createessentials.configuration.uiTheme": "UI Theme",
-  "createessentials.configuration.uiTheme.tooltip": "Choose between VANILLA (classic Minecraft gray) and DARK (custom dark beveled) styling for backpack and magnet GUIs."
+  "createessentials.configuration.uiTheme.tooltip": "Choose between VANILLA (classic Minecraft gray) and DARK (custom dark beveled) styling for backpack and magnet GUIs.",
+  "createessentials.backpack.colored": "%s %s"
 }

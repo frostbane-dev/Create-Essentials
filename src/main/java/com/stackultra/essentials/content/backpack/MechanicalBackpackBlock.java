@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -41,29 +43,29 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
 
     public static final BooleanProperty NETHERITE = BooleanProperty.create("netherite");
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
-
-    private static final VoxelShape SHAPE_NORTH = Block.box(2.0, 0.0, 3.0, 14.0, 16.0, 12.0);
-    private static final VoxelShape SHAPE_SOUTH = Block.box(2.0, 0.0, 4.0, 14.0, 16.0, 13.0);
-    private static final VoxelShape SHAPE_EAST = Block.box(4.0, 0.0, 2.0, 13.0, 16.0, 14.0);
-    private static final VoxelShape SHAPE_WEST = Block.box(3.0, 0.0, 2.0, 12.0, 16.0, 14.0);
+    public static final EnumProperty<DyeColor> COLOR = EnumProperty.create("color", DyeColor.class);
 
     public MechanicalBackpackBlock(Properties properties) {
         super(properties);
         registerDefaultState(defaultBlockState()
                 .setValue(NETHERITE, false)
-                .setValue(FACING, Direction.NORTH));
+                .setValue(FACING, Direction.NORTH)
+                .setValue(COLOR, DyeColor.BROWN));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(NETHERITE, FACING);
+        builder.add(NETHERITE, FACING, COLOR);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
+        ItemStack stack = context.getItemInHand();
+        DyeColor color = BackpackColorHelper.resolveDyeColor(stack);
         return defaultBlockState()
-                .setValue(NETHERITE, context.getItemInHand().getItem() instanceof NetheriteBackpackItem)
-                .setValue(FACING, context.getHorizontalDirection().getOpposite());
+                .setValue(NETHERITE, stack.getItem() instanceof NetheriteBackpackItem)
+                .setValue(FACING, context.getHorizontalDirection().getOpposite())
+                .setValue(COLOR, color != null ? color : DyeColor.BROWN);
     }
 
     @Override
@@ -85,12 +87,7 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return switch (state.getValue(FACING)) {
-            case SOUTH -> SHAPE_SOUTH;
-            case EAST -> SHAPE_EAST;
-            case WEST -> SHAPE_WEST;
-            default -> SHAPE_NORTH;
-        };
+        return BackpackShapes.mechanical(state.getValue(FACING));
     }
 
     @Override

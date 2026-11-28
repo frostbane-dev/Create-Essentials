@@ -1,9 +1,11 @@
 package com.stackultra.essentials.registry;
 
 import com.stackultra.essentials.CreateEssentials;
+import com.stackultra.essentials.content.backpack.BackpackColorHelper;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
@@ -28,12 +30,28 @@ public class AllCreativeTabs {
                         output.accept(emptyVariant(AllItems.ROTATIONAL_MAGNET.get()));
                         output.accept(emptyVariant(AllItems.PRECISION_MAGNET.get()));
                         output.accept(emptyVariant(AllItems.MAGNETIC_BACKPACK.get()));
+
+                        for (DyeColor color : DyeColor.values()) {
+                            output.accept(dyedVariant(AllItems.MECHANICAL_BACKPACK.get(), color));
+                        }
+                        for (DyeColor color : DyeColor.values()) {
+                            output.accept(dyedVariant(AllItems.NETHERITE_BACKPACK.get(), color));
+                        }
+                        for (DyeColor color : DyeColor.values()) {
+                            output.accept(dyedVariant(AllItems.MAGNETIC_BACKPACK.get(), color));
+                        }
                     })
                     .build());
 
     private static ItemStack emptyVariant(Item item) {
         ItemStack stack = new ItemStack(item);
         stack.set(AllDataComponents.CHARGE, 0);
+        return stack;
+    }
+
+    private static ItemStack dyedVariant(Item item, DyeColor color) {
+        ItemStack stack = new ItemStack(item);
+        BackpackColorHelper.setDyeColor(stack, color);
         return stack;
     }
 

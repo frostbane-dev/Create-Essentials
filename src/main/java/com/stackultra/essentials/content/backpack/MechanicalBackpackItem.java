@@ -91,6 +91,11 @@ public class MechanicalBackpackItem extends BlockItem implements Equipable {
     }
 
     @Override
+    public Component getName(ItemStack stack) {
+        return BackpackColorHelper.coloredName(stack, super.getName(stack));
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
         BackpackTooltipData.appendEmptyHint(stack, tooltip);

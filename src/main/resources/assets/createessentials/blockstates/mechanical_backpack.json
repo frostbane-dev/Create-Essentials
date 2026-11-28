@@ -1,12 +1,484 @@
 {
   "variants": {
-    "facing=north,netherite=false": { "model": "createessentials:block/mechanical_backpack" },
-    "facing=east,netherite=false":  { "model": "createessentials:block/mechanical_backpack", "y": 90 },
-    "facing=south,netherite=false": { "model": "createessentials:block/mechanical_backpack", "y": 180 },
-    "facing=west,netherite=false":  { "model": "createessentials:block/mechanical_backpack", "y": 270 },
-    "facing=north,netherite=true":  { "model": "createessentials:block/netherite_backpack" },
-    "facing=east,netherite=true":   { "model": "createessentials:block/netherite_backpack", "y": 90 },
-    "facing=south,netherite=true":  { "model": "createessentials:block/netherite_backpack", "y": 180 },
-    "facing=west,netherite=true":   { "model": "createessentials:block/netherite_backpack", "y": 270 }
+    "color=white,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_white"
+    },
+    "color=white,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_white",
+      "y": 90
+    },
+    "color=white,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_white",
+      "y": 180
+    },
+    "color=white,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_white",
+      "y": 270
+    },
+    "color=white,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_white"
+    },
+    "color=white,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_white",
+      "y": 90
+    },
+    "color=white,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_white",
+      "y": 180
+    },
+    "color=white,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_white",
+      "y": 270
+    },
+    "color=orange,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_orange"
+    },
+    "color=orange,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_orange",
+      "y": 90
+    },
+    "color=orange,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_orange",
+      "y": 180
+    },
+    "color=orange,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_orange",
+      "y": 270
+    },
+    "color=orange,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_orange"
+    },
+    "color=orange,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_orange",
+      "y": 90
+    },
+    "color=orange,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_orange",
+      "y": 180
+    },
+    "color=orange,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_orange",
+      "y": 270
+    },
+    "color=magenta,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_magenta"
+    },
+    "color=magenta,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_magenta",
+      "y": 90
+    },
+    "color=magenta,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_magenta",
+      "y": 180
+    },
+    "color=magenta,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_magenta",
+      "y": 270
+    },
+    "color=magenta,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_magenta"
+    },
+    "color=magenta,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_magenta",
+      "y": 90
+    },
+    "color=magenta,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_magenta",
+      "y": 180
+    },
+    "color=magenta,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_magenta",
+      "y": 270
+    },
+    "color=light_blue,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_blue"
+    },
+    "color=light_blue,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_blue",
+      "y": 90
+    },
+    "color=light_blue,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_blue",
+      "y": 180
+    },
+    "color=light_blue,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_blue",
+      "y": 270
+    },
+    "color=light_blue,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_blue"
+    },
+    "color=light_blue,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_blue",
+      "y": 90
+    },
+    "color=light_blue,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_blue",
+      "y": 180
+    },
+    "color=light_blue,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_blue",
+      "y": 270
+    },
+    "color=yellow,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_yellow"
+    },
+    "color=yellow,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_yellow",
+      "y": 90
+    },
+    "color=yellow,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_yellow",
+      "y": 180
+    },
+    "color=yellow,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_yellow",
+      "y": 270
+    },
+    "color=yellow,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_yellow"
+    },
+    "color=yellow,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_yellow",
+      "y": 90
+    },
+    "color=yellow,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_yellow",
+      "y": 180
+    },
+    "color=yellow,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_yellow",
+      "y": 270
+    },
+    "color=lime,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_lime"
+    },
+    "color=lime,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_lime",
+      "y": 90
+    },
+    "color=lime,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_lime",
+      "y": 180
+    },
+    "color=lime,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_lime",
+      "y": 270
+    },
+    "color=lime,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_lime"
+    },
+    "color=lime,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_lime",
+      "y": 90
+    },
+    "color=lime,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_lime",
+      "y": 180
+    },
+    "color=lime,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_lime",
+      "y": 270
+    },
+    "color=pink,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_pink"
+    },
+    "color=pink,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_pink",
+      "y": 90
+    },
+    "color=pink,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_pink",
+      "y": 180
+    },
+    "color=pink,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_pink",
+      "y": 270
+    },
+    "color=pink,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_pink"
+    },
+    "color=pink,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_pink",
+      "y": 90
+    },
+    "color=pink,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_pink",
+      "y": 180
+    },
+    "color=pink,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_pink",
+      "y": 270
+    },
+    "color=gray,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_gray"
+    },
+    "color=gray,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_gray",
+      "y": 90
+    },
+    "color=gray,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_gray",
+      "y": 180
+    },
+    "color=gray,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_gray",
+      "y": 270
+    },
+    "color=gray,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_gray"
+    },
+    "color=gray,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_gray",
+      "y": 90
+    },
+    "color=gray,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_gray",
+      "y": 180
+    },
+    "color=gray,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_gray",
+      "y": 270
+    },
+    "color=light_gray,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_gray"
+    },
+    "color=light_gray,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_gray",
+      "y": 90
+    },
+    "color=light_gray,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_gray",
+      "y": 180
+    },
+    "color=light_gray,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_light_gray",
+      "y": 270
+    },
+    "color=light_gray,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_gray"
+    },
+    "color=light_gray,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_gray",
+      "y": 90
+    },
+    "color=light_gray,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_gray",
+      "y": 180
+    },
+    "color=light_gray,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_light_gray",
+      "y": 270
+    },
+    "color=cyan,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_cyan"
+    },
+    "color=cyan,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_cyan",
+      "y": 90
+    },
+    "color=cyan,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_cyan",
+      "y": 180
+    },
+    "color=cyan,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_cyan",
+      "y": 270
+    },
+    "color=cyan,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_cyan"
+    },
+    "color=cyan,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_cyan",
+      "y": 90
+    },
+    "color=cyan,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_cyan",
+      "y": 180
+    },
+    "color=cyan,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_cyan",
+      "y": 270
+    },
+    "color=purple,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_purple"
+    },
+    "color=purple,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_purple",
+      "y": 90
+    },
+    "color=purple,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_purple",
+      "y": 180
+    },
+    "color=purple,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_purple",
+      "y": 270
+    },
+    "color=purple,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_purple"
+    },
+    "color=purple,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_purple",
+      "y": 90
+    },
+    "color=purple,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_purple",
+      "y": 180
+    },
+    "color=purple,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_purple",
+      "y": 270
+    },
+    "color=blue,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_blue"
+    },
+    "color=blue,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_blue",
+      "y": 90
+    },
+    "color=blue,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_blue",
+      "y": 180
+    },
+    "color=blue,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_blue",
+      "y": 270
+    },
+    "color=blue,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_blue"
+    },
+    "color=blue,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_blue",
+      "y": 90
+    },
+    "color=blue,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_blue",
+      "y": 180
+    },
+    "color=blue,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_blue",
+      "y": 270
+    },
+    "color=brown,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_brown"
+    },
+    "color=brown,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_brown",
+      "y": 90
+    },
+    "color=brown,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_brown",
+      "y": 180
+    },
+    "color=brown,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_brown",
+      "y": 270
+    },
+    "color=brown,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_brown"
+    },
+    "color=brown,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_brown",
+      "y": 90
+    },
+    "color=brown,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_brown",
+      "y": 180
+    },
+    "color=brown,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_brown",
+      "y": 270
+    },
+    "color=green,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_green"
+    },
+    "color=green,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_green",
+      "y": 90
+    },
+    "color=green,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_green",
+      "y": 180
+    },
+    "color=green,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_green",
+      "y": 270
+    },
+    "color=green,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_green"
+    },
+    "color=green,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_green",
+      "y": 90
+    },
+    "color=green,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_green",
+      "y": 180
+    },
+    "color=green,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_green",
+      "y": 270
+    },
+    "color=red,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_red"
+    },
+    "color=red,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_red",
+      "y": 90
+    },
+    "color=red,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_red",
+      "y": 180
+    },
+    "color=red,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_red",
+      "y": 270
+    },
+    "color=red,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_red"
+    },
+    "color=red,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_red",
+      "y": 90
+    },
+    "color=red,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_red",
+      "y": 180
+    },
+    "color=red,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_red",
+      "y": 270
+    },
+    "color=black,facing=north,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_black"
+    },
+    "color=black,facing=east,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_black",
+      "y": 90
+    },
+    "color=black,facing=south,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_black",
+      "y": 180
+    },
+    "color=black,facing=west,netherite=false": {
+      "model": "createessentials:block/backpack/mechanical_backpack_black",
+      "y": 270
+    },
+    "color=black,facing=north,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_black"
+    },
+    "color=black,facing=east,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_black",
+      "y": 90
+    },
+    "color=black,facing=south,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_black",
+      "y": 180
+    },
+    "color=black,facing=west,netherite=true": {
+      "model": "createessentials:block/backpack/netherite_backpack_black",
+      "y": 270
+    }
   }
 }

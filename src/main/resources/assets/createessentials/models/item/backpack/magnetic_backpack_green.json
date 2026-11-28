@@ -1,0 +1,6 @@
+{
+  "parent": "createessentials:item/magnetic_backpack_base",
+  "textures": {
+    "0": "createessentials:block/backpack/magnetic_backpack_green"
+  }
+}

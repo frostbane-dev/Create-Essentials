@@ -13,6 +13,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -27,6 +28,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -41,26 +43,27 @@ import java.util.List;
 public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticBackpackBlockEntity> {
 
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
-
-    private static final VoxelShape SHAPE_NORTH = Block.box(2.0, 0.0, 3.0, 14.0, 16.0, 12.0);
-    private static final VoxelShape SHAPE_SOUTH = Block.box(2.0, 0.0, 4.0, 14.0, 16.0, 13.0);
-    private static final VoxelShape SHAPE_EAST = Block.box(4.0, 0.0, 2.0, 13.0, 16.0, 14.0);
-    private static final VoxelShape SHAPE_WEST = Block.box(3.0, 0.0, 2.0, 12.0, 16.0, 14.0);
+    public static final EnumProperty<DyeColor> COLOR = EnumProperty.create("color", DyeColor.class);
 
     public MagneticBackpackBlock(Properties properties) {
         super(properties);
-        registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH));
+        registerDefaultState(defaultBlockState()
+                .setValue(FACING, Direction.NORTH)
+                .setValue(COLOR, DyeColor.BROWN));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, COLOR);
         super.createBlockStateDefinition(builder);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        DyeColor color = BackpackColorHelper.resolveDyeColor(context.getItemInHand());
+        return defaultBlockState()
+                .setValue(FACING, context.getHorizontalDirection().getOpposite())
+                .setValue(COLOR, color != null ? color : DyeColor.BROWN);
     }
 
     private static Direction horizontalFacing(BlockState state) {
@@ -98,12 +101,7 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return switch (state.getValue(FACING)) {
-            case SOUTH -> SHAPE_SOUTH;
-            case EAST -> SHAPE_EAST;
-            case WEST -> SHAPE_WEST;
-            default -> SHAPE_NORTH;
-        };
+        return BackpackShapes.magnetic(horizontalFacing(state));
     }
 
     @Override

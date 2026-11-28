@@ -6,6 +6,7 @@ import com.stackultra.essentials.content.backpack.SortMode;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -40,12 +41,18 @@ public class ExtraDataComponents {
             .networkSynchronized(ByteBufCodecs.BOOL)
             .build();
 
+    public static final DataComponentType<DyeColor> BACKPACK_COLOR = DataComponentType.<DyeColor>builder()
+            .persistent(DyeColor.CODEC)
+            .networkSynchronized(DyeColor.STREAM_CODEC)
+            .build();
+
     public static void register(IEventBus bus) {
         DATA_COMPONENTS.register("blacklist", () -> BLACKLIST);
         DATA_COMPONENTS.register("sort_mode", () -> SORT_MODE);
         DATA_COMPONENTS.register("toolbox_contents", () -> TOOLBOX_CONTENTS);
         DATA_COMPONENTS.register("toolbox_filters", () -> TOOLBOX_FILTERS);
         DATA_COMPONENTS.register("toolbox_restock", () -> TOOLBOX_RESTOCK);
+        DATA_COMPONENTS.register("backpack_color", () -> BACKPACK_COLOR);
         DATA_COMPONENTS.register(bus);
     }
 }

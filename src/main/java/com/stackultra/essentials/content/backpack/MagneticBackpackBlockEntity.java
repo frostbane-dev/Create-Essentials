@@ -20,6 +20,7 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -48,6 +49,12 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
 
     public MagneticBackpackBlockEntity(BlockPos pos, BlockState state) {
         super(AllBlockEntities.MAGNETIC_BACKPACK.get(), pos, state);
+        if (state.hasProperty(MagneticBackpackBlock.COLOR)) {
+            DyeColor stateColor = state.getValue(MagneticBackpackBlock.COLOR);
+            if (stateColor != DyeColor.BROWN) {
+                this.preservedComponents.setBackpackColorIfAbsent(stateColor);
+            }
+        }
         this.inventory = BackpackInventory.forBlockEntity(this::markChanged);
         this.toolboxInventory = PortableToolboxInventory.forBlockEntity(this::markChanged);
         this.filterInventory = new ItemStackHandler(MagneticBackpackItem.FILTER_SLOTS) {
@@ -279,7 +286,9 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         Component customName = preservedComponents.getCustomName();
         if (customName != null)
             return customName;
-        return Component.translatable(getBlockState().getBlock().getDescriptionId());
+        return BackpackColorHelper.coloredName(
+                preservedComponents.getBackpackColor(),
+                Component.translatable(getBlockState().getBlock().getDescriptionId()));
     }
 
     @Override

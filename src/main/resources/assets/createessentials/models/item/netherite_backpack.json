@@ -1,3 +1,101 @@
 {
-  "parent": "createessentials:block/netherite_backpack"
+  "parent": "createessentials:block/netherite_backpack",
+  "overrides": [
+    {
+      "predicate": {
+        "createessentials:color": 1.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_white"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 2.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_orange"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 3.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_magenta"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 4.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_light_blue"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 5.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_yellow"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 6.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_lime"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 7.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_pink"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 8.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_gray"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 9.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_light_gray"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 10.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_cyan"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 11.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_purple"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 12.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_blue"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 13.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_brown"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 14.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_green"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 15.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_red"
+    },
+    {
+      "predicate": {
+        "createessentials:color": 16.0
+      },
+      "model": "createessentials:block/backpack/netherite_backpack_black"
+    }
+  ]
 }
