@@ -6,7 +6,7 @@
   ],
   "textures": {
     "0": "createessentials:block/mechanical_backpack",
-    "particle": "createessentials:block/mechanical_backpack"
+    "particle": "createessentials:block/backpack_leather_particle"
   },
   "elements": [
     {

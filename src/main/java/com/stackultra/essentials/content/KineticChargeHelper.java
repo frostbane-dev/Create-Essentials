@@ -67,24 +67,27 @@ public final class KineticChargeHelper {
     private KineticChargeHelper() {
     }
 
+    public static final int CHARGING_PARTICLE_INTERVAL_TICKS = 8;
+
     public static void spawnChargingParticles(Level level, BlockPos pos) {
         if (!(level instanceof ServerLevel serverLevel))
             return;
+        if (serverLevel.getGameTime() % CHARGING_PARTICLE_INTERVAL_TICKS != 0L)
+            return;
+
         double cx = pos.getX() + 0.5;
         double cy = pos.getY() + 0.5;
         double cz = pos.getZ() + 0.5;
-        for (int i = 0; i < 2; i++) {
-            double yaw = serverLevel.random.nextDouble() * Math.PI * 2.0;
-            double pitch = (serverLevel.random.nextDouble() - 0.5) * Math.PI;
-            double dx = Math.cos(yaw) * Math.cos(pitch);
-            double dy = Math.sin(pitch);
-            double dz = Math.sin(yaw) * Math.cos(pitch);
-            double r = 0.8;
-            double x = cx + dx * r;
-            double y = cy + dy * r;
-            double z = cz + dz * r;
-            serverLevel.sendParticles(ParticleTypes.CLOUD, x, y, z, 0, -dx * 0.15, -dy * 0.15, -dz * 0.15, 1.0);
-        }
+        double yaw = serverLevel.random.nextDouble() * Math.PI * 2.0;
+        double pitch = (serverLevel.random.nextDouble() - 0.5) * (Math.PI * 0.6);
+        double dx = Math.cos(yaw) * Math.cos(pitch);
+        double dy = Math.sin(pitch);
+        double dz = Math.sin(yaw) * Math.cos(pitch);
+        double r = 0.42;
+        double x = cx + dx * r;
+        double y = cy + dy * r;
+        double z = cz + dz * r;
+        serverLevel.sendParticles(ParticleTypes.END_ROD, x, y, z, 0, -dx * 0.04, -dy * 0.04, -dz * 0.04, 1.0);
     }
 
     public static void spawnFullChargeParticles(Level level, BlockPos pos) {

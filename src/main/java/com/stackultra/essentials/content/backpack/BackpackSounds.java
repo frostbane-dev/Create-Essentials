@@ -9,11 +9,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.SoundType;
 
 /**
- * Exact Create 6.0.9 Toolbox audio constants and helpers shared across Mechanical,
- * Netherite Mechanical, and Magnetic Backpacks.
+ * Audio constants and helpers shared across Mechanical, Netherite Mechanical, and Magnetic Backpacks.
  * <p>
- * Verified directly from Create's {@code AllBlocks.TOOLBOXES} ({@link SoundType#WOOD})
- * and {@code ToolboxBlockEntity#tickAudio()}:
+ * Block place/break/step sounds use {@link SoundType#WOOL}, while opening a backpack uses
+ * Create's exact {@code ToolboxBlockEntity#tickAudio()} open sound:
  * <ul>
  *   <li>{@link SoundEvents#IRON_DOOR_OPEN}: volume {@code 0.25F}, pitch {@code 1.2F + rand * 0.1F}</li>
  *   <li>{@link SoundEvents#CHEST_OPEN}: volume {@code 0.1F}, pitch {@code 1.1F + rand * 0.1F}</li>
@@ -21,7 +20,7 @@ import net.minecraft.world.level.block.SoundType;
  */
 public final class BackpackSounds {
 
-    public static final SoundType BLOCK_SOUND_TYPE = SoundType.WOOD;
+    public static final SoundType BLOCK_SOUND_TYPE = SoundType.WOOL;
 
     public static final float LATCH_OPEN_VOLUME = 0.25F;
     public static final float LATCH_OPEN_PITCH_BASE = 1.2F;

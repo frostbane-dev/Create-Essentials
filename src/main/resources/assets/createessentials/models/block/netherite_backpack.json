@@ -6,7 +6,7 @@
   ],
   "textures": {
     "0": "createessentials:block/netherite_backpack",
-    "particle": "createessentials:block/netherite_backpack"
+    "particle": "createessentials:block/backpack_leather_particle"
   },
   "elements": [
     {

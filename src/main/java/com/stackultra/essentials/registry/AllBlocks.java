@@ -43,7 +43,7 @@ public class AllBlocks {
     private static BlockBehaviour.Properties backpackProperties(MapColor mapColor) {
         return BlockBehaviour.Properties.of()
                 .mapColor(mapColor)
-                .instabreak()
+                .strength(0.8F)
                 .noOcclusion()
                 .isViewBlocking((state, level, pos) -> false)
                 .isSuffocating((state, level, pos) -> false)

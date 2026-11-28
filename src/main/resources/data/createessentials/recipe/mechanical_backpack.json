@@ -1,6 +1,6 @@
 {
-  "type": "create:mechanical_crafting",
-  "accept_mirrored": true,
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
   "key": {
     "B": {
       "item": "create:brass_ingot"
@@ -18,7 +18,7 @@
       "item": "minecraft:leather"
     },
     "S": {
-      "item": "create:shaft"
+      "item": "create:andesite_casing"
     }
   },
   "pattern": [

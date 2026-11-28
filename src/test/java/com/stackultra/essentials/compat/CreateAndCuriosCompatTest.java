@@ -285,12 +285,20 @@ class CreateAndCuriosCompatTest {
     }
 
     @Test
-    void backpackBlocksMatchCreateToolboxSoundTypeAndTitleTruncationPreventsOverflow() {
-        // Exact Create Toolbox SoundType (SoundType.WOOD) on both Mechanical/Netherite and Magnetic Backpack blocks
-        assertEquals(net.minecraft.world.level.block.SoundType.WOOD,
+    void backpackBlocksUseWoolSoundNormalMiningStrengthAndMagnetRangesAreBalanced() {
+        // Wool place/break/step sounds and normal hand-breakable destroy time (not insta-mineable)
+        assertEquals(net.minecraft.world.level.block.SoundType.WOOL,
                 AllBlocks.MECHANICAL_BACKPACK.get().defaultBlockState().getSoundType(null, BlockPos.ZERO, null));
-        assertEquals(net.minecraft.world.level.block.SoundType.WOOD,
+        assertEquals(net.minecraft.world.level.block.SoundType.WOOL,
                 AllBlocks.MAGNETIC_BACKPACK.get().defaultBlockState().getSoundType(null, BlockPos.ZERO, null));
+        assertTrue(AllBlocks.MECHANICAL_BACKPACK.get().defaultDestroyTime() > 0.0F,
+                "Mechanical Backpack must not be insta-mineable");
+        assertTrue(AllBlocks.MAGNETIC_BACKPACK.get().defaultDestroyTime() > 0.0F,
+                "Magnetic Backpack must not be insta-mineable");
+
+        // Tier 1 RotationalMagnet nerfed to 2 blocks; Tier 2 PrecisionMagnet / MagneticBackpack unchanged at 10 blocks
+        assertEquals(2.0D, com.stackultra.essentials.content.magnet.MagnetTier.TIER_1.pullRadius());
+        assertEquals(10.0D, com.stackultra.essentials.content.magnet.MagnetTier.TIER_2.pullRadius());
 
         // Monospace 6px/char font simulation matching standard Minecraft glyph widths (maxTitleWidth = 106px)
         java.util.function.ToIntFunction<String> widthFn = s -> s.length() * 6;

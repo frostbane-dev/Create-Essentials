@@ -127,6 +127,9 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (player.isShiftKeyDown()) {
+            return pickupPlacedBackpack(state, level, pos, player);
+        }
         if (level.isClientSide)
             return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be) {
@@ -140,6 +143,11 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        if (player.isShiftKeyDown()) {
+            return pickupPlacedBackpack(state, level, pos, player).consumesAction()
+                    ? ItemInteractionResult.sidedSuccess(level.isClientSide)
+                    : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof MechanicalBackpackBlockEntity be) {
@@ -147,6 +155,33 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
                 BackpackSounds.playOpenSound(level, pos);
         }
         return ItemInteractionResult.SUCCESS;
+    }
+
+    private InteractionResult pickupPlacedBackpack(BlockState state, Level level, BlockPos pos, Player player) {
+        if (!player.mayBuild())
+            return InteractionResult.PASS;
+        if (level.isClientSide)
+            return InteractionResult.SUCCESS;
+
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        ItemStack drop = new ItemStack(dropItem(state, blockEntity));
+        if (blockEntity instanceof MechanicalBackpackBlockEntity be)
+            be.saveToStack(drop);
+
+        if (!level.removeBlock(pos, false))
+            return InteractionResult.PASS;
+
+        int selected = player.getInventory().selected;
+        if (selected >= 0 && selected < 9 && player.getInventory().getItem(selected).isEmpty()) {
+            player.getInventory().setItem(selected, drop);
+        } else if (!player.getInventory().add(drop)) {
+            popResource(level, pos, drop);
+        }
+        player.inventoryMenu.broadcastChanges();
+
+        level.playSound(null, pos, net.minecraft.sounds.SoundEvents.WOOL_BREAK,
+                net.minecraft.sounds.SoundSource.BLOCKS, 0.8F, 1.0F);
+        return InteractionResult.CONSUME;
     }
 
     @Override
@@ -175,8 +210,7 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
         if (blockEntity instanceof MechanicalBackpackBlockEntity be)
             be.saveToStack(drop);
 
-        if (!player.getInventory().add(drop))
-            popResource(level, pos, drop);
+        popResource(level, pos, drop);
 
         player.awardStat(Stats.BLOCK_MINED.get(this));
         player.causeFoodExhaustion(0.005F);

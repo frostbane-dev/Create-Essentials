@@ -1,18 +1,30 @@
 package com.stackultra.essentials.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.AllKeys;
 import com.simibubi.create.content.equipment.toolbox.RadialToolboxMenu;
 import com.simibubi.create.content.equipment.toolbox.ToolboxBlockEntity;
-import com.stackultra.essentials.content.backpack.BackpackTooltipData;
+import com.simibubi.create.foundation.gui.AllGuiTextures;
+import com.simibubi.create.foundation.gui.AllIcons;
+import com.simibubi.create.foundation.utility.CreateLang;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.backpack.PortableToolboxInventory;
 import com.stackultra.essentials.network.BackpackToolboxPayload;
+import dev.engine_room.flywheel.lib.transform.TransformStack;
+import net.createmod.catnip.animation.AnimationTickHolder;
+import net.createmod.catnip.gui.AbstractSimiScreen;
+import net.createmod.catnip.gui.element.GuiGameElement;
+import net.createmod.catnip.math.AngleHelper;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -23,37 +35,30 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 /**
- * Clean Create-style 8-slot radial toolbox wheel for the portable backpack toolbox.
- * Reads real-time server-authoritative compartment state (refreshing live on open) so
- * slot moves, ghost reservations, and equip/return actions are always 100% consistent.
+ * Exact visual clone of Create 6.0.9's {@link RadialToolboxMenu} backed by our
+ * server-authoritative portable backpack toolbox sync ({@link PortableToolboxOverlay},
+ * {@link BackpackToolboxPayload}, and Curios/inventory lookup).
  */
 @OnlyIn(Dist.CLIENT)
-public class PortableToolboxRadialScreen extends Screen {
+public class PortableToolboxRadialScreen extends AbstractSimiScreen {
 
     private static final int COMPARTMENTS = PortableToolboxInventory.COMPARTMENTS;
-    private static final int RETURN_SELECTION = -1;
-    private static final int NO_SELECTION = -2;
-
-    private static final int WHEEL_RADIUS = 54;
-    private static final int CENTER_DEADZONE = 21;
-    private static final int SLOT_BOX_SIZE = 24;
+    private static final int WORLD_TOOLBOXES = -7;
+    private static final int UNEQUIP = -5;
 
     private final List<ToolboxBlockEntity> nearbyWorldToolboxes;
     private final PortableToolboxInventory fallbackSnapshot;
-    private final BackpackTooltipPalette palette;
 
-    private int hoveredSelection = RETURN_SELECTION;
-    private boolean scrollMode = false;
+    private int ticksOpen;
+    private int hoveredSlot = -1;
+    private boolean scrollMode;
     private int scrollSlot = 0;
     private boolean actionCommitted = false;
 
     public PortableToolboxRadialScreen(ItemStack backpackStack, List<ToolboxBlockEntity> nearbyWorldToolboxes) {
-        super(backpackStack.getHoverName());
+        super();
         this.nearbyWorldToolboxes = nearbyWorldToolboxes;
         this.fallbackSnapshot = PortableToolboxInventory.forStack(backpackStack);
-        BackpackTooltipPalette resolved = BackpackTooltipPalette.resolveForStack(backpackStack);
-        this.palette = resolved != null ? resolved : BackpackTooltipPalette.resolve(
-                BackpackTooltipData.Tier.MECHANICAL, null, -1);
     }
 
     @Override
@@ -61,17 +66,6 @@ public class PortableToolboxRadialScreen extends Screen {
         super.init();
         // Immediately request fresh authoritative state from server in case Curios/inventory changed
         PacketDistributor.sendToServer(BackpackToolboxPayload.requestSync());
-
-        if (!nearbyWorldToolboxes.isEmpty()) {
-            int btnW = 108;
-            int btnH = 16;
-            int bx = (width - btnW) / 2;
-            int by = height / 2 + WHEEL_RADIUS + 26;
-            addRenderableWidget(new DarkTextButton(bx, by, btnW, btnH,
-                    () -> Component.translatable("createessentials.gui.world_toolboxes", nearbyWorldToolboxes.size()),
-                    () -> DarkGuiStyling.COLOR_TITLE,
-                    this::switchToWorldToolboxes));
-        }
     }
 
     private void switchToWorldToolboxes() {
@@ -101,126 +95,126 @@ public class PortableToolboxRadialScreen extends Screen {
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        Color color = BACKGROUND_COLOR
+                .scaleAlpha(Math.min(1, (ticksOpen + AnimationTickHolder.getPartialTicks()) / 20f));
+        graphics.fillGradient(0, 0, width, height, color.getRGB(), color.getRGB());
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Intentionally empty: render only the clean radial wheel over the live world view
-    }
+    protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        float fade = Mth.clamp((ticksOpen + AnimationTickHolder.getPartialTicks()) / 10f, 1 / 512f, 1);
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int cx = width / 2;
-        int cy = height / 2;
+        hoveredSlot = -1;
+        Window window = getMinecraft().getWindow();
+        float hoveredX = mouseX - window.getGuiScaledWidth() / 2f;
+        float hoveredY = mouseY - window.getGuiScaledHeight() / 2f;
 
-        if (!scrollMode) {
-            hoveredSelection = resolveHover(mouseX, mouseY, cx, cy);
-        } else {
-            hoveredSelection = scrollSlot;
+        float distance = hoveredX * hoveredX + hoveredY * hoveredY;
+        if (distance > 25 && distance < 10000) {
+            hoveredSlot = (Mth.floor((AngleHelper.deg(Mth.atan2(hoveredY, hoveredX)) + 360 + 180 - 22.5f)) % 360) / 45;
+        }
+        if (scrollMode && distance > 150) {
+            scrollMode = false;
+        }
+        if (distance <= 150) {
+            hoveredSlot = UNEQUIP;
         }
 
-        // Title above wheel
-        graphics.drawCenteredString(font, title, cx, cy - WHEEL_RADIUS - 28, DarkGuiStyling.COLOR_TITLE);
+        PoseStack ms = graphics.pose();
+        ms.pushPose();
+        ms.translate(width / 2f, height / 2f, 0);
+        Component tip = null;
 
-        // Render 8 radial compartment nodes
-        for (int c = 0; c < COMPARTMENTS; c++) {
-            double angle = Math.toRadians(c * 45.0 - 90.0);
-            int nx = cx + (int) Math.round(Math.cos(angle) * WHEEL_RADIUS);
-            int ny = cy + (int) Math.round(Math.sin(angle) * WHEEL_RADIUS);
-            boolean selected = hoveredSelection == c;
-
-            drawRadialNode(graphics, nx, ny, selected, c);
-        }
-
-        // Center Return hub
-        boolean returnSelected = hoveredSelection == RETURN_SELECTION;
-        drawCenterReturnNode(graphics, cx, cy, returnSelected);
-
-        // Active selection label below wheel
-        Component selectionLabel = getSelectionLabel(hoveredSelection);
-        if (!selectionLabel.getString().isEmpty()) {
-            graphics.drawCenteredString(font, selectionLabel, cx, cy + WHEEL_RADIUS + 14, DarkGuiStyling.COLOR_TEXT);
-        }
-
-        super.render(graphics, mouseX, mouseY, partialTick);
-    }
-
-    private void drawRadialNode(GuiGraphics g, int nx, int ny, boolean selected, int compartment) {
-        int half = SLOT_BOX_SIZE / 2;
-        int x = nx - half;
-        int y = ny - half;
-
-        int border = selected ? DarkGuiStyling.COLOR_TITLE : palette.panelOutline();
-        int fill = selected ? 0xFF5E5E5E : palette.panelBg();
-        g.fill(x - 1, y - 1, x + SLOT_BOX_SIZE + 1, y + SLOT_BOX_SIZE + 1, border);
-        g.fill(x, y, x + SLOT_BOX_SIZE, y + SLOT_BOX_SIZE, fill);
-
-        int itemX = nx - 8;
-        int itemY = ny - 8;
-        DarkGuiStyling.drawSlot(g, itemX, itemY);
-
-        int count = getLiveCount(compartment);
-        ItemStack display = getLiveDisplayItem(compartment);
-        if (count > 0 && !display.isEmpty()) {
-            g.renderItem(display, itemX, itemY);
-            g.renderItemDecorations(font, display, itemX, itemY, "");
-            DarkGuiStyling.drawCompactCount(g, font, count, itemX, itemY);
-        } else if (!display.isEmpty()) {
-            DarkGuiStyling.drawGhostItem(g, display, itemX, itemY, 0.40F);
-        }
-    }
-
-    private void drawCenterReturnNode(GuiGraphics g, int cx, int cy, boolean selected) {
-        int r = 16;
-        int border = selected ? 0xFFFF6666 : palette.panelOutline();
-        int fill = selected ? 0xFF5A3838 : palette.panelBg();
-        g.fill(cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1, border);
-        g.fill(cx - r, cy - r, cx + r, cy + r, fill);
-        g.fill(cx - r + 1, cy - r + 1, cx + r - 1, cy - r + 2, palette.panelBevelLight());
-        g.fill(cx - r + 1, cy + r - 2, cx + r - 1, cy + r - 1, palette.panelBevelDark());
-
-        Component label = Component.translatable("createessentials.gui.radial_return");
-        g.drawCenteredString(font, label, cx, cy - 4, selected ? 0xFFFF7777 : DarkGuiStyling.COLOR_TEXT_DIM);
-    }
-
-    private Component getSelectionLabel(int selection) {
-        if (selection == RETURN_SELECTION) {
-            return Component.translatable("createessentials.gui.radial_return_desc")
-                    .withStyle(ChatFormatting.GRAY);
-        }
-        if (selection >= 0 && selection < COMPARTMENTS) {
-            int count = getLiveCount(selection);
-            ItemStack display = getLiveDisplayItem(selection);
-            if (count > 0 && !display.isEmpty()) {
-                return Component.literal(display.getHoverName().getString() + " (" + count + ")")
-                        .withStyle(ChatFormatting.WHITE);
+        // Exact Create right-side action slot (switches to nearby placed Create Toolboxes if present)
+        if (!nearbyWorldToolboxes.isEmpty()) {
+            if (hoveredX > 60 && hoveredX < 100 && hoveredY > -20 && hoveredY < 20) {
+                hoveredSlot = WORLD_TOOLBOXES;
             }
+            ms.pushPose();
+            ms.translate(80 + -5 * (1 - fade) * (1 - fade), 0, 0);
+            AllGuiTextures.TOOLBELT_SLOT.render(graphics, -12, -12);
+            ms.translate(-0.5, 0.5, 0);
+            AllIcons.I_TOOLBOX.render(graphics, -9, -9);
+            ms.translate(0.5, -0.5, 0);
+            if (!scrollMode && hoveredSlot == WORLD_TOOLBOXES) {
+                AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, -13, -13);
+                tip = Component.translatable("createessentials.gui.world_toolboxes", nearbyWorldToolboxes.size())
+                        .withStyle(ChatFormatting.GOLD);
+            }
+            ms.popPose();
+        }
+
+        // Exact Create 8-slot radial wheel layout, ease-out animation, textures, and item rendering
+        for (int slot = 0; slot < COMPARTMENTS; slot++) {
+            ms.pushPose();
+            TransformStack.of(ms)
+                    .rotateZDegrees(slot * 45 - 45)
+                    .translate(0, -40 + 10 * (1 - fade) * (1 - fade), 0)
+                    .rotateZDegrees(-slot * 45 + 45);
+            ms.translate(-12, -12, 0);
+
+            ItemStack display = getLiveDisplayItem(slot);
             if (!display.isEmpty()) {
-                return Component.literal(display.getHoverName().getString() + " (0)")
-                        .withStyle(ChatFormatting.GRAY);
+                boolean empty = getLiveCount(slot) <= 0;
+                (empty ? AllGuiTextures.TOOLBELT_INACTIVE_SLOT : AllGuiTextures.TOOLBELT_SLOT)
+                        .render(graphics, 0, 0);
+                GuiGameElement.of(display)
+                        .at(3, 3)
+                        .render(graphics);
+
+                if (slot == (scrollMode ? scrollSlot : hoveredSlot) && !empty) {
+                    AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, -1, -1);
+                    tip = display.getHoverName();
+                }
+            } else {
+                AllGuiTextures.TOOLBELT_EMPTY_SLOT.render(graphics, 0, 0);
             }
-            return Component.translatable("createessentials.tooltip.backpack_empty")
-                    .withStyle(ChatFormatting.DARK_GRAY);
+
+            ms.popPose();
         }
-        return Component.empty();
+
+        // Exact Create center unequip / return slot
+        ms.pushPose();
+        AllGuiTextures.TOOLBELT_SLOT.render(graphics, -12, -12);
+        (scrollMode ? AllIcons.I_REFRESH : AllIcons.I_FLIP).render(graphics, -9, -9);
+        if (!scrollMode && hoveredSlot == UNEQUIP) {
+            AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, -13, -13);
+            ItemStack mainHand = minecraft != null && minecraft.player != null
+                    ? minecraft.player.getMainHandItem()
+                    : ItemStack.EMPTY;
+            tip = (!mainHand.isEmpty()
+                    ? CreateLang.translateDirect("toolbox.unequip", mainHand.getHoverName())
+                    : Component.translatable("createessentials.gui.radial_return_desc"))
+                    .withStyle(ChatFormatting.GOLD);
+        }
+        ms.popPose();
+
+        ms.popPose();
+
+        // Exact Create bottom label fade-in
+        if (tip != null) {
+            int i1 = (int) (fade * 255.0F);
+            if (i1 > 255) {
+                i1 = 255;
+            }
+            if (i1 > 8) {
+                ms.pushPose();
+                ms.translate(width / 2f, height - 68, 0);
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+                int k1 = 0xFFFFFF;
+                int k = i1 << 24 & 0xFF000000;
+                int l = font.width(tip);
+                graphics.drawString(font, tip, Math.round(-l / 2f), -4, k1 | k, false);
+                RenderSystem.disableBlend();
+                ms.popPose();
+            }
+        }
     }
 
-    private int resolveHover(int mouseX, int mouseY, int cx, int cy) {
-        if (!nearbyWorldToolboxes.isEmpty() && mouseY > cy + WHEEL_RADIUS + 20)
-            return NO_SELECTION;
-
-        double dx = mouseX - cx;
-        double dy = mouseY - cy;
-        double dist = Math.hypot(dx, dy);
-        if (dist < CENTER_DEADZONE)
-            return RETURN_SELECTION;
-
-        double angle = Math.toDegrees(Math.atan2(dy, dx)) + 90.0;
-        if (angle < 0)
-            angle += 360.0;
-        return ((int) Math.round(angle / 45.0)) % COMPARTMENTS;
+    private int activeSlot() {
+        return scrollMode ? scrollSlot : hoveredSlot;
     }
 
     private void commitSelection() {
@@ -233,47 +227,65 @@ public class PortableToolboxRadialScreen extends Screen {
         if (player == null)
             return;
 
+        int selected = activeSlot();
         int hotbarSlot = player.getInventory().selected;
-        if (hoveredSelection == RETURN_SELECTION) {
+        if (selected == UNEQUIP) {
             PacketDistributor.sendToServer(BackpackToolboxPayload.returnHeld(hotbarSlot));
-        } else if (hoveredSelection >= 0 && hoveredSelection < COMPARTMENTS) {
-            if (getLiveCount(hoveredSelection) > 0) {
-                PacketDistributor.sendToServer(BackpackToolboxPayload.equip(hoveredSelection, hotbarSlot));
+        } else if (selected >= 0 && selected < COMPARTMENTS) {
+            if (!getLiveDisplayItem(selected).isEmpty() && getLiveCount(selected) > 0) {
+                PacketDistributor.sendToServer(BackpackToolboxPayload.equip(selected, hotbarSlot));
             }
         }
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button))
+    public void removed() {
+        super.removed();
+        commitSelection();
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        Window window = getMinecraft().getWindow();
+        double hoveredX = mouseX - window.getGuiScaledWidth() / 2.0;
+        double hoveredY = mouseY - window.getGuiScaledHeight() / 2.0;
+        double distance = hoveredX * hoveredX + hoveredY * hoveredY;
+        if (distance <= 150.0) {
+            scrollMode = true;
+            scrollSlot = (((int) (scrollSlot - scrollY)) + COMPARTMENTS) % COMPARTMENTS;
+            for (int i = 0; i < 10; i++) {
+                if (!getLiveDisplayItem(scrollSlot).isEmpty() && getLiveCount(scrollSlot) > 0) {
+                    break;
+                }
+                scrollSlot = (scrollSlot - Mth.sign(scrollY) + COMPARTMENTS) % COMPARTMENTS;
+            }
             return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean mouseClicked(double x, double y, int button) {
+        int selected = activeSlot();
+
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            if (selected == WORLD_TOOLBOXES && !nearbyWorldToolboxes.isEmpty()) {
+                switchToWorldToolboxes();
+                return true;
+            }
+            if (selected == UNEQUIP || selected >= 0) {
+                onClose();
+                return true;
+            }
+        }
 
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             actionCommitted = true;
             onClose();
             return true;
         }
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            commitSelection();
-            onClose();
-            return true;
-        }
-        return false;
-    }
 
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY == 0)
-            return false;
-        scrollMode = true;
-        int dir = scrollY > 0 ? -1 : 1;
-        scrollSlot = (scrollSlot + dir + COMPARTMENTS) % COMPARTMENTS;
-        return true;
-    }
-
-    @Override
-    public void mouseMoved(double mouseX, double mouseY) {
-        scrollMode = false;
+        return super.mouseClicked(x, y, button);
     }
 
     @Override
@@ -283,16 +295,35 @@ public class PortableToolboxRadialScreen extends Screen {
             onClose();
             return true;
         }
+
+        if (minecraft != null) {
+            KeyMapping[] hotbarKeys = minecraft.options.keyHotbarSlots;
+            for (int i = 0; i < hotbarKeys.length && i < COMPARTMENTS; i++) {
+                if (hotbarKeys[i].matches(keyCode, scanCode)) {
+                    if (getLiveDisplayItem(i).isEmpty() || getLiveCount(i) <= 0)
+                        return false;
+                    scrollMode = true;
+                    scrollSlot = i;
+                    mouseClicked(0, 0, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+                    return true;
+                }
+            }
+        }
+
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
         InputConstants.Key released = InputConstants.getKey(keyCode, scanCode);
-        if (AllKeys.TOOLBELT.getKeybind().getKey().equals(released)
+        if (AllKeys.TOOLBELT.getKeybind().isActiveAndMatches(released)
+                || AllKeys.TOOLBELT.getKeybind().getKey().equals(released)
                 || AllKeys.TOOLBELT.doesModifierAndCodeMatch(keyCode)) {
-            commitSelection();
-            onClose();
+            if (activeSlot() == WORLD_TOOLBOXES && !nearbyWorldToolboxes.isEmpty()) {
+                switchToWorldToolboxes();
+            } else {
+                onClose();
+            }
             return true;
         }
         return super.keyReleased(keyCode, scanCode, modifiers);
@@ -300,6 +331,7 @@ public class PortableToolboxRadialScreen extends Screen {
 
     @Override
     public void tick() {
+        ticksOpen++;
         super.tick();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {

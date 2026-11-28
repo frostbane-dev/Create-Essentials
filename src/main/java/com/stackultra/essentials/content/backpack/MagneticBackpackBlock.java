@@ -135,6 +135,9 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (player.isShiftKeyDown()) {
+            return pickupPlacedBackpack(level, pos, player);
+        }
         if (level.isClientSide)
             return InteractionResult.SUCCESS;
         withBlockEntityDo(level, pos, be -> {
@@ -148,6 +151,11 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        if (player.isShiftKeyDown()) {
+            return pickupPlacedBackpack(level, pos, player).consumesAction()
+                    ? ItemInteractionResult.sidedSuccess(level.isClientSide)
+                    : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
         if (level.isClientSide)
             return ItemInteractionResult.SUCCESS;
         withBlockEntityDo(level, pos, be -> {
@@ -155,6 +163,35 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
                 BackpackSounds.playOpenSound(level, pos);
         });
         return ItemInteractionResult.SUCCESS;
+    }
+
+    private InteractionResult pickupPlacedBackpack(Level level, BlockPos pos, Player player) {
+        if (!player.mayBuild())
+            return InteractionResult.PASS;
+        if (level.isClientSide)
+            return InteractionResult.SUCCESS;
+
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        ItemStack drop = new ItemStack(AllItems.MAGNETIC_BACKPACK.get());
+        if (blockEntity instanceof MagneticBackpackBlockEntity be) {
+            be.saveToStack(drop);
+            applyLegacyCapacityIfMissing(drop, be, level);
+        }
+
+        if (!level.removeBlock(pos, false))
+            return InteractionResult.PASS;
+
+        int selected = player.getInventory().selected;
+        if (selected >= 0 && selected < 9 && player.getInventory().getItem(selected).isEmpty()) {
+            player.getInventory().setItem(selected, drop);
+        } else if (!player.getInventory().add(drop)) {
+            popResource(level, pos, drop);
+        }
+        player.inventoryMenu.broadcastChanges();
+
+        level.playSound(null, pos, net.minecraft.sounds.SoundEvents.WOOL_BREAK,
+                net.minecraft.sounds.SoundSource.BLOCKS, 0.8F, 1.0F);
+        return InteractionResult.CONSUME;
     }
 
     @Override
@@ -176,8 +213,7 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
             applyLegacyCapacityIfMissing(drop, be, level);
         }
 
-        if (!player.getInventory().add(drop))
-            popResource(level, pos, drop);
+        popResource(level, pos, drop);
 
         player.awardStat(Stats.BLOCK_MINED.get(this));
         player.causeFoodExhaustion(0.005F);

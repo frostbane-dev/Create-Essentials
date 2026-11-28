@@ -1,7 +1,7 @@
 package com.stackultra.essentials.content.magnet;
 
 public enum MagnetTier {
-    TIER_1("rotational_magnet", 5, 10, 5.0D),
+    TIER_1("rotational_magnet", 5, 10, 2.0D),
     TIER_2("precision_magnet", 5, 10, 10.0D);
 
     public static final int TICKS_PER_MINUTE = 1200;
