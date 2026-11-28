@@ -12,9 +12,12 @@ import dev.engine_room.flywheel.lib.instance.TransformedInstance;
 import dev.engine_room.flywheel.lib.model.Models;
 import dev.engine_room.flywheel.lib.visual.SimpleDynamicVisual;
 import net.minecraft.core.Direction;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import java.util.function.Consumer;
 
+@OnlyIn(Dist.CLIENT)
 public class MagneticBackpackVisual extends KineticBlockEntityVisual<MagneticBackpackBlockEntity>
         implements SimpleDynamicVisual {
 

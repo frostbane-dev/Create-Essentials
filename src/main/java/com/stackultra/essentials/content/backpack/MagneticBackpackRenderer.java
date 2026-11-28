@@ -11,7 +11,10 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
+@OnlyIn(Dist.CLIENT)
 public class MagneticBackpackRenderer extends KineticBlockEntityRenderer<MagneticBackpackBlockEntity> {
 
     public MagneticBackpackRenderer(BlockEntityRendererProvider.Context context) {

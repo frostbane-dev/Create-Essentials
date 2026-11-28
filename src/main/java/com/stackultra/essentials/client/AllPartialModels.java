@@ -6,7 +6,10 @@ import com.stackultra.essentials.content.magnet.RotationalMagnetBlock;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
+@OnlyIn(Dist.CLIENT)
 public final class AllPartialModels {
 
     public static final PartialModel ROTATIONAL_MAGNET_SHAFT = block("rotational_magnet_shaft");

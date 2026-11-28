@@ -18,20 +18,20 @@ public final class BackpackEquipment {
     }
 
     public static ItemStack findEquippedBackpack(Player player) {
+        ItemStack back = CuriosCompat.getBackBackpack(player);
+        if (!back.isEmpty())
+            return back;
+
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
         if (chest.getItem() instanceof MechanicalBackpackItem
                 || chest.getItem() instanceof MagneticBackpackItem)
             return chest;
 
-        ItemStack back = CuriosCompat.getBackBackpack(player);
-        if (!back.isEmpty())
-            return back;
-
         return ItemStack.EMPTY;
     }
 
     public static void syncBackpack(Player player, ItemStack backpack) {
-        if (backpack == null || backpack.isEmpty())
+        if (player == null || backpack == null || backpack.isEmpty())
             return;
 
         // Fast path: exact reference identity on live armor / inventory slots

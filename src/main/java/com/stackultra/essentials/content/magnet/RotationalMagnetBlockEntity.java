@@ -28,6 +28,8 @@ import java.util.List;
 public class RotationalMagnetBlockEntity extends KineticBlockEntity
         implements IHaveGoggleInformation, MenuProvider {
 
+    public static final int CHARGE_SYNC_INTERVAL_TICKS = 10;
+
     private final MagnetTier tier;
     private final ItemStackHandler filterInventory;
     private final KineticChargeHelper.KineticChargeState kineticCharge = new KineticChargeHelper.KineticChargeState();
@@ -37,6 +39,8 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
     private boolean enabled = true;
     private boolean blacklist = false;
     private int capacityEnchantLevel = 0;
+    private int ticksSinceChargeSync = 0;
+    private boolean suppressSync = false;
 
     public RotationalMagnetBlockEntity(BlockPos pos, BlockState state) {
         super(AllBlockEntities.ROTATIONAL_MAGNET.get(), pos, state);
@@ -45,8 +49,10 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
         this.filterInventory = new ItemStackHandler(RotationalMagnetItem.FILTER_SLOTS) {
             @Override
             protected void onContentsChanged(int slot) {
-                setChanged();
-                sendData();
+                if (!suppressSync) {
+                    setChanged();
+                    sendData();
+                }
             }
         };
     }
@@ -82,8 +88,16 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
         KineticChargeHelper.TickResult result = kineticCharge.tick(charge, getMaxCharge(), getSpeed());
         if (result.chargeChanged()) {
             charge = result.nextCharge();
-            setChanged();
-            sendData();
+            ticksSinceChargeSync++;
+            if (result.reachedFull() || ticksSinceChargeSync >= CHARGE_SYNC_INTERVAL_TICKS) {
+                ticksSinceChargeSync = 0;
+                notifyUpdate();
+            } else if (level.isLoaded(worldPosition)) {
+                level.blockEntityChanged(worldPosition);
+            }
+        } else if (ticksSinceChargeSync > 0) {
+            ticksSinceChargeSync = 0;
+            notifyUpdate();
         }
         if (result.activelyCharging()) {
             KineticChargeHelper.spawnChargingParticles(level, getBlockPos());
@@ -134,22 +148,37 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
     }
 
     public void setFilters(List<ItemStack> filters) {
-        for (int i = 0; i < RotationalMagnetItem.FILTER_SLOTS; i++)
-            filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i).copy() : ItemStack.EMPTY);
+        boolean prev = suppressSync;
+        suppressSync = true;
+        try {
+            for (int i = 0; i < RotationalMagnetItem.FILTER_SLOTS; i++)
+                filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i).copy() : ItemStack.EMPTY);
+        } finally {
+            suppressSync = prev;
+        }
         setChanged();
         sendData();
     }
 
     public void loadFromStack(ItemStack stack) {
-        preservedComponents.loadFromStack(stack);
-        setCapacityEnchantLevel(RotationalMagnetItem.getCapacityLevel(stack));
-        setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
-        setEnabled(stack.getOrDefault(AllDataComponents.ENABLED, true));
-        setBlacklist(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
-        kineticCharge.syncFullState(charge, getMaxCharge());
-        List<ItemStack> filters = RotationalMagnetItem.getFilters(stack);
-        for (int i = 0; i < RotationalMagnetItem.FILTER_SLOTS; i++)
-            filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i) : ItemStack.EMPTY);
+        boolean prev = suppressSync;
+        suppressSync = true;
+        try {
+            preservedComponents.loadFromStack(stack);
+            setCapacityEnchantLevel(RotationalMagnetItem.getCapacityLevel(stack));
+            setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
+            this.enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
+            this.blacklist = stack.getOrDefault(ExtraDataComponents.BLACKLIST, false);
+            this.ticksSinceChargeSync = 0;
+            kineticCharge.syncFullState(charge, getMaxCharge());
+            List<ItemStack> filters = RotationalMagnetItem.getFilters(stack);
+            for (int i = 0; i < RotationalMagnetItem.FILTER_SLOTS; i++)
+                filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i) : ItemStack.EMPTY);
+        } finally {
+            suppressSync = prev;
+        }
+        setChanged();
+        sendData();
     }
 
     public void saveToStack(ItemStack stack) {
@@ -169,7 +198,9 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
         tag.putBoolean("Enabled", enabled);
         tag.putBoolean("Blacklist", blacklist);
         tag.putInt("CapacityEnchantLevel", capacityEnchantLevel);
-        tag.put("Filters", filterInventory.serializeNBT(registries));
+        if (!clientPacket) {
+            tag.put("Filters", filterInventory.serializeNBT(registries));
+        }
         preservedComponents.writeToTag(tag, registries);
         super.write(tag, registries, clientPacket);
     }
@@ -187,11 +218,17 @@ public class RotationalMagnetBlockEntity extends KineticBlockEntity
         super.read(tag, registries, clientPacket);
     }
 
+    public CompoundTag buildMenuTag(HolderLookup.Provider registries) {
+        CompoundTag tag = getUpdateTag(registries);
+        tag.put("Filters", filterInventory.serializeNBT(registries));
+        return tag;
+    }
+
     @Override
     public void sendToMenu(RegistryFriendlyByteBuf buf) {
         buf.writeBoolean(true);
         buf.writeBlockPos(getBlockPos());
-        buf.writeNbt(getUpdateTag(buf.registryAccess()));
+        buf.writeNbt(buildMenuTag(buf.registryAccess()));
     }
 
     @Override

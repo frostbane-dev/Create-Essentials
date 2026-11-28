@@ -182,8 +182,26 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     protected void addStorageSlots(int x, int y) {
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new SlotItemHandler(storageInventory, row * 9 + col,
-                        x + col * 18, y + row * 18));
+                final int slotIndex = row * 9 + col;
+                addSlot(new SlotItemHandler(storageInventory, slotIndex,
+                        x + col * 18, y + row * 18) {
+                    @Override
+                    public void setChanged() {
+                        super.setChanged();
+                        boolean isClient = playerInventory != null
+                                && playerInventory.player != null
+                                && playerInventory.player.level().isClientSide();
+                        if (isClient)
+                            return;
+                        if (storageInventory instanceof BackpackInventory backpackInv) {
+                            backpackInv.markSlotChanged(slotIndex);
+                        } else {
+                            BlockEntity be = getBackingBlockEntity();
+                            if (be != null && !be.isRemoved())
+                                syncBlockEntity();
+                        }
+                    }
+                });
             }
         }
     }
@@ -343,6 +361,9 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
             if (!be.isRemoved())
                 syncBlockEntity();
         } else if (!backpackStack.isEmpty()) {
+            if (storageInventory instanceof BackpackInventory backpackInv) {
+                backpackInv.save(backpackStack);
+            }
             toolboxInventory.save(backpackStack);
             syncItemStack(player, backpackStack);
             if (player instanceof ServerPlayer serverPlayer) {
@@ -427,6 +448,9 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
                 if (!be.isRemoved())
                     syncBlockEntity();
             } else if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
+                if (storageInventory instanceof BackpackInventory backpackInv) {
+                    backpackInv.save(backpackStack);
+                }
                 toolboxInventory.save(backpackStack);
                 syncItemStack(player, backpackStack);
                 if (player instanceof ServerPlayer serverPlayer) {

@@ -14,13 +14,13 @@ public final class MagneticBackpackEquipment {
     }
 
     public static ItemStack findEquippedMagneticBackpack(Player player) {
-        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-        if (chest.getItem() instanceof MagneticBackpackItem)
-            return chest;
-
         ItemStack back = CuriosCompat.getBackMagneticBackpack(player);
         if (!back.isEmpty())
             return back;
+
+        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
+        if (chest.getItem() instanceof MagneticBackpackItem)
+            return chest;
 
         return ItemStack.EMPTY;
     }
@@ -49,13 +49,13 @@ public final class MagneticBackpackEquipment {
     public static List<ItemStack> getCarriedMagneticBackpacks(Player player) {
         List<ItemStack> backpacks = new ArrayList<>();
 
-        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-        if (chest.getItem() instanceof MagneticBackpackItem)
-            addUnique(backpacks, chest);
-
         ItemStack back = CuriosCompat.getBackMagneticBackpack(player);
         if (back.getItem() instanceof MagneticBackpackItem)
             addUnique(backpacks, back);
+
+        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
+        if (chest.getItem() instanceof MagneticBackpackItem)
+            addUnique(backpacks, chest);
 
         ItemStack main = player.getMainHandItem();
         if (main.getItem() instanceof MagneticBackpackItem)

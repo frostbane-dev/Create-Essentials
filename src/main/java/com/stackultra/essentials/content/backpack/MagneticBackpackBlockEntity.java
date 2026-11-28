@@ -34,6 +34,8 @@ import java.util.List;
 public class MagneticBackpackBlockEntity extends KineticBlockEntity
         implements IHaveGoggleInformation, MenuProvider {
 
+    public static final int CHARGE_SYNC_INTERVAL_TICKS = 10;
+
     private final BackpackInventory inventory;
     private final PortableToolboxInventory toolboxInventory;
     private final ItemStackHandler filterInventory;
@@ -46,6 +48,8 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     private SortMode sortMode = SortMode.NAME;
     private boolean restockEnabled = true;
     private int capacityEnchantLevel = 0;
+    private int ticksSinceChargeSync = 0;
+    private boolean suppressSync = false;
 
     public MagneticBackpackBlockEntity(BlockPos pos, BlockState state) {
         super(AllBlockEntities.MAGNETIC_BACKPACK.get(), pos, state);
@@ -60,13 +64,17 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         this.filterInventory = new ItemStackHandler(MagneticBackpackItem.FILTER_SLOTS) {
             @Override
             protected void onContentsChanged(int slot) {
-                setChanged();
-                sendData();
+                if (!suppressSync) {
+                    setChanged();
+                    sendData();
+                }
             }
         };
     }
 
     private void markChanged() {
+        if (suppressSync)
+            return;
         setChanged();
         sendData();
     }
@@ -110,8 +118,16 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         KineticChargeHelper.TickResult result = kineticCharge.tick(charge, getMaxCharge(), getSpeed());
         if (result.chargeChanged()) {
             charge = result.nextCharge();
-            setChanged();
-            sendData();
+            ticksSinceChargeSync++;
+            if (result.reachedFull() || ticksSinceChargeSync >= CHARGE_SYNC_INTERVAL_TICKS) {
+                ticksSinceChargeSync = 0;
+                notifyUpdate();
+            } else if (level.isLoaded(worldPosition)) {
+                level.blockEntityChanged(worldPosition);
+            }
+        } else if (ticksSinceChargeSync > 0) {
+            ticksSinceChargeSync = 0;
+            notifyUpdate();
         }
         if (result.activelyCharging()) {
             KineticChargeHelper.spawnChargingParticles(level, getBlockPos());
@@ -190,8 +206,14 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     }
 
     public void setFilters(List<ItemStack> filters) {
-        for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
-            filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i).copy() : ItemStack.EMPTY);
+        boolean prev = suppressSync;
+        suppressSync = true;
+        try {
+            for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
+                filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i).copy() : ItemStack.EMPTY);
+        } finally {
+            suppressSync = prev;
+        }
         setChanged();
         sendData();
     }
@@ -201,19 +223,29 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
     }
 
     public void loadFromStack(ItemStack stack) {
-        preservedComponents.loadFromStack(stack);
-        inventory.load(stack);
-        toolboxInventory.load(stack);
-        setCapacityEnchantLevel(MagneticBackpackItem.getCapacityLevel(stack));
-        setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
-        setEnabled(stack.getOrDefault(AllDataComponents.ENABLED, true));
-        setBlacklist(stack.getOrDefault(ExtraDataComponents.BLACKLIST, false));
-        setSortMode(stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME));
-        setRestockEnabled(stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
-        kineticCharge.syncFullState(charge, getMaxCharge());
-        List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
-        for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
-            filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i) : ItemStack.EMPTY);
+        boolean prev = suppressSync;
+        suppressSync = true;
+        try {
+            preservedComponents.loadFromStack(stack);
+            inventory.load(stack);
+            toolboxInventory.load(stack);
+            setCapacityEnchantLevel(MagneticBackpackItem.getCapacityLevel(stack));
+            setCharge(stack.getOrDefault(AllDataComponents.CHARGE, getMaxCharge()));
+            this.enabled = stack.getOrDefault(AllDataComponents.ENABLED, true);
+            this.blacklist = stack.getOrDefault(ExtraDataComponents.BLACKLIST, false);
+            SortMode loadedSort = stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME);
+            this.sortMode = loadedSort != null ? loadedSort : SortMode.NAME;
+            this.restockEnabled = stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true);
+            this.ticksSinceChargeSync = 0;
+            kineticCharge.syncFullState(charge, getMaxCharge());
+            List<ItemStack> filters = MagneticBackpackItem.getFilters(stack);
+            for (int i = 0; i < MagneticBackpackItem.FILTER_SLOTS; i++)
+                filterInventory.setStackInSlot(i, i < filters.size() ? filters.get(i) : ItemStack.EMPTY);
+        } finally {
+            suppressSync = prev;
+        }
+        setChanged();
+        sendData();
     }
 
     public void saveToStack(ItemStack stack) {
@@ -246,9 +278,11 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         tag.putString("SortMode", sortMode.getSerializedName());
         tag.putBoolean("Restock", restockEnabled);
         tag.putInt("CapacityEnchantLevel", capacityEnchantLevel);
-        tag.put("Filters", filterInventory.serializeNBT(registries));
-        tag.put("Inventory", inventory.serializeNBT(registries));
-        tag.put("Toolbox", toolboxInventory.serializeNBT(registries));
+        if (!clientPacket) {
+            tag.put("Filters", filterInventory.serializeNBT(registries));
+            tag.put("Inventory", inventory.serializeNBT(registries));
+            tag.put("Toolbox", toolboxInventory.serializeNBT(registries));
+        }
         preservedComponents.writeToTag(tag, registries);
         super.write(tag, registries, clientPacket);
     }
@@ -274,11 +308,19 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         super.read(tag, registries, clientPacket);
     }
 
+    public CompoundTag buildMenuTag(HolderLookup.Provider registries) {
+        CompoundTag tag = getUpdateTag(registries);
+        tag.put("Filters", filterInventory.serializeNBT(registries));
+        tag.put("Inventory", inventory.serializeNBT(registries));
+        tag.put("Toolbox", toolboxInventory.serializeNBT(registries));
+        return tag;
+    }
+
     @Override
     public void sendToMenu(RegistryFriendlyByteBuf buf) {
         buf.writeBoolean(true);
         buf.writeBlockPos(getBlockPos());
-        buf.writeNbt(getUpdateTag(buf.registryAccess()));
+        buf.writeNbt(buildMenuTag(buf.registryAccess()));
     }
 
     @Override

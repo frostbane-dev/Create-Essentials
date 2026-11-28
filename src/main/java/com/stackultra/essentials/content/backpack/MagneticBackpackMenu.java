@@ -4,8 +4,6 @@ import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
@@ -17,6 +15,7 @@ import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
@@ -95,7 +94,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
     }
 
     public MagneticBackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
-        this(windowId, inv, decodeClientData(extraData));
+        this(windowId, inv, decodeClientData(extraData, inv.player != null ? inv.player.level() : null));
     }
 
     private MagneticBackpackMenu(int windowId, Inventory inv, ClientInitData data) {
@@ -122,9 +121,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
                 ItemStack.EMPTY, MenuValidationHelper.NO_LOCKED_SLOT, be.getSortMode(), be.isRestockEnabled(),
                 be.getBackpackColor());
         this.blockEntity = be;
-        this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
-        for (int i = 0; i < FILTER_SLOTS; i++)
-            this.filterInventory.setStackInSlot(i, be.getFilterInventory().getStackInSlot(i).copy());
+        this.filterInventory = be.getFilterInventory();
         this.enabled = be.isEnabled();
         this.blacklist = be.isBlacklist();
         this.charge = be.getCharge();
@@ -176,7 +173,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
         return new MagneticBackpackMenu(windowId, inv, stack, storage, toolbox);
     }
 
-    private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData) {
+    private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData, @Nullable Level level) {
         boolean fromBlockEntity = extraData.readBoolean();
         ItemStackHandler displayHandler = new ItemStackHandler(TOOLBOX_SLOTS);
         ItemStackHandler filters = new ItemStackHandler(FILTER_SLOTS);
@@ -185,7 +182,6 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
-            ClientLevel level = Minecraft.getInstance().level;
             MagneticBackpackBlockEntity found = null;
             if (level != null) {
                 BlockEntity raw = level.getBlockEntity(pos);
@@ -194,8 +190,6 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
             }
             if (found != null) {
                 found.readClient(tag, extraData.registryAccess());
-                for (int i = 0; i < FILTER_SLOTS; i++)
-                    filters.setStackInSlot(i, found.getFilterInventory().getStackInSlot(i).copy());
                 IItemHandler menuView = found.getToolboxInventory().asMenuDisplayHandler();
                 for (int c = 0; c < TOOLBOX_SLOTS; c++) {
                     initialCounts[c] = found.getToolboxInventory().getTotalCount(c);
@@ -205,7 +199,7 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
                 int maxCharge = found.getMaxCharge();
                 boolean charging = found.getSpeed() != 0 && charge < maxCharge;
                 return new ClientInitData(found, found.getItemHandler(), found.getToolboxInventory(),
-                        displayHandler, filters, MenuValidationHelper.NO_LOCKED_SLOT,
+                        displayHandler, found.getFilterInventory(), MenuValidationHelper.NO_LOCKED_SLOT,
                         found.isEnabled(), found.isBlacklist(),
                         charging, charge, maxCharge, found.getSortMode(), found.isRestockEnabled(),
                         initialCounts, found.getBackpackColor());
@@ -385,13 +379,18 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
     private void persistFilters(Player player) {
         if (player.level().isClientSide())
             return;
-        List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
-        for (int i = 0; i < FILTER_SLOTS; i++)
-            filters.add(filterInventory.getStackInSlot(i).copy());
         if (blockEntity != null) {
-            if (!blockEntity.isRemoved())
-                blockEntity.setFilters(filters);
-        } else if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
+            if (!blockEntity.isRemoved()) {
+                blockEntity.setChanged();
+                blockEntity.sendData();
+            }
+            broadcastChanges();
+            return;
+        }
+        if (!backpackStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, backpackStack)) {
+            List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
+            for (int i = 0; i < FILTER_SLOTS; i++)
+                filters.add(filterInventory.getStackInSlot(i).copy());
             MagneticBackpackItem.setFilters(backpackStack, filters);
             MagneticBackpackEquipment.syncMagneticBackpack(player, backpackStack);
         }
@@ -430,7 +429,9 @@ public class MagneticBackpackMenu extends AbstractBackpackMenu {
 
     @Override
     protected void onBeforeRemoved(Player player) {
-        persistFilters(player);
+        if (blockEntity == null) {
+            persistFilters(player);
+        }
     }
 
     @Nullable

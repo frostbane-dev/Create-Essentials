@@ -4,8 +4,6 @@ import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
@@ -18,6 +16,7 @@ import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
@@ -63,7 +62,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
-            ClientLevel level = Minecraft.getInstance().level;
+            Level level = inv.player != null ? inv.player.level() : null;
             RotationalMagnetBlockEntity found = null;
             if (level != null) {
                 BlockEntity raw = level.getBlockEntity(pos);
@@ -73,16 +72,15 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
             this.blockEntity = found;
             this.magnetStack = ItemStack.EMPTY;
             this.lockedInventorySlot = MenuValidationHelper.NO_LOCKED_SLOT;
-            this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
             if (found != null) {
                 found.readClient(tag, extraData.registryAccess());
-                for (int i = 0; i < FILTER_SLOTS; i++)
-                    filterInventory.setStackInSlot(i, found.getFilterInventory().getStackInSlot(i).copy());
+                this.filterInventory = found.getFilterInventory();
                 this.enabled = found.isEnabled();
                 this.blacklist = found.isBlacklist();
                 this.charge = found.getCharge();
                 this.maxCharge = found.getMaxCharge();
             } else {
+                this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
                 this.enabled = true;
                 this.blacklist = false;
                 this.charge = 0;
@@ -135,10 +133,7 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
         this.blockEntity = be;
         this.magnetStack = ItemStack.EMPTY;
         this.lockedInventorySlot = MenuValidationHelper.NO_LOCKED_SLOT;
-        this.filterInventory = new ItemStackHandler(FILTER_SLOTS);
-
-        for (int i = 0; i < FILTER_SLOTS; i++)
-            filterInventory.setStackInSlot(i, be.getFilterInventory().getStackInSlot(i).copy());
+        this.filterInventory = be.getFilterInventory();
 
         this.enabled = be.isEnabled();
         this.blacklist = be.isBlacklist();
@@ -301,14 +296,19 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
         if (player.level().isClientSide())
             return;
 
-        List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
-        for (int i = 0; i < FILTER_SLOTS; i++)
-            filters.add(filterInventory.getStackInSlot(i).copy());
-
         if (blockEntity != null) {
-            if (!blockEntity.isRemoved())
-                blockEntity.setFilters(filters);
-        } else if (!magnetStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, magnetStack)) {
+            if (!blockEntity.isRemoved()) {
+                blockEntity.setChanged();
+                blockEntity.sendData();
+            }
+            broadcastChanges();
+            return;
+        }
+
+        if (!magnetStack.isEmpty() && MenuValidationHelper.isPlayerCarryingStack(player, magnetStack)) {
+            List<ItemStack> filters = new ArrayList<>(FILTER_SLOTS);
+            for (int i = 0; i < FILTER_SLOTS; i++)
+                filters.add(filterInventory.getStackInSlot(i).copy());
             RotationalMagnetItem.setFilters(magnetStack, filters);
             MagnetEquipment.syncMagnet(player, magnetStack);
         }
@@ -364,7 +364,9 @@ public class RotationalMagnetMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        persistFilters(player);
+        if (blockEntity == null) {
+            persistFilters(player);
+        }
     }
 
     @Override

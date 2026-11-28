@@ -12,7 +12,10 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
+@OnlyIn(Dist.CLIENT)
 public class RotationalMagnetRenderer extends KineticBlockEntityRenderer<RotationalMagnetBlockEntity> {
 
     public RotationalMagnetRenderer(BlockEntityRendererProvider.Context context) {

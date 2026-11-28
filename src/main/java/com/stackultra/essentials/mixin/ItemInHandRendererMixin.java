@@ -27,11 +27,11 @@ public abstract class ItemInHandRendererMixin {
             return;
 
         ItemStack main = player.getMainHandItem();
-        if (isMagnet(main) && isMagnet(this.mainHandItem))
+        if (isMagnet(main) && ItemStack.isSameItem(main, this.mainHandItem))
             this.mainHandItem = main;
 
         ItemStack off = player.getOffhandItem();
-        if (isMagnet(off) && isMagnet(this.offHandItem))
+        if (isMagnet(off) && ItemStack.isSameItem(off, this.offHandItem))
             this.offHandItem = off;
     }
 

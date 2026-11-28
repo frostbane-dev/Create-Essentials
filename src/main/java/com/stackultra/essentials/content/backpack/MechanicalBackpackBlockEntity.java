@@ -109,6 +109,7 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         preservedComponents.loadFromStack(stack);
         inventory.load(stack);
         toolboxInventory.load(stack);
+        markChanged();
     }
 
     public void saveToStack(ItemStack stack) {

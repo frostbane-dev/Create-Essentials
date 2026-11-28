@@ -3,8 +3,6 @@ package com.stackultra.essentials.content.backpack;
 import com.stackultra.essentials.content.MenuValidationHelper;
 import com.stackultra.essentials.registry.AllMenus;
 import com.stackultra.essentials.registry.ExtraDataComponents;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -12,6 +10,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemStackHandler;
@@ -98,7 +97,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
     }
 
     public BackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
-        this(windowId, inv, decodeClientData(extraData));
+        this(windowId, inv, decodeClientData(extraData, inv.player != null ? inv.player.level() : null));
     }
 
     private BackpackMenu(int windowId, Inventory inv, ClientInitData data) {
@@ -223,7 +222,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
                 sortGetter, sortSetter, restockGetter, restockSetter, backpackColor);
     }
 
-    private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData) {
+    private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData, @Nullable Level level) {
         boolean fromBlockEntity = extraData.readBoolean();
         MechanicalBackpackBlockEntity found = null;
         int lockedInventorySlot = MenuValidationHelper.NO_LOCKED_SLOT;
@@ -235,7 +234,6 @@ public class BackpackMenu extends AbstractBackpackMenu {
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
             CompoundTag tag = extraData.readNbt();
-            ClientLevel level = Minecraft.getInstance().level;
             if (level != null) {
                 BlockEntity be = level.getBlockEntity(pos);
                 if (be instanceof MechanicalBackpackBlockEntity backpack) {

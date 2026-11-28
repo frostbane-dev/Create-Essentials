@@ -100,10 +100,10 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (level.isClientSide)
-            return InteractionResult.SUCCESS;
         if (!tier.hasFilterSlots())
             return InteractionResult.PASS;
+        if (level.isClientSide)
+            return InteractionResult.SUCCESS;
         withBlockEntityDo(level, pos, be -> player.openMenu(be, be::sendToMenu));
         return InteractionResult.SUCCESS;
     }
@@ -112,10 +112,10 @@ public class RotationalMagnetBlock extends KineticBlock implements IBE<Rotationa
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-        if (level.isClientSide)
-            return ItemInteractionResult.SUCCESS;
         if (!tier.hasFilterSlots())
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        if (level.isClientSide)
+            return ItemInteractionResult.SUCCESS;
         withBlockEntityDo(level, pos, be -> player.openMenu(be, be::sendToMenu));
         return ItemInteractionResult.SUCCESS;
     }

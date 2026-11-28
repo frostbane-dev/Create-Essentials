@@ -101,7 +101,7 @@ public final class MagnetEquipment {
     }
 
     public static void syncMagnet(Player player, ItemStack magnet) {
-        if (magnet == null || magnet.isEmpty())
+        if (player == null || magnet == null || magnet.isEmpty())
             return;
 
         // Fast path: exact reference identity on live inventory / hand slots

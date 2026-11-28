@@ -54,6 +54,10 @@ public class BackpackInventory extends ItemStackHandler {
         return stacks;
     }
 
+    public void markSlotChanged(int slot) {
+        onContentsChanged(slot);
+    }
+
     @Override
     protected void onContentsChanged(int slot) {
         if (boundStack != null)
