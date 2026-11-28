@@ -51,6 +51,11 @@ public class MechanicalBackpackBlockEntity extends BlockEntity implements MenuPr
         return netherite;
     }
 
+    @javax.annotation.Nullable
+    public DyeColor getBackpackColor() {
+        return preservedComponents.getBackpackColor();
+    }
+
     public SortMode getSortMode() {
         return sortMode;
     }

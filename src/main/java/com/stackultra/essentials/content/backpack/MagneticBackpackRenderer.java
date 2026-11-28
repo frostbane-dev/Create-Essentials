@@ -40,5 +40,11 @@ public class MagneticBackpackRenderer extends KineticBlockEntityRenderer<Magneti
 
         standardKineticRotationTransform(rotatingShaft, be, packedLight)
                 .renderInto(ms, bufferSource.getBuffer(RenderType.cutoutMipped()));
+
+        net.minecraft.core.Direction facing = state.hasProperty(MagneticBackpackBlock.FACING)
+                && state.getValue(MagneticBackpackBlock.FACING).getAxis().isHorizontal()
+                ? state.getValue(MagneticBackpackBlock.FACING)
+                : net.minecraft.core.Direction.NORTH;
+        BackpackGearRenderer.renderRearGears(state, facing, be.getLevel(), packedLight, ms, bufferSource);
     }
 }

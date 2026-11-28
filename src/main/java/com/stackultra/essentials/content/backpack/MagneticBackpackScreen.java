@@ -139,35 +139,37 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
     @Override
     protected void renderPanelBackground(GuiGraphics graphics) {
         DarkGuiStyling.drawPanelWithLeftTab(graphics, leftPos, topPos, imageWidth, imageHeight,
-                LEFT_TAB_WIDTH, LEFT_TAB_TOP, LEFT_TAB_HEIGHT);
+                LEFT_TAB_WIDTH, LEFT_TAB_TOP, LEFT_TAB_HEIGHT, screenPalette());
     }
 
     @Override
     protected void renderExtraBgBeforeSlots(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
+        DarkGuiStyling.Palette p = screenPalette();
         int charge = Math.max(0, menu.getCharge());
         int maxCharge = Math.max(1, menu.getMaxCharge());
         float ratio = Math.clamp((float) charge / (float) maxCharge, 0.0F, 1.0F);
-        int barColor = chargeBarColor(ratio, DarkGuiStyling.activePalette());
+        int barColor = chargeBarColor(ratio, p);
         DarkGuiStyling.drawHorizontalBar(graphics, leftPos + GRID_LEFT, topPos + CHARGE_BAR_Y,
-                GRID_WIDTH, CHARGE_BAR_H, ratio, barColor);
+                GRID_WIDTH, CHARGE_BAR_H, ratio, barColor, p);
     }
 
     @Override
     protected void renderExtraBgAfterSlots(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
         // Left-side magnet filter ghost hints
+        DarkGuiStyling.Palette p = screenPalette();
         ItemStack ghost = AllItems.FILTER.asStack();
         for (int i = 0; i < MagneticBackpackMenu.FILTER_SLOTS; i++) {
             Slot slot = menu.slots.get(MagneticBackpackMenu.STORAGE_SLOTS + i);
             if (slot.hasItem())
                 continue;
             DarkGuiStyling.drawGhostItem(graphics, ghost, leftPos + slot.x, topPos + slot.y,
-                    DarkGuiStyling.FILTER_GHOST_ALPHA);
+                    DarkGuiStyling.FILTER_GHOST_ALPHA, p);
         }
     }
 
     @Override
     protected void renderExtraForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
+        DarkGuiStyling.Palette p = screenPalette();
         int charge = Math.max(0, menu.getCharge());
         int seconds = charge / 20;
         String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);

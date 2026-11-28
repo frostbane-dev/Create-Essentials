@@ -1,101 +1,101 @@
 {
-  "parent": "createessentials:block/mechanical_backpack",
+  "parent": "createessentials:item/mechanical_backpack_base",
   "overrides": [
     {
       "predicate": {
         "createessentials:color": 1.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_white"
+      "model": "createessentials:item/backpack/mechanical_backpack_white"
     },
     {
       "predicate": {
         "createessentials:color": 2.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_orange"
+      "model": "createessentials:item/backpack/mechanical_backpack_orange"
     },
     {
       "predicate": {
         "createessentials:color": 3.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_magenta"
+      "model": "createessentials:item/backpack/mechanical_backpack_magenta"
     },
     {
       "predicate": {
         "createessentials:color": 4.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_light_blue"
+      "model": "createessentials:item/backpack/mechanical_backpack_light_blue"
     },
     {
       "predicate": {
         "createessentials:color": 5.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_yellow"
+      "model": "createessentials:item/backpack/mechanical_backpack_yellow"
     },
     {
       "predicate": {
         "createessentials:color": 6.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_lime"
+      "model": "createessentials:item/backpack/mechanical_backpack_lime"
     },
     {
       "predicate": {
         "createessentials:color": 7.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_pink"
+      "model": "createessentials:item/backpack/mechanical_backpack_pink"
     },
     {
       "predicate": {
         "createessentials:color": 8.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_gray"
+      "model": "createessentials:item/backpack/mechanical_backpack_gray"
     },
     {
       "predicate": {
         "createessentials:color": 9.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_light_gray"
+      "model": "createessentials:item/backpack/mechanical_backpack_light_gray"
     },
     {
       "predicate": {
         "createessentials:color": 10.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_cyan"
+      "model": "createessentials:item/backpack/mechanical_backpack_cyan"
     },
     {
       "predicate": {
         "createessentials:color": 11.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_purple"
+      "model": "createessentials:item/backpack/mechanical_backpack_purple"
     },
     {
       "predicate": {
         "createessentials:color": 12.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_blue"
+      "model": "createessentials:item/backpack/mechanical_backpack_blue"
     },
     {
       "predicate": {
         "createessentials:color": 13.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_brown"
+      "model": "createessentials:item/backpack/mechanical_backpack_brown"
     },
     {
       "predicate": {
         "createessentials:color": 14.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_green"
+      "model": "createessentials:item/backpack/mechanical_backpack_green"
     },
     {
       "predicate": {
         "createessentials:color": 15.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_red"
+      "model": "createessentials:item/backpack/mechanical_backpack_red"
     },
     {
       "predicate": {
         "createessentials:color": 16.0
       },
-      "model": "createessentials:block/backpack/mechanical_backpack_black"
+      "model": "createessentials:item/backpack/mechanical_backpack_black"
     }
   ]
 }

@@ -112,7 +112,25 @@ public class ClientEvents {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(AllBlockEntities.ROTATIONAL_MAGNET.get(), RotationalMagnetRenderer::new);
+        event.registerBlockEntityRenderer(AllBlockEntities.MECHANICAL_BACKPACK.get(),
+                com.stackultra.essentials.content.backpack.MechanicalBackpackRenderer::new);
         event.registerBlockEntityRenderer(AllBlockEntities.MAGNETIC_BACKPACK.get(), MagneticBackpackRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void addEntityLayers(EntityRenderersEvent.AddLayers event) {
+        for (net.minecraft.client.resources.PlayerSkin.Model skin : event.getSkins()) {
+            net.minecraft.client.renderer.entity.EntityRenderer<? extends net.minecraft.world.entity.player.Player> renderer =
+                    event.getSkin(skin);
+            if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer playerRenderer) {
+                playerRenderer.addLayer(new BackpackArmorLayer<>(playerRenderer));
+            }
+        }
+        net.minecraft.client.renderer.entity.EntityRenderer<?> armorStand =
+                event.getRenderer(net.minecraft.world.entity.EntityType.ARMOR_STAND);
+        if (armorStand instanceof net.minecraft.client.renderer.entity.ArmorStandRenderer armorStandRenderer) {
+            armorStandRenderer.addLayer(new BackpackArmorLayer<>(armorStandRenderer));
+        }
     }
 
     @SubscribeEvent

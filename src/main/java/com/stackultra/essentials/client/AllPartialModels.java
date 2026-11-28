@@ -12,6 +12,8 @@ public final class AllPartialModels {
     public static final PartialModel ROTATIONAL_MAGNET_SHAFT = block("rotational_magnet_shaft");
     public static final PartialModel PRECISION_MAGNET_SHAFT = block("precision_magnet_shaft");
     public static final PartialModel MAGNETIC_BACKPACK_SHAFT = block("magnetic_backpack_shaft");
+    public static final PartialModel BACKPACK_REAR_GEAR_UPPER = block("backpack_rear_gear_upper");
+    public static final PartialModel BACKPACK_REAR_GEAR_LOWER = block("backpack_rear_gear_lower");
 
     private AllPartialModels() {
     }

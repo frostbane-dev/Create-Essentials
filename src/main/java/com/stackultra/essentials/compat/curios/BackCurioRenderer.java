@@ -1,15 +1,12 @@
 package com.stackultra.essentials.compat.curios;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
+import com.stackultra.essentials.client.WornBackpackRenderer;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Pose;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -27,18 +24,7 @@ public class BackCurioRenderer implements ICurioRenderer {
                                                                           float netHeadYaw, float headPitch) {
         if (!(renderLayerParent.getModel() instanceof HumanoidModel<?> humanoidModel))
             return;
-        if (slotContext.entity().getPose() == Pose.SLEEPING)
-            return;
-
-        matrixStack.pushPose();
-        humanoidModel.body.translateAndRotate(matrixStack);
-
-        matrixStack.translate(0.0D, 0.25D, 0.32D);
-        matrixStack.scale(0.7F, 0.7F, 0.7F);
-
-        Minecraft minecraft = Minecraft.getInstance();
-        minecraft.getItemRenderer().renderStatic(stack, ItemDisplayContext.FIXED, light,
-                OverlayTexture.NO_OVERLAY, matrixStack, renderTypeBuffer, minecraft.level, 0);
-        matrixStack.popPose();
+        WornBackpackRenderer.render(stack, slotContext.entity(), humanoidModel,
+                matrixStack, renderTypeBuffer, light, false);
     }
 }

@@ -79,6 +79,11 @@ public class MagneticBackpackBlockEntity extends KineticBlockEntity
         return toolboxInventory;
     }
 
+    @javax.annotation.Nullable
+    public DyeColor getBackpackColor() {
+        return preservedComponents.getBackpackColor();
+    }
+
     public IItemHandler getItemHandler() {
         return inventory;
     }

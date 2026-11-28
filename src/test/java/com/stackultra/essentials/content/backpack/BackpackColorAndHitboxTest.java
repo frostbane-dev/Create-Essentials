@@ -201,8 +201,33 @@ class BackpackColorAndHitboxTest {
         assertEquals(DyeColor.GREEN, rotatedMag.getValue(MagneticBackpackBlock.COLOR));
 
         MagneticBackpackBlockEntity magBe = new MagneticBackpackBlockEntity(BlockPos.ZERO, greenMag);
+        assertEquals(DyeColor.GREEN, magBe.getBackpackColor());
         ItemStack magDropped = new ItemStack(AllItems.MAGNETIC_BACKPACK.get());
         magBe.saveToStack(magDropped);
         assertEquals(DyeColor.GREEN, BackpackColorHelper.resolveDyeColor(magDropped));
+        assertEquals(DyeColor.CYAN, reloaded.getBackpackColor());
+    }
+
+    @Test
+    void rearGearFacingRotationsAndSyncedColorExposureWorkCleanly() {
+        assertEquals(0.0F, BackpackGearRenderer.facingYDegrees(Direction.NORTH), 1e-6F);
+        assertEquals(-90.0F, BackpackGearRenderer.facingYDegrees(Direction.EAST), 1e-6F);
+        assertEquals(180.0F, BackpackGearRenderer.facingYDegrees(Direction.SOUTH), 1e-6F);
+        assertEquals(90.0F, BackpackGearRenderer.facingYDegrees(Direction.WEST), 1e-6F);
+        assertEquals(7.5F / 16.0F, BackpackGearRenderer.UPPER_PIVOT_X, 1e-6F);
+        assertEquals(9.5F / 16.0F, BackpackGearRenderer.UPPER_PIVOT_Y, 1e-6F);
+        assertEquals(8.5F / 16.0F, BackpackGearRenderer.LOWER_PIVOT_X, 1e-6F);
+        assertEquals(4.5F / 16.0F, BackpackGearRenderer.LOWER_PIVOT_Y, 1e-6F);
+        assertEquals(11.5F / 16.0F, BackpackGearRenderer.GEAR_PIVOT_Z, 1e-6F);
+
+        assertTrue(com.stackultra.essentials.client.WornBackpackRenderer.isBackpack(
+                new ItemStack(AllItems.MECHANICAL_BACKPACK.get())));
+        assertTrue(com.stackultra.essentials.client.WornBackpackRenderer.isBackpack(
+                new ItemStack(AllItems.NETHERITE_BACKPACK.get())));
+        assertTrue(com.stackultra.essentials.client.WornBackpackRenderer.isBackpack(
+                new ItemStack(AllItems.MAGNETIC_BACKPACK.get())));
+        assertFalse(com.stackultra.essentials.client.WornBackpackRenderer.isBackpack(
+                new ItemStack(Items.DIAMOND_CHESTPLATE)));
+        assertFalse(com.stackultra.essentials.client.WornBackpackRenderer.isBackpack(ItemStack.EMPTY));
     }
 }

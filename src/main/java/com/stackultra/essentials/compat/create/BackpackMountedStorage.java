@@ -176,14 +176,15 @@ public class BackpackMountedStorage extends WrapperMountedItemStorage<BackpackIn
         };
 
         Component menuName = resolveMenuName(info, contraption, level.registryAccess());
+        net.minecraft.world.item.DyeColor color = resolveBackpackColor(info, level.registryAccess());
         OptionalInt opened = player.openMenu(
                 new SimpleMenuProvider(
                         (id, inv, p) -> BackpackMenu.createMounted(
                                 id, inv, this.wrapped, this.toolbox, validityCheck,
                                 this::getSortMode, this::setSortMode,
-                                this::isRestockEnabled, this::setRestockEnabled),
+                                this::isRestockEnabled, this::setRestockEnabled, color),
                         menuName),
-                buf -> BackpackMenu.writeMountedOpenData(buf, this.toolbox, this.sortMode, this.restockEnabled));
+                buf -> BackpackMenu.writeMountedOpenData(buf, this.toolbox, this.sortMode, this.restockEnabled, color));
 
         if (opened.isPresent()) {
             Vec3 globalPos = contraption.entity.toGlobalVector(localPos, 0);
@@ -191,6 +192,29 @@ public class BackpackMountedStorage extends WrapperMountedItemStorage<BackpackIn
             return true;
         }
         return false;
+    }
+
+    @Nullable
+    private static net.minecraft.world.item.DyeColor resolveBackpackColor(StructureTemplate.StructureBlockInfo info,
+                                                                          @Nullable HolderLookup.Provider registries) {
+        if (info.nbt() != null && registries != null) {
+            BlockItemComponentHelper.PreservedComponents preserved =
+                    new BlockItemComponentHelper.PreservedComponents();
+            preserved.readFromTag(info.nbt(), registries);
+            if (preserved.getBackpackColor() != null)
+                return preserved.getBackpackColor();
+        }
+        BlockState state = info.state();
+        if (state.hasProperty(MechanicalBackpackBlock.COLOR)) {
+            net.minecraft.world.item.DyeColor stateColor = state.getValue(MechanicalBackpackBlock.COLOR);
+            if (stateColor != net.minecraft.world.item.DyeColor.BROWN)
+                return stateColor;
+        } else if (state.hasProperty(com.stackultra.essentials.content.backpack.MagneticBackpackBlock.COLOR)) {
+            net.minecraft.world.item.DyeColor stateColor = state.getValue(com.stackultra.essentials.content.backpack.MagneticBackpackBlock.COLOR);
+            if (stateColor != net.minecraft.world.item.DyeColor.BROWN)
+                return stateColor;
+        }
+        return null;
     }
 
     @Override

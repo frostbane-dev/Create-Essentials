@@ -15,7 +15,7 @@ class DualUiThemeTest {
         assertFalse(ClientConfig.SPEC.isLoaded(), "ClientConfig.SPEC should not be loaded in headless unit tests");
         ClientConfig.UiTheme theme = assertDoesNotThrow(ClientConfig::getUiTheme);
         assertEquals(ClientConfig.UiTheme.VANILLA, theme);
-        assertSame(DarkGuiStyling.PALETTE_VANILLA, assertDoesNotThrow(DarkGuiStyling::activePalette));
+        assertSame(DarkGuiStyling.PALETTE_VANILLA, assertDoesNotThrow(() -> DarkGuiStyling.activePalette()));
     }
 
     @Test
@@ -70,5 +70,40 @@ class DualUiThemeTest {
     @Test
     void nullThemeSafelyFallsBackToVanilla() {
         assertSame(DarkGuiStyling.PALETTE_VANILLA, DarkGuiStyling.palette(null));
+    }
+
+    @Test
+    void dynamicBackpackGuiPalettesTintAllSixteenColorsAndPreserveThemeSemantics() {
+        assertSame(DarkGuiStyling.PALETTE_VANILLA,
+                DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, null));
+        assertSame(DarkGuiStyling.PALETTE_DARK,
+                DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.DARK, null));
+        assertSame(DarkGuiStyling.PALETTE_VANILLA,
+                DarkGuiStyling.activePalette(null));
+
+        for (net.minecraft.world.item.DyeColor color : net.minecraft.world.item.DyeColor.values()) {
+            DarkGuiStyling.Palette vanillaTinted =
+                    assertDoesNotThrow(() -> DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, color));
+            DarkGuiStyling.Palette darkTinted =
+                    assertDoesNotThrow(() -> DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.DARK, color));
+
+            assertFalse(vanillaTinted.textShadow(),
+                    "VANILLA tinted backpack GUI must keep unshadowed labels for " + color);
+            assertTrue(darkTinted.textShadow(),
+                    "DARK tinted backpack GUI must keep drop-shadowed labels for " + color);
+            assertEquals(DarkGuiStyling.PALETTE_DARK.slotBg(), darkTinted.slotBg(),
+                    "DARK tinted backpack GUI must keep crisp dark slot interiors for " + color);
+            assertTrue(vanillaTinted.panelBg() != DarkGuiStyling.PALETTE_VANILLA.panelBg(),
+                    "VANILLA tinted panel should visibly shift from default gray for " + color);
+            assertTrue(darkTinted.panelBg() != DarkGuiStyling.PALETTE_DARK.panelBg(),
+                    "DARK tinted panel should visibly shift from default dark gray for " + color);
+
+            BackpackTooltipPalette tp = BackpackTooltipPalette.resolve(
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
+                    color,
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB);
+            assertTrue(tp.borderStart() != tp.borderEnd(),
+                    "Tooltip palette border gradient should be distinct for " + color);
+        }
     }
 }

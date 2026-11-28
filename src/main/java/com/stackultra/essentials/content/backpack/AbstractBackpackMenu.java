@@ -10,6 +10,7 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -33,6 +34,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
     protected final IItemHandler toolboxSlotBacking;
     protected final ItemStack backpackStack;
     protected final int lockedInventorySlot;
+    @Nullable
+    protected final DyeColor backpackColor;
 
     protected SortMode sortMode;
     protected boolean restockEnabled;
@@ -47,7 +50,8 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
                                    ItemStack backpackStack,
                                    int lockedInventorySlot,
                                    SortMode initialSortMode,
-                                   boolean initialRestockEnabled) {
+                                   boolean initialRestockEnabled,
+                                   @Nullable DyeColor initialBackpackColor) {
         super(menuType, windowId);
         this.playerInventory = playerInventory;
         this.storageInventory = storageInventory;
@@ -57,6 +61,12 @@ public abstract class AbstractBackpackMenu extends AbstractContainerMenu impleme
         this.lockedInventorySlot = lockedInventorySlot;
         this.sortMode = initialSortMode != null ? initialSortMode : SortMode.NAME;
         this.restockEnabled = initialRestockEnabled;
+        this.backpackColor = initialBackpackColor;
+    }
+
+    @Nullable
+    public DyeColor getBackpackColor() {
+        return backpackColor;
     }
 
     @Nullable

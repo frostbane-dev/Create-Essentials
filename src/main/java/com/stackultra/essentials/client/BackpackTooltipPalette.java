@@ -39,22 +39,22 @@ public record BackpackTooltipPalette(
     private static final Map<DyeColor, BackpackTooltipPalette> DYE_PALETTES = new EnumMap<>(DyeColor.class);
 
     static {
-        putDye(DyeColor.WHITE, 0xFF7D7D85, 0xFFA6A6B0, 0xFF4C4C54, 0xFFD0D0DA, 0xFF7A7A85);
-        putDye(DyeColor.ORANGE, 0xFF784D2B, 0xFFA86F40, 0xFF4A2E17, 0xFFD9873B, 0xFF7D481B);
-        putDye(DyeColor.MAGENTA, 0xFF6E3A6B, 0xFF9C5798, 0xFF422040, 0xFFC75EC0, 0xFF732E6E);
-        putDye(DyeColor.LIGHT_BLUE, 0xFF365E78, 0xFF5389AB, 0xFF1E394A, 0xFF62B5E8, 0xFF2B648A);
-        putDye(DyeColor.YELLOW, 0xFF75682D, 0xFFA69546, 0xFF473E18, 0xFFD9C04A, 0xFF806C1F);
-        putDye(DyeColor.LIME, 0xFF4B6E2C, 0xFF6FA144, 0xFF2C4218, 0xFF7FD147, 0xFF3E751F);
-        putDye(DyeColor.PINK, 0xFF7A4B5C, 0xFFAB6E84, 0xFF4A2B36, 0xFFE386A8, 0xFF87445D);
-        putDye(DyeColor.GRAY, 0xFF4A4A4F, 0xFF6E6E75, 0xFF2B2B30, 0xFF85858F, 0xFF484850);
-        putDye(DyeColor.LIGHT_GRAY, 0xFF66666E, 0xFF8E8E99, 0xFF3D3D42, 0xFFB0B0BA, 0xFF63636B);
-        putDye(DyeColor.CYAN, 0xFF2D5E63, 0xFF478C94, 0xFF18383B, 0xFF4BBAC2, 0xFF22666E);
-        putDye(DyeColor.PURPLE, 0xFF533975, 0xFF7957A6, 0xFF301F47, 0xFF9C66DE, 0xFF512B82);
-        putDye(DyeColor.BLUE, 0xFF334778, 0xFF4F6AA8, 0xFF1D2947, 0xFF5C82DE, 0xFF284182);
-        putDye(DyeColor.BROWN, 0xFF5E432F, 0xFF8A6449, 0xFF38271A, 0xFFA87650, 0xFF5E3C23);
-        putDye(DyeColor.GREEN, 0xFF3B5C33, 0xFF58874D, 0xFF21361C, 0xFF63A854, 0xFF2E5C25);
-        putDye(DyeColor.RED, 0xFF733333, 0xFFA34E4E, 0xFF451C1C, 0xFFD95959, 0xFF802929);
-        putDye(DyeColor.BLACK, 0xFF33333A, 0xFF54545E, 0xFF1C1C21, 0xFF5E5E6B, 0xFF2D2D36);
+        putDye(DyeColor.WHITE, 0xFF92929C, 0xFFC2C2CE, 0xFF5A5A64, 0xFFEBEBF4, 0xFF8F8F9C);
+        putDye(DyeColor.ORANGE, 0xFF945B2A, 0xFFCC8446, 0xFF5C3515, 0xFFF59B42, 0xFF99541C);
+        putDye(DyeColor.MAGENTA, 0xFF884084, 0xFFBD62B8, 0xFF522250, 0xFFE36ADC, 0xFF8E3488);
+        putDye(DyeColor.LIGHT_BLUE, 0xFF3C7296, 0xFF62A4D0, 0xFF21465E, 0xFF72C8FA, 0xFF3278A8);
+        putDye(DyeColor.YELLOW, 0xFF94822E, 0xFFCCB64E, 0xFF594E18, 0xFFF4D852, 0xFF9C8220);
+        putDye(DyeColor.LIME, 0xFF57882E, 0xFF80BE4B, 0xFF335418, 0xFF90E450, 0xFF498C22);
+        putDye(DyeColor.PINK, 0xFF98546C, 0xFFCE7C99, 0xFF5C2F40, 0xFFF896BA, 0xFFA24D6D);
+        putDye(DyeColor.GRAY, 0xFF5A5A64, 0xFF848490, 0xFF35353C, 0xFF9E9EAC, 0xFF565660);
+        putDye(DyeColor.LIGHT_GRAY, 0xFF7A7A86, 0xFFA8A8B6, 0xFF4A4A54, 0xFFC8C8D4, 0xFF747480);
+        putDye(DyeColor.CYAN, 0xFF2E747B, 0xFF4FA8B2, 0xFF19464B, 0xFF58D2DC, 0xFF267B85);
+        putDye(DyeColor.PURPLE, 0xFF674294, 0xFF9466CC, 0xFF3C2359, 0xFFB678FA, 0xFF6432A2);
+        putDye(DyeColor.BLUE, 0xFF3A5699, 0xFF5E83D4, 0xFF20325E, 0xFF6E98FA, 0xFF3050A4);
+        putDye(DyeColor.BROWN, 0xFF745036, 0xFFA67652, 0xFF462E1D, 0xFFC48A5E, 0xFF724628);
+        putDye(DyeColor.GREEN, 0xFF427338, 0xFF65A356, 0xFF25451E, 0xFF72C45E, 0xFF347028);
+        putDye(DyeColor.RED, 0xFF903838, 0xFFC85858, 0xFF571E1E, 0xFFF26666, 0xFF9A2E2E);
+        putDye(DyeColor.BLACK, 0xFF3E3E48, 0xFF646474, 0xFF202028, 0xFF747486, 0xFF383844);
     }
 
     private static void putDye(DyeColor color, int panelBg, int bevelLight, int bevelDark,
@@ -91,12 +91,12 @@ public record BackpackTooltipPalette(
         int g = (rgb >> 8) & 0xFF;
         int b = rgb & 0xFF;
 
-        // Blend custom dye into dark gray so the tinted panel stays clean and items remain crisp
-        int panelBg = pack(blend(r, 0x4A, 0.35), blend(g, 0x4A, 0.35), blend(b, 0x4A, 0.35));
-        int bevelLight = pack(blend(r, 0x6E, 0.40) + 12, blend(g, 0x6E, 0.40) + 12, blend(b, 0x6E, 0.40) + 12);
-        int bevelDark = pack(blend(r, 0x2B, 0.30), blend(g, 0x2B, 0.30), blend(b, 0x2B, 0.30));
-        int borderStart = pack(blend(r, 0x6E, 0.65) + 24, blend(g, 0x6E, 0.65) + 24, blend(b, 0x6E, 0.65) + 24);
-        int borderEnd = pack(blend(r, 0x3A, 0.55), blend(g, 0x3A, 0.55), blend(b, 0x3A, 0.55));
+        // Lively but grounded custom-dye tint keeping inner dark slots crisp
+        int panelBg = pack(blend(r, 0x4A, 0.45), blend(g, 0x4A, 0.45), blend(b, 0x4A, 0.45));
+        int bevelLight = pack(blend(r, 0x6E, 0.50) + 18, blend(g, 0x6E, 0.50) + 18, blend(b, 0x6E, 0.50) + 18);
+        int bevelDark = pack(blend(r, 0x2B, 0.36), blend(g, 0x2B, 0.36), blend(b, 0x2B, 0.36));
+        int borderStart = pack(blend(r, 0x6E, 0.75) + 28, blend(g, 0x6E, 0.75) + 28, blend(b, 0x6E, 0.75) + 28);
+        int borderEnd = pack(blend(r, 0x3A, 0.62), blend(g, 0x3A, 0.62), blend(b, 0x3A, 0.62));
 
         return new BackpackTooltipPalette(
                 panelBg, bevelLight, bevelDark, DEFAULT_OUTLINE,

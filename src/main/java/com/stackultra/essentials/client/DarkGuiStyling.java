@@ -131,19 +131,146 @@ public final class DarkGuiStyling {
             true                    // buttonTextShadow
     );
 
+    private static final java.util.Map<net.minecraft.world.item.DyeColor, Palette> VANILLA_TINTED =
+            new java.util.EnumMap<>(net.minecraft.world.item.DyeColor.class);
+    private static final java.util.Map<net.minecraft.world.item.DyeColor, Palette> DARK_TINTED =
+            new java.util.EnumMap<>(net.minecraft.world.item.DyeColor.class);
+
+    static {
+        for (net.minecraft.world.item.DyeColor color : net.minecraft.world.item.DyeColor.values()) {
+            BackpackTooltipPalette tp = BackpackTooltipPalette.resolve(
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
+                    color,
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB);
+            VANILLA_TINTED.put(color, buildVanillaTinted(tp));
+            DARK_TINTED.put(color, buildDarkTinted(tp));
+        }
+    }
+
     private DarkGuiStyling() {
+    }
+
+    private static Palette buildVanillaTinted(BackpackTooltipPalette tp) {
+        int panelBg = blendArgb(PALETTE_VANILLA.panelBg(), tp.borderStart(), 0.28);
+        int bevelLight = blendArgb(PALETTE_VANILLA.bevelLight(), tp.borderStart(), 0.16);
+        int bevelDark = blendArgb(PALETTE_VANILLA.bevelDark(), tp.panelBevelDark(), 0.50);
+        int borderDark = blendArgb(PALETTE_VANILLA.borderDark(), tp.panelBevelDark(), 0.35);
+        int slotBg = blendArgb(PALETTE_VANILLA.slotBg(), tp.panelBg(), 0.12);
+        int slotBorderLight = blendArgb(PALETTE_VANILLA.slotBorderLight(), tp.borderStart(), 0.14);
+        int title = blendArgb(0xFF222226, tp.panelBevelDark(), 0.55);
+        int text = blendArgb(PALETTE_VANILLA.text(), tp.panelBevelDark(), 0.32);
+        return new Palette(
+                panelBg,
+                bevelLight,
+                bevelDark,
+                borderDark,
+                slotBg,
+                PALETTE_VANILLA.slotBorderDark(),
+                slotBorderLight,
+                slotBg,
+                text,
+                text,
+                title,
+                false,
+                PALETTE_VANILLA.barBg(),
+                PALETTE_VANILLA.barNormal(),
+                PALETTE_VANILLA.barLow(),
+                PALETTE_VANILLA.barCritical(),
+                PALETTE_VANILLA.chargingText(),
+                PALETTE_VANILLA.emptyChargeText(),
+                PALETTE_VANILLA.blacklistText(),
+                PALETTE_VANILLA.whitelistText(),
+                PALETTE_VANILLA.buttonOutline(),
+                PALETTE_VANILLA.buttonFill(),
+                PALETTE_VANILLA.buttonFillHover(),
+                PALETTE_VANILLA.buttonLight(),
+                PALETTE_VANILLA.buttonLightHover(),
+                PALETTE_VANILLA.buttonDark(),
+                PALETTE_VANILLA.buttonText(),
+                PALETTE_VANILLA.buttonTextShadow()
+        );
+    }
+
+    private static Palette buildDarkTinted(BackpackTooltipPalette tp) {
+        int panelBg = blendArgb(PALETTE_DARK.panelBg(), tp.panelBg(), 0.56);
+        int bevelLight = blendArgb(PALETTE_DARK.bevelLight(), tp.panelBevelLight(), 0.68);
+        int bevelDark = blendArgb(PALETTE_DARK.bevelDark(), tp.panelBevelDark(), 0.68);
+        int borderDark = blendArgb(PALETTE_DARK.borderDark(), tp.panelBevelDark(), 0.40);
+        int slotBorderLight = blendArgb(PALETTE_DARK.slotBorderLight(), tp.panelBevelLight(), 0.22);
+        int title = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.58);
+        int textDim = blendArgb(PALETTE_DARK.textDim(), tp.borderStart(), 0.18);
+        return new Palette(
+                panelBg,
+                bevelLight,
+                bevelDark,
+                borderDark,
+                PALETTE_DARK.slotBg(),
+                PALETTE_DARK.slotBorderDark(),
+                slotBorderLight,
+                PALETTE_DARK.slotCorner(),
+                PALETTE_DARK.text(),
+                textDim,
+                title,
+                true,
+                PALETTE_DARK.barBg(),
+                PALETTE_DARK.barNormal(),
+                PALETTE_DARK.barLow(),
+                PALETTE_DARK.barCritical(),
+                PALETTE_DARK.chargingText(),
+                PALETTE_DARK.emptyChargeText(),
+                PALETTE_DARK.blacklistText(),
+                PALETTE_DARK.whitelistText(),
+                PALETTE_DARK.buttonOutline(),
+                PALETTE_DARK.buttonFill(),
+                PALETTE_DARK.buttonFillHover(),
+                PALETTE_DARK.buttonLight(),
+                PALETTE_DARK.buttonLightHover(),
+                PALETTE_DARK.buttonDark(),
+                PALETTE_DARK.buttonText(),
+                PALETTE_DARK.buttonTextShadow()
+        );
+    }
+
+    private static int blendArgb(int base, int accent, double weight) {
+        int br = (base >> 16) & 0xFF;
+        int bg = (base >> 8) & 0xFF;
+        int bb = base & 0xFF;
+        int ar = (accent >> 16) & 0xFF;
+        int ag = (accent >> 8) & 0xFF;
+        int ab = accent & 0xFF;
+        int r = Mth.clamp((int) Math.round(br * (1.0 - weight) + ar * weight), 0, 255);
+        int g = Mth.clamp((int) Math.round(bg * (1.0 - weight) + ag * weight), 0, 255);
+        int b = Mth.clamp((int) Math.round(bb * (1.0 - weight) + ab * weight), 0, 255);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     public static Palette palette(ClientConfig.UiTheme theme) {
         return theme == ClientConfig.UiTheme.DARK ? PALETTE_DARK : PALETTE_VANILLA;
     }
 
+    public static Palette tintedPalette(ClientConfig.UiTheme theme,
+                                        @javax.annotation.Nullable net.minecraft.world.item.DyeColor dyeColor) {
+        if (dyeColor == null) {
+            return palette(theme);
+        }
+        return theme == ClientConfig.UiTheme.DARK
+                ? DARK_TINTED.getOrDefault(dyeColor, PALETTE_DARK)
+                : VANILLA_TINTED.getOrDefault(dyeColor, PALETTE_VANILLA);
+    }
+
     public static Palette activePalette() {
         return palette(ClientConfig.getUiTheme());
     }
 
+    public static Palette activePalette(@javax.annotation.Nullable net.minecraft.world.item.DyeColor dyeColor) {
+        return tintedPalette(ClientConfig.getUiTheme(), dyeColor);
+    }
+
     public static void drawPanel(GuiGraphics graphics, int x, int y, int w, int h) {
-        Palette p = activePalette();
+        drawPanel(graphics, x, y, w, h, activePalette());
+    }
+
+    public static void drawPanel(GuiGraphics graphics, int x, int y, int w, int h, Palette p) {
         graphics.fill(x, y, x + w, y + h, p.borderDark());
         graphics.fill(x + 1, y + 1, x + w - 1, y + h - 1, p.bevelLight());
         graphics.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, p.bevelDark());
@@ -153,7 +280,12 @@ public final class DarkGuiStyling {
 
     public static void drawPanelWithLeftTab(GuiGraphics g, int mx, int my, int mw, int mh,
                                             int tabWidth, int tabTopOffset, int tabHeight) {
-        Palette p = activePalette();
+        drawPanelWithLeftTab(g, mx, my, mw, mh, tabWidth, tabTopOffset, tabHeight, activePalette());
+    }
+
+    public static void drawPanelWithLeftTab(GuiGraphics g, int mx, int my, int mw, int mh,
+                                            int tabWidth, int tabTopOffset, int tabHeight,
+                                            Palette p) {
         int tx = mx - tabWidth;
         int ty = my + tabTopOffset;
         int tb = ty + tabHeight;
@@ -222,7 +354,7 @@ public final class DarkGuiStyling {
         drawSlot(graphics, itemX, itemY, PALETTE_DARK);
     }
 
-    private static void drawSlot(GuiGraphics graphics, int itemX, int itemY, Palette p) {
+    public static void drawSlot(GuiGraphics graphics, int itemX, int itemY, Palette p) {
         int x = itemX - 1;
         int y = itemY - 1;
         graphics.fill(x, y, x + SLOT_SIZE, y + SLOT_SIZE, p.slotBg());
@@ -235,7 +367,10 @@ public final class DarkGuiStyling {
     }
 
     public static void drawDivider(GuiGraphics graphics, int x, int y, int w) {
-        Palette p = activePalette();
+        drawDivider(graphics, x, y, w, activePalette());
+    }
+
+    public static void drawDivider(GuiGraphics graphics, int x, int y, int w, Palette p) {
         graphics.fill(x, y, x + w, y + 1, p.bevelDark());
         graphics.fill(x, y + 1, x + w, y + 2, p.bevelLight());
     }
@@ -250,7 +385,11 @@ public final class DarkGuiStyling {
     }
 
     public static void drawHorizontalBar(GuiGraphics graphics, int x, int y, int w, int h, float ratio, int fillColor) {
-        Palette p = activePalette();
+        drawHorizontalBar(graphics, x, y, w, h, ratio, fillColor, activePalette());
+    }
+
+    public static void drawHorizontalBar(GuiGraphics graphics, int x, int y, int w, int h,
+                                         float ratio, int fillColor, Palette p) {
         graphics.fill(x, y, x + w, y + h, p.barBg());
         int filled = Mth.clamp(Math.round(w * Mth.clamp(ratio, 0.0F, 1.0F)), 0, w);
         if (filled > 0)
@@ -259,6 +398,10 @@ public final class DarkGuiStyling {
 
     public static void drawGhostItem(GuiGraphics graphics, ItemStack stack, int x, int y, float alpha) {
         drawGhostItemWithBg(graphics, stack, x, y, alpha, activePalette().slotBg());
+    }
+
+    public static void drawGhostItem(GuiGraphics graphics, ItemStack stack, int x, int y, float alpha, Palette p) {
+        drawGhostItemWithBg(graphics, stack, x, y, alpha, p.slotBg());
     }
 
     public static void drawDarkGhostItem(GuiGraphics graphics, ItemStack stack, int x, int y, float alpha) {

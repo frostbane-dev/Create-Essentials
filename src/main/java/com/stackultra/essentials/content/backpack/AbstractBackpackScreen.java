@@ -67,8 +67,12 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
     protected void initExtraWidgets() {
     }
 
+    protected DarkGuiStyling.Palette screenPalette() {
+        return DarkGuiStyling.activePalette(menu.getBackpackColor());
+    }
+
     protected void renderPanelBackground(GuiGraphics graphics) {
-        DarkGuiStyling.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight);
+        DarkGuiStyling.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight, screenPalette());
     }
 
     protected void renderExtraBgBeforeSlots(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
@@ -146,21 +150,22 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
                             Component.translatable(on ? "createessentials.gui.on" : "createessentials.gui.off")
                                     .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED));
                 },
-                () -> DarkGuiStyling.activePalette().buttonText(),
+                () -> screenPalette().buttonText(),
                 () -> PacketDistributor.sendToServer(BackpackToolboxPayload.toggleRestock()));
         addRenderableWidget(restockButton);
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
+        DarkGuiStyling.Palette p = screenPalette();
         renderPanelBackground(graphics);
-        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + getStorageDividerY(), GRID_WIDTH);
-        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + getPlayerDividerY(), GRID_WIDTH);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + getStorageDividerY(), GRID_WIDTH, p);
+        DarkGuiStyling.drawDivider(graphics, leftPos + GRID_LEFT, topPos + getPlayerDividerY(), GRID_WIDTH, p);
 
         renderExtraBgBeforeSlots(graphics, partialTicks, mouseX, mouseY);
 
         for (Slot slot : menu.slots)
-            DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y);
+            DarkGuiStyling.drawSlot(graphics, leftPos + slot.x, topPos + slot.y, p);
 
         renderExtraBgAfterSlots(graphics, partialTicks, mouseX, mouseY);
     }
@@ -175,7 +180,7 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
                 graphics.renderItemDecorations(font, stack, slot.x, slot.y, "");
                 DarkGuiStyling.drawCompactCount(graphics, font, total, slot.x, slot.y);
             } else if (!stack.isEmpty()) {
-                DarkGuiStyling.drawGhostItem(graphics, stack, slot.x, slot.y, GHOST_PREVIEW_ALPHA);
+                DarkGuiStyling.drawGhostItem(graphics, stack, slot.x, slot.y, GHOST_PREVIEW_ALPHA, screenPalette());
             }
             return;
         }
@@ -184,7 +189,7 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
 
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
+        DarkGuiStyling.Palette p = screenPalette();
         int maxTitleWidth = utilityButtons.isEmpty()
                 ? (imageWidth - 16)
                 : (UTILITY_START_X - 8 - 4);

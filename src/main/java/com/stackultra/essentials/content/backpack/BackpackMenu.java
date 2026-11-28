@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -56,7 +57,8 @@ public class BackpackMenu extends AbstractBackpackMenu {
             int lockedInventorySlot,
             SortMode sortMode,
             boolean restockEnabled,
-            int[] initialCounts
+            int[] initialCounts,
+            @Nullable DyeColor backpackColor
     ) {
     }
 
@@ -70,18 +72,29 @@ public class BackpackMenu extends AbstractBackpackMenu {
         buf.writeBoolean(stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
             buf.writeVarInt(toolbox.getTotalCount(c));
+        DyeColor color = BackpackColorHelper.resolveDyeColor(stack);
+        buf.writeVarInt(color != null ? color.getId() : -1);
     }
 
     public static void writeMountedOpenData(RegistryFriendlyByteBuf buf,
                                             PortableToolboxInventory toolbox,
                                             SortMode sortMode,
                                             boolean restockEnabled) {
+        writeMountedOpenData(buf, toolbox, sortMode, restockEnabled, null);
+    }
+
+    public static void writeMountedOpenData(RegistryFriendlyByteBuf buf,
+                                            PortableToolboxInventory toolbox,
+                                            SortMode sortMode,
+                                            boolean restockEnabled,
+                                            @Nullable DyeColor backpackColor) {
         buf.writeBoolean(false);
         buf.writeVarInt(MenuValidationHelper.NO_LOCKED_SLOT);
         buf.writeVarInt((sortMode != null ? sortMode : SortMode.NAME).ordinal());
         buf.writeBoolean(restockEnabled);
         for (int c = 0; c < TOOLBOX_SLOTS; c++)
             buf.writeVarInt(toolbox.getTotalCount(c));
+        buf.writeVarInt(backpackColor != null ? backpackColor.getId() : -1);
     }
 
     public BackpackMenu(int windowId, Inventory inv, RegistryFriendlyByteBuf extraData) {
@@ -91,7 +104,8 @@ public class BackpackMenu extends AbstractBackpackMenu {
     private BackpackMenu(int windowId, Inventory inv, ClientInitData data) {
         super(AllMenus.BACKPACK.get(), windowId, inv,
                 data.storageInventory(), data.toolboxInventory(), data.displayHandler(),
-                ItemStack.EMPTY, data.lockedInventorySlot(), data.sortMode(), data.restockEnabled());
+                ItemStack.EMPTY, data.lockedInventorySlot(), data.sortMode(), data.restockEnabled(),
+                data.backpackColor());
         this.blockEntity = data.blockEntity();
         this.mountedValidity = null;
         this.mountedSortGetter = null;
@@ -107,7 +121,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
         super(AllMenus.BACKPACK.get(), windowId, inv,
                 be.getItemHandler(), be.getToolboxInventory(), be.getToolboxInventory().asMenuDisplayHandler(),
                 ItemStack.EMPTY, MenuValidationHelper.NO_LOCKED_SLOT,
-                be.getSortMode(), be.isRestockEnabled());
+                be.getSortMode(), be.isRestockEnabled(), be.getBackpackColor());
         this.blockEntity = be;
         this.mountedValidity = null;
         this.mountedSortGetter = null;
@@ -127,7 +141,8 @@ public class BackpackMenu extends AbstractBackpackMenu {
                 stack,
                 MenuValidationHelper.findPlayerInventorySlot(inv.player, stack),
                 stack.getOrDefault(ExtraDataComponents.SORT_MODE, SortMode.NAME),
-                stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true));
+                stack.getOrDefault(ExtraDataComponents.TOOLBOX_RESTOCK, true),
+                BackpackColorHelper.resolveDyeColor(stack));
         this.blockEntity = null;
         this.mountedValidity = null;
         this.mountedSortGetter = null;
@@ -148,13 +163,15 @@ public class BackpackMenu extends AbstractBackpackMenu {
                          Supplier<SortMode> mountedSortGetter,
                          Consumer<SortMode> mountedSortSetter,
                          BooleanSupplier mountedRestockGetter,
-                         Consumer<Boolean> mountedRestockSetter) {
+                         Consumer<Boolean> mountedRestockSetter,
+                         @Nullable DyeColor backpackColor) {
         super(AllMenus.BACKPACK.get(), windowId, inv,
                 storage, toolbox, toolbox.asMenuDisplayHandler(),
                 ItemStack.EMPTY,
                 MenuValidationHelper.NO_LOCKED_SLOT,
                 mountedSortGetter.get(),
-                mountedRestockGetter.getAsBoolean());
+                mountedRestockGetter.getAsBoolean(),
+                backpackColor);
         this.blockEntity = null;
         this.mountedValidity = mountedValidity;
         this.mountedSortGetter = mountedSortGetter;
@@ -188,8 +205,22 @@ public class BackpackMenu extends AbstractBackpackMenu {
                                              Consumer<SortMode> sortSetter,
                                              BooleanSupplier restockGetter,
                                              Consumer<Boolean> restockSetter) {
+        return createMounted(windowId, inv, storage, toolbox, validityCheck,
+                sortGetter, sortSetter, restockGetter, restockSetter, null);
+    }
+
+    public static BackpackMenu createMounted(int windowId,
+                                             Inventory inv,
+                                             BackpackInventory storage,
+                                             PortableToolboxInventory toolbox,
+                                             Predicate<Player> validityCheck,
+                                             Supplier<SortMode> sortGetter,
+                                             Consumer<SortMode> sortSetter,
+                                             BooleanSupplier restockGetter,
+                                             Consumer<Boolean> restockSetter,
+                                             @Nullable DyeColor backpackColor) {
         return new BackpackMenu(windowId, inv, storage, toolbox, validityCheck,
-                sortGetter, sortSetter, restockGetter, restockSetter);
+                sortGetter, sortSetter, restockGetter, restockSetter, backpackColor);
     }
 
     private static ClientInitData decodeClientData(RegistryFriendlyByteBuf extraData) {
@@ -199,6 +230,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
         int[] initialCounts = new int[TOOLBOX_SLOTS];
         SortMode initialSortMode = SortMode.NAME;
         boolean initialRestock = true;
+        DyeColor initialColor = null;
 
         if (fromBlockEntity) {
             BlockPos pos = extraData.readBlockPos();
@@ -214,6 +246,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
             if (found != null) {
                 initialSortMode = found.getSortMode();
                 initialRestock = found.isRestockEnabled();
+                initialColor = found.getBackpackColor();
                 for (int c = 0; c < TOOLBOX_SLOTS; c++)
                     initialCounts[c] = found.getToolboxInventory().getTotalCount(c);
             }
@@ -223,6 +256,9 @@ public class BackpackMenu extends AbstractBackpackMenu {
             initialRestock = extraData.readBoolean();
             for (int c = 0; c < TOOLBOX_SLOTS; c++)
                 initialCounts[c] = Math.max(0, extraData.readVarInt());
+            int colorId = extraData.readVarInt();
+            if (colorId >= 0)
+                initialColor = DyeColor.byId(colorId);
         }
 
         IItemHandler storage = found != null ? found.getItemHandler() : new BackpackInventory();
@@ -239,7 +275,7 @@ public class BackpackMenu extends AbstractBackpackMenu {
             toolbox = PortableToolboxInventory.empty();
         }
         return new ClientInitData(found, storage, toolbox, displayHandler, lockedInventorySlot,
-                initialSortMode, initialRestock, initialCounts);
+                initialSortMode, initialRestock, initialCounts, initialColor);
     }
 
     private void addSlots() {
