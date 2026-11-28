@@ -116,18 +116,41 @@ public record BackpackTooltipPalette(
         return resolve(tier, BackpackTooltipData.resolveDyeColor(stack), BackpackTooltipData.resolveCustomRgb(stack), theme);
     }
 
+    static int vanillaPanelBg(BackpackTooltipPalette dark) {
+        int vivid = blendArgb(dark.panelBevelLight(), dark.borderStart(), 0.30);
+        return ensureMinLuma(vivid, 124.0, 0xFFD4D4DC);
+    }
+
     private static BackpackTooltipPalette buildVanillaFromDark(BackpackTooltipPalette dark) {
-        int panelBg = blendArgb(0xFFD6D6D6, dark.borderStart(), 0.52);
-        int panelBevelLight = blendArgb(0xFFFFFFFF, dark.borderStart(), 0.32);
-        int panelBevelDark = blendArgb(0xFF555555, dark.borderEnd(), 0.68);
-        int panelOutline = blendArgb(0xFF1C1C20, dark.panelBevelDark(), 0.55);
-        int borderStart = blendArgb(dark.borderStart(), dark.panelBg(), 0.22);
+        int panelBg = vanillaPanelBg(dark);
+        int panelBevelLight = blendArgb(0xFFFFFFFF, dark.borderStart(), 0.45);
+        int panelBevelDark = blendArgb(dark.panelBevelDark(), dark.borderEnd(), 0.55);
+        int panelOutline = blendArgb(0xFF141418, dark.panelBevelDark(), 0.45);
+        int borderStart = blendArgb(0xFFFFFFFF, dark.borderStart(), 0.65);
         int borderEnd = dark.borderEnd();
-        int tooltipBgStart = withAlpha(0xF2, blendArgb(0xFFDEDEE4, dark.borderStart(), 0.26));
-        int tooltipBgEnd = withAlpha(0xF2, blendArgb(0xFFC6C6CE, dark.borderStart(), 0.32));
+        int tooltipBgStart = withAlpha(0xFA, blendArgb(panelBg, dark.panelBg(), 0.14));
+        int tooltipBgEnd = withAlpha(0xFA, blendArgb(panelBg, dark.panelBg(), 0.28));
         return new BackpackTooltipPalette(
                 panelBg, panelBevelLight, panelBevelDark, panelOutline,
                 borderStart, borderEnd, tooltipBgStart, tooltipBgEnd);
+    }
+
+    private static int ensureMinLuma(int argb, double minLuma, int liftTarget) {
+        double luma = relativeLuma(argb);
+        if (luma >= minLuma)
+            return argb;
+        double targetLuma = relativeLuma(liftTarget);
+        if (targetLuma <= luma)
+            return argb;
+        double weight = Math.min(1.0, (minLuma - luma) / (targetLuma - luma));
+        return blendArgb(argb, liftTarget, weight);
+    }
+
+    private static double relativeLuma(int argb) {
+        int r = (argb >> 16) & 0xFF;
+        int g = (argb >> 8) & 0xFF;
+        int b = argb & 0xFF;
+        return 0.299 * r + 0.587 * g + 0.114 * b;
     }
 
     private static BackpackTooltipPalette fromCustomRgb(int rgb) {

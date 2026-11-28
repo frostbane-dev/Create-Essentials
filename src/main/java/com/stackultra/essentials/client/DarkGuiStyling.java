@@ -152,15 +152,15 @@ public final class DarkGuiStyling {
     }
 
     private static Palette buildVanillaTinted(BackpackTooltipPalette tp) {
-        int panelBg = blendArgb(0xFFD6D6D6, tp.borderStart(), 0.52);
-        int bevelLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.32);
-        int bevelDark = blendArgb(PALETTE_VANILLA.bevelDark(), tp.borderEnd(), 0.68);
-        int borderDark = blendArgb(0xFF1C1C20, tp.panelBevelDark(), 0.55);
-        int slotBg = blendArgb(0xFF969696, tp.borderStart(), 0.20);
-        int slotBorderDark = blendArgb(PALETTE_VANILLA.slotBorderDark(), tp.panelBevelDark(), 0.45);
-        int slotBorderLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.28);
-        int title = blendArgb(0xFF1E1E24, tp.panelBevelDark(), 0.65);
-        int text = blendArgb(0xFF2C2C32, tp.panelBevelDark(), 0.45);
+        int panelBg = BackpackTooltipPalette.vanillaPanelBg(tp);
+        int bevelLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.45);
+        int bevelDark = blendArgb(tp.panelBevelDark(), tp.borderEnd(), 0.55);
+        int borderDark = blendArgb(0xFF141418, tp.panelBevelDark(), 0.45);
+        int slotBg = blendArgb(PALETTE_VANILLA.slotBg(), tp.panelBg(), 0.18);
+        int slotBorderDark = blendArgb(PALETTE_VANILLA.slotBorderDark(), tp.panelBevelDark(), 0.50);
+        int slotBorderLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.42);
+        int title = blendArgb(0xFF121216, tp.panelBevelDark(), 0.35);
+        int text = blendArgb(0xFF1C1C22, tp.panelBevelDark(), 0.35);
         return new Palette(
                 panelBg,
                 bevelLight,

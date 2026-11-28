@@ -114,30 +114,41 @@ class DualUiThemeTest {
             assertTrue(vanillaTp.borderStart() != vanillaTp.borderEnd(),
                     "VANILLA tooltip palette border gradient should be distinct for " + color);
 
-            // VANILLA tinted UI must remain unmistakably light (high luminance) with crisp dark text
+            // VANILLA tinted UI must remain clearly lighter than DARK with crisp dark-text contrast
             double panelLuma = relativeLuma(vanillaTinted.panelBg());
+            double darkPanelLuma = relativeLuma(darkTinted.panelBg());
             double titleLuma = relativeLuma(vanillaTinted.title());
-            assertTrue(panelLuma >= 150.0,
-                    "VANILLA tinted panel must stay unmistakably light for " + color + " (luma=" + panelLuma + ")");
+            assertTrue(panelLuma >= 120.0,
+                    "VANILLA tinted panel must stay in light mid-tone range for " + color + " (luma=" + panelLuma + ")");
+            assertTrue(panelLuma - darkPanelLuma >= 35.0,
+                    "VANILLA tinted panel must be clearly lighter than DARK panel for " + color);
             assertTrue(panelLuma - titleLuma >= 90.0,
                     "VANILLA title must maintain crisp contrast against light panel for " + color);
 
-            // VANILLA tooltip background and inner panel must be light, while DARK stays dark
-            assertTrue(relativeLuma(vanillaTp.tooltipBgStart()) >= 170.0,
-                    "VANILLA tooltip bg start must be light for " + color);
-            assertTrue(relativeLuma(vanillaTp.panelBg()) >= 150.0,
-                    "VANILLA tooltip inner panel must be light for " + color);
+            // VANILLA tooltip background and inner panel must be rich mid-tone light, while DARK stays dark
+            assertTrue(relativeLuma(vanillaTp.tooltipBgStart()) >= 110.0,
+                    "VANILLA tooltip bg start must stay clearly light for " + color);
+            assertTrue(relativeLuma(vanillaTp.panelBg()) >= 120.0,
+                    "VANILLA tooltip inner panel must stay clearly light for " + color);
             assertTrue(relativeLuma(darkTp.tooltipBgStart()) < 50.0,
                     "DARK tooltip bg start must stay dark for " + color);
         }
 
-        // Orange light UI should have noticeably vibrant warm chroma (R clearly > B)
+        // Vibrant chroma checks (no pale/washed-out pastel dilution)
         DarkGuiStyling.Palette orangeVanilla =
                 DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.ORANGE);
         int orangeR = (orangeVanilla.panelBg() >> 16) & 0xFF;
         int orangeB = orangeVanilla.panelBg() & 0xFF;
-        assertTrue(orangeR - orangeB >= 70,
-                "Orange VANILLA panel should have lively warm saturation (R=" + orangeR + ", B=" + orangeB + ")");
+        assertTrue(orangeR - orangeB >= 100,
+                "Orange VANILLA panel should have rich warm saturation (R=" + orangeR + ", B=" + orangeB + ")");
+
+        DarkGuiStyling.Palette magentaVanilla =
+                DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.MAGENTA);
+        int magR = (magentaVanilla.panelBg() >> 16) & 0xFF;
+        int magG = (magentaVanilla.panelBg() >> 8) & 0xFF;
+        int magB = magentaVanilla.panelBg() & 0xFF;
+        assertTrue(magR - magG >= 80 && magB - magG >= 75,
+                "Magenta VANILLA panel should be rich vivid magenta rather than pale pastel (R=" + magR + ", G=" + magG + ", B=" + magB + ")");
     }
 
     @Test
@@ -163,8 +174,8 @@ class DualUiThemeTest {
 
         assertTrue(relativeLuma(darkTooltip.palette().tooltipBgStart()) < 50.0,
                 "DARK tooltip background must remain dark");
-        assertTrue(relativeLuma(vanillaTooltip.palette().tooltipBgStart()) >= 170.0,
-                "VANILLA tooltip background must be light");
+        assertTrue(relativeLuma(vanillaTooltip.palette().tooltipBgStart()) >= 120.0,
+                "VANILLA tooltip background must be rich mid-tone light");
         assertTrue(relativeLuma(vanillaTooltip.palette().panelBg()) > relativeLuma(darkTooltip.palette().panelBg()),
                 "VANILLA tooltip panel must be lighter than DARK tooltip panel");
 
