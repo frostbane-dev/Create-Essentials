@@ -21,7 +21,9 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -32,10 +34,10 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 /**
- * Exact visual clone of Create 6.0.9's {@code ToolboxScreen} ({@link AllGuiTextures#TOOLBOX}
+ * Visual clone of Create 6.0.9's {@code ToolboxScreen} ({@link AllGuiTextures#TOOLBOX}
  * golden header bar, dark brown patterned interior, 8 full-size circular slots, and central
- * toolbox return button) used as the compact {@code Alt} quick-select popup backed by our
- * server-authoritative portable backpack toolbox sync ({@link PortableToolboxOverlay},
+ * toolbox return button) paired with a dark-styled Player Inventory & Hotbar panel beneath it,
+ * backed by our server-authoritative portable backpack toolbox sync ({@link PortableToolboxOverlay},
  * {@link BackpackToolboxPayload}, and Curios/inventory lookup).
  */
 @OnlyIn(Dist.CLIENT)
@@ -71,8 +73,22 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
 
     // Right-side Create world-toolbox switcher button aligned cleanly outside the panel's right border
     private static final int SWITCHER_X = PANEL_WIDTH + 6;
-    private static final int SWITCHER_Y = CIRCLE_CENTER_Y - 11;
-    private static final int SWITCHER_SIZE = 22;
+    private static final int SWITCHER_Y = CENTER_BTN_Y;
+    private static final int SWITCHER_SIZE = 18;
+
+    // Lower dark-styled Player Inventory (3x9) & Hotbar (1x9) panel matching DarkGuiStyling
+    private static final int INV_GAP = 3;
+    private static final int INV_WIDTH = 176;
+    private static final int INV_HEIGHT = 96;
+    private static final int INV_SLOTS_X = 8;
+    private static final int INV_MAIN_Y = 16;
+    private static final int INV_HOTBAR_Y = 74;
+    private static final int TOTAL_HEIGHT = PANEL_HEIGHT + INV_GAP + INV_HEIGHT;
+
+    private static final int COLOR_LINKED_ON = 0xFF56C2C2;
+    private static final int COLOR_LINKED_ON_FILL = 0x2A56C2C2;
+    private static final int COLOR_LINKED_OFF = 0xFFA68048;
+    private static final int COLOR_LINKED_OFF_FILL = 0x28A68048;
 
     private final Component headerTitle;
     private final List<ToolboxBlockEntity> nearbyWorldToolboxes;
@@ -101,11 +117,19 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
     }
 
     private int panelX() {
-        return width / 2 - CIRCLE_CENTER_X;
+        return (width - PANEL_WIDTH) / 2;
     }
 
     private int panelY() {
-        return height / 2 - CIRCLE_CENTER_Y;
+        return Math.max(12, (height - TOTAL_HEIGHT) / 2);
+    }
+
+    private int invPanelX(int px) {
+        return px + (PANEL_WIDTH - INV_WIDTH) / 2;
+    }
+
+    private int invPanelY(int py) {
+        return py + PANEL_HEIGHT + INV_GAP;
     }
 
     private void switchToWorldToolboxes() {
@@ -147,6 +171,8 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
 
         int px = panelX();
         int py = panelY();
+        int ix = invPanelX(px);
+        int iy = invPanelY(py);
 
         if (!Double.isNaN(lastMouseX) && (Math.abs(mouseX - lastMouseX) > 2.0 || Math.abs(mouseY - lastMouseY) > 2.0)) {
             scrollMode = false;
@@ -155,7 +181,7 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
         lastMouseY = mouseY;
 
         if (!scrollMode) {
-            hoveredSlot = resolveHover(mouseX, mouseY, px, py);
+            hoveredSlot = resolveHover(mouseX, mouseY, px, py, ix, iy);
         }
         int active = activeSlot();
 
@@ -169,13 +195,22 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
 
         Component tip = null;
 
-        // 3. Render all 8 full-size circular Create Toolbox slots
+        // 3. Render all 8 full-size circular Create Toolbox slots with crisp translucent hover highlight
         for (int slot = 0; slot < COMPARTMENTS; slot++) {
             int itemX = px + SLOT_X[slot];
             int itemY = py + SLOT_Y[slot];
             int wellX = itemX - SLOT_WELL_OFFSET;
             int wellY = itemY - SLOT_WELL_OFFSET;
             boolean selected = active == slot;
+
+            // Translucent hover highlight inside the grey well + crisp light border (never darkens/blackens the slot)
+            if (selected) {
+                graphics.fill(wellX, wellY, wellX + SLOT_WELL_SIZE, wellY + 1, 0xFFF2C24C);
+                graphics.fill(wellX, wellY + SLOT_WELL_SIZE - 1, wellX + SLOT_WELL_SIZE, wellY + SLOT_WELL_SIZE, 0xFFF2C24C);
+                graphics.fill(wellX, wellY + 1, wellX + 1, wellY + SLOT_WELL_SIZE - 1, 0xFFF2C24C);
+                graphics.fill(wellX + SLOT_WELL_SIZE - 1, wellY + 1, wellX + SLOT_WELL_SIZE, wellY + SLOT_WELL_SIZE - 1, 0xFFF2C24C);
+                graphics.fill(wellX + 1, wellY + 1, wellX + SLOT_WELL_SIZE - 1, wellY + SLOT_WELL_SIZE - 1, 0x55FFFFFF);
+            }
 
             ItemStack display = getLiveDisplayItem(slot);
             int count = getLiveCount(slot);
@@ -189,8 +224,6 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
             }
 
             if (selected) {
-                graphics.fill(itemX - 1, itemY - 1, itemX + 17, itemY + 17, 0x38FFFFFF);
-                AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, wellX, wellY);
                 if (count > 0 && !display.isEmpty()) {
                     tip = Component.literal(display.getHoverName().getString() + " (" + count + ")")
                             .withStyle(ChatFormatting.WHITE);
@@ -225,17 +258,19 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
             int swX = px + SWITCHER_X;
             int swY = py + SWITCHER_Y;
             boolean swSelected = active == WORLD_TOOLBOXES;
-            AllGuiTextures.TOOLBELT_SLOT.render(graphics, swX, swY);
-            AllIcons.I_TOOLBOX.render(graphics, swX + 3, swY + 3);
+            (swSelected ? AllGuiTextures.BUTTON_HOVER : AllGuiTextures.BUTTON).render(graphics, swX, swY);
+            AllIcons.I_TOOLBOX.render(graphics, swX + 1, swY + 1);
             if (swSelected) {
-                AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, swX - 1, swY - 1);
                 tip = Component.translatable("createessentials.gui.world_toolboxes", nearbyWorldToolboxes.size())
                         .withStyle(ChatFormatting.GOLD);
             }
         }
 
-        // 6. Clean hover label centered directly below the panel
-        if (tip != null) {
+        // 6. Render dark-styled Player Inventory (3x9) & Hotbar (1x9) panel directly beneath the toolbox
+        ItemStack hoveredInventoryStack = renderPlayerInventoryPanel(graphics, ix, iy, mouseX, mouseY);
+
+        // 7. Render toolbox hover label cleanly above the golden header bar
+        if (tip != null && hoveredInventoryStack.isEmpty()) {
             int alpha = Math.min(255, (int) (fade * 255.0F));
             if (alpha > 8) {
                 PoseStack ms = graphics.pose();
@@ -244,14 +279,125 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
                 RenderSystem.defaultBlendFunc();
                 int textW = font.width(tip);
                 int color = 0xFFFFFF | ((alpha << 24) & 0xFF000000);
-                graphics.drawString(font, tip, px + PANEL_WIDTH / 2 - textW / 2, py + PANEL_HEIGHT + 6, color, true);
+                int tipY = Math.max(2, py - 11);
+                graphics.drawString(font, tip, px + PANEL_WIDTH / 2 - textW / 2, tipY, color, true);
                 RenderSystem.disableBlend();
                 ms.popPose();
             }
         }
+
+        // 8. Render standard Minecraft item tooltip when hovering items in the player inventory/hotbar
+        if (!hoveredInventoryStack.isEmpty()) {
+            graphics.renderTooltip(font, hoveredInventoryStack, mouseX, mouseY);
+        }
     }
 
-    private int resolveHover(int mouseX, int mouseY, int px, int py) {
+    private ItemStack renderPlayerInventoryPanel(GuiGraphics graphics, int ix, int iy, int mouseX, int mouseY) {
+        DarkGuiStyling.drawPanel(graphics, ix, iy, INV_WIDTH, INV_HEIGHT);
+        graphics.drawString(font, Component.translatable("container.inventory"),
+                ix + INV_SLOTS_X, iy + 5, DarkGuiStyling.COLOR_TEXT_DIM, false);
+
+        Player player = minecraft != null ? minecraft.player : null;
+        Inventory inv = player != null ? player.getInventory() : null;
+        int selectedHotbar = inv != null ? inv.selected : -1;
+        int lockedMask = PortableToolboxOverlay.getLockedHotbarMask();
+        boolean restockActive = PortableToolboxOverlay.isRestockActive();
+
+        ItemStack hoveredStack = ItemStack.EMPTY;
+
+        // Main 27-slot player inventory (rows 0..2, inventory indices 9..35)
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                int slotX = ix + INV_SLOTS_X + col * 18;
+                int slotY = iy + INV_MAIN_Y + row * 18;
+                DarkGuiStyling.drawSlot(graphics, slotX, slotY);
+
+                boolean hovered = mouseX >= slotX - 1 && mouseX < slotX + 17
+                        && mouseY >= slotY - 1 && mouseY < slotY + 17;
+                if (hovered) {
+                    graphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x45FFFFFF);
+                }
+
+                if (inv != null) {
+                    ItemStack stack = inv.getItem(9 + row * 9 + col);
+                    if (!stack.isEmpty()) {
+                        graphics.renderItem(stack, slotX, slotY);
+                        graphics.renderItemDecorations(font, stack, slotX, slotY);
+                        if (hovered) {
+                            hoveredStack = stack;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 9-slot hotbar (inventory indices 0..8) with active-slot & toolbox-linked highlights
+        for (int col = 0; col < 9; col++) {
+            int slotX = ix + INV_SLOTS_X + col * 18;
+            int slotY = iy + INV_HOTBAR_Y;
+            DarkGuiStyling.drawSlot(graphics, slotX, slotY);
+
+            boolean isSelected = col == selectedHotbar;
+            boolean isLinked = (lockedMask & (1 << col)) != 0;
+            boolean hovered = mouseX >= slotX - 1 && mouseX < slotX + 17
+                    && mouseY >= slotY - 1 && mouseY < slotY + 17;
+
+            if (isLinked) {
+                int linkBorder = restockActive ? COLOR_LINKED_ON : COLOR_LINKED_OFF;
+                int linkFill = restockActive ? COLOR_LINKED_ON_FILL : COLOR_LINKED_OFF_FILL;
+                graphics.fill(slotX, slotY, slotX + 16, slotY + 16, linkFill);
+                drawOutline(graphics, slotX - 1, slotY - 1, 18, 18, linkBorder);
+            }
+
+            if (isSelected) {
+                graphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x30F2C24C);
+                drawOutline(graphics, slotX - 1, slotY - 1, 18, 18, DarkGuiStyling.COLOR_TITLE);
+            }
+
+            if (hovered) {
+                graphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x45FFFFFF);
+            }
+
+            if (inv != null) {
+                ItemStack stack = inv.getItem(col);
+                if (!stack.isEmpty()) {
+                    graphics.renderItem(stack, slotX, slotY);
+                    graphics.renderItemDecorations(font, stack, slotX, slotY);
+                    if (hovered) {
+                        hoveredStack = stack;
+                    }
+                }
+            }
+        }
+
+        return hoveredStack;
+    }
+
+    private static void drawOutline(GuiGraphics graphics, int x, int y, int w, int h, int color) {
+        graphics.fill(x, y, x + w, y + 1, color);
+        graphics.fill(x, y + h - 1, x + w, y + h, color);
+        graphics.fill(x, y + 1, x + 1, y + h - 1, color);
+        graphics.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
+    }
+
+    private int resolveHotbarClick(double mouseX, double mouseY, int ix, int iy) {
+        for (int col = 0; col < 9; col++) {
+            int slotX = ix + INV_SLOTS_X + col * 18;
+            int slotY = iy + INV_HOTBAR_Y;
+            if (mouseX >= slotX - 1 && mouseX < slotX + 17
+                    && mouseY >= slotY - 1 && mouseY < slotY + 17) {
+                return col;
+            }
+        }
+        return -1;
+    }
+
+    private int resolveHover(int mouseX, int mouseY, int px, int py, int ix, int iy) {
+        // When hovering over the lower player inventory panel, never select a toolbox compartment or center button
+        if (mouseX >= ix && mouseX < ix + INV_WIDTH && mouseY >= iy && mouseY < iy + INV_HEIGHT) {
+            return -1;
+        }
+
         // 1. Direct hit on right-side world-toolbox switcher
         if (!nearbyWorldToolboxes.isEmpty()) {
             int swX = px + SWITCHER_X;
@@ -280,16 +426,16 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
             }
         }
 
-        // 4. Radial direction fallback for quick Alt-flicks around the panel center
-        double cx = px + CIRCLE_CENTER_X;
-        double cy = py + CIRCLE_CENTER_Y;
-        double dx = mouseX - cx;
-        double dy = mouseY - cy;
-        double distSq = dx * dx + dy * dy;
-        if (distSq <= 169.0) {
-            return UNEQUIP;
-        }
-        if (distSq < 14400.0) {
+        // 4. Radial direction fallback when cursor is inside the toolbox panel area
+        if (mouseX >= px && mouseX < px + PANEL_WIDTH && mouseY >= py && mouseY < py + PANEL_HEIGHT) {
+            double cx = px + CIRCLE_CENTER_X;
+            double cy = py + CIRCLE_CENTER_Y;
+            double dx = mouseX - cx;
+            double dy = mouseY - cy;
+            double distSq = dx * dx + dy * dy;
+            if (distSq <= 169.0) {
+                return UNEQUIP;
+            }
             int bestSlot = -1;
             double bestDistSq = Double.MAX_VALUE;
             for (int slot = 0; slot < COMPARTMENTS; slot++) {
@@ -355,9 +501,28 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
 
     @Override
     public boolean mouseClicked(double x, double y, int button) {
-        int selected = activeSlot();
-
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            int px = panelX();
+            int py = panelY();
+            int ix = invPanelX(px);
+            int iy = invPanelY(py);
+
+            // Clicking any of the 9 hotbar slots switches active hotbar selection in-place (synced to server)
+            int clickedHotbar = resolveHotbarClick(x, y, ix, iy);
+            if (clickedHotbar >= 0 && minecraft != null && minecraft.player != null) {
+                minecraft.player.getInventory().selected = clickedHotbar;
+                if (minecraft.getConnection() != null) {
+                    minecraft.getConnection().send(new ServerboundSetCarriedItemPacket(clickedHotbar));
+                }
+                return true;
+            }
+
+            // Clicking inside the main player inventory area is a safe no-op (never closes or mis-equips)
+            if (x >= ix && x < ix + INV_WIDTH && y >= iy && y < iy + INV_HEIGHT) {
+                return true;
+            }
+
+            int selected = activeSlot();
             if (selected == WORLD_TOOLBOXES && !nearbyWorldToolboxes.isEmpty()) {
                 switchToWorldToolboxes();
                 return true;

@@ -84,6 +84,14 @@ public final class PortableToolboxOverlay {
         return syncedCounts[compartment];
     }
 
+    public static int getLockedHotbarMask() {
+        return lockedHotbarMask;
+    }
+
+    public static boolean isRestockActive() {
+        return restockActive;
+    }
+
     public static void clear() {
         lockedHotbarMask = 0;
         restockActive = true;
