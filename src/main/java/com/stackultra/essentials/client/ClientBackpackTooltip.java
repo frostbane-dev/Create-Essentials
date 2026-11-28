@@ -44,7 +44,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
         this.palette = BackpackTooltipPalette.resolve(data.tier(), data.dyeColor(), data.customRgb(), this.theme);
         this.slotPalette = this.theme == ClientConfig.UiTheme.DARK
                 ? DarkGuiStyling.PALETTE_DARK
-                : DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, data.dyeColor());
+                : DarkGuiStyling.vanillaTooltipSlotPalette(data.dyeColor(), data.customRgb());
     }
 
     BackpackTooltipPalette palette() {

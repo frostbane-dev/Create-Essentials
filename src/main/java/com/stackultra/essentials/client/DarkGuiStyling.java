@@ -143,7 +143,7 @@ public final class DarkGuiStyling {
                     color,
                     com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
                     ClientConfig.UiTheme.DARK);
-            VANILLA_TINTED.put(color, buildVanillaTinted(tp));
+            VANILLA_TINTED.put(color, buildVanillaTinted(BackpackTooltipPalette.vanillaBaseRgb(color)));
             DARK_TINTED.put(color, buildDarkTinted(tp));
         }
     }
@@ -151,16 +151,29 @@ public final class DarkGuiStyling {
     private DarkGuiStyling() {
     }
 
-    private static Palette buildVanillaTinted(BackpackTooltipPalette tp) {
-        int panelBg = BackpackTooltipPalette.vanillaPanelBg(tp);
-        int bevelLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.45);
-        int bevelDark = blendArgb(tp.panelBevelDark(), tp.borderEnd(), 0.55);
-        int borderDark = blendArgb(0xFF141418, tp.panelBevelDark(), 0.45);
-        int slotBg = blendArgb(PALETTE_VANILLA.slotBg(), tp.panelBg(), 0.18);
-        int slotBorderDark = blendArgb(PALETTE_VANILLA.slotBorderDark(), tp.panelBevelDark(), 0.50);
-        int slotBorderLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.42);
-        int title = blendArgb(0xFF121216, tp.panelBevelDark(), 0.35);
-        int text = blendArgb(0xFF1C1C22, tp.panelBevelDark(), 0.35);
+    private static Palette buildVanillaTinted(int baseRgb) {
+        int bevelLight = 0xFF000000 | (baseRgb & 0x00FFFFFF);
+        int panelBg = BackpackTooltipPalette.scaleRgb(baseRgb, 0xC6 / 255.0);
+        int slotBg = BackpackTooltipPalette.scaleRgb(baseRgb, 0x8B / 255.0);
+        int bevelDark = BackpackTooltipPalette.scaleRgb(baseRgb, 0x55 / 255.0);
+        int slotBorderDark = BackpackTooltipPalette.scaleRgb(baseRgb, 0x37 / 255.0);
+        int borderDark = BackpackTooltipPalette.scaleRgb(baseRgb, 0x16 / 255.0);
+        int slotBorderLight = bevelLight;
+
+        int darkInk = 0xFF1A1A1E;
+        int lightInk = 0xFFF6F6FA;
+        boolean useLightText = contrastRatio(panelBg, lightInk) >= contrastRatio(panelBg, darkInk);
+        int title = useLightText ? 0xFFFFFFFF : darkInk;
+        int text = useLightText ? lightInk : darkInk;
+        int textDim = useLightText ? 0xFFE6E6EE : 0xFF28282E;
+
+        int barBg = useLightText ? 0xFF141418 : PALETTE_VANILLA.barBg();
+        int barNormal = useLightText ? PALETTE_DARK.barNormal() : PALETTE_VANILLA.barNormal();
+        int barLow = useLightText ? PALETTE_DARK.barLow() : PALETTE_VANILLA.barLow();
+        int barCritical = useLightText ? 0xFFFF6666 : PALETTE_VANILLA.barCritical();
+        int chargingText = useLightText ? PALETTE_DARK.chargingText() : PALETTE_VANILLA.chargingText();
+        int emptyChargeText = useLightText ? 0xFFFF8888 : PALETTE_VANILLA.emptyChargeText();
+
         return new Palette(
                 panelBg,
                 bevelLight,
@@ -171,15 +184,15 @@ public final class DarkGuiStyling {
                 slotBorderLight,
                 slotBg,
                 text,
-                text,
+                textDim,
                 title,
-                false,
-                PALETTE_VANILLA.barBg(),
-                PALETTE_VANILLA.barNormal(),
-                PALETTE_VANILLA.barLow(),
-                PALETTE_VANILLA.barCritical(),
-                PALETTE_VANILLA.chargingText(),
-                PALETTE_VANILLA.emptyChargeText(),
+                useLightText,
+                barBg,
+                barNormal,
+                barLow,
+                barCritical,
+                chargingText,
+                emptyChargeText,
                 PALETTE_VANILLA.blacklistText(),
                 PALETTE_VANILLA.whitelistText(),
                 PALETTE_VANILLA.buttonOutline(),
@@ -191,6 +204,39 @@ public final class DarkGuiStyling {
                 PALETTE_VANILLA.buttonText(),
                 PALETTE_VANILLA.buttonTextShadow()
         );
+    }
+
+    static Palette vanillaTooltipSlotPalette(@javax.annotation.Nullable net.minecraft.world.item.DyeColor dyeColor,
+                                             int customRgb) {
+        if (dyeColor != null) {
+            return VANILLA_TINTED.getOrDefault(dyeColor, PALETTE_VANILLA);
+        }
+        if (customRgb != com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB) {
+            return buildVanillaTinted(BackpackTooltipPalette.normalizeVanillaCustomBase(customRgb));
+        }
+        return PALETTE_VANILLA;
+    }
+
+    static double relativeLuminance(int argb) {
+        double r = linearizeChannel(((argb >> 16) & 0xFF) / 255.0);
+        double g = linearizeChannel(((argb >> 8) & 0xFF) / 255.0);
+        double b = linearizeChannel((argb & 0xFF) / 255.0);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double linearizeChannel(double c) {
+        return c <= 0.03928 ? (c / 12.92) : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    static double contrastRatio(int argb1, int argb2) {
+        double l1 = relativeLuminance(argb1);
+        double l2 = relativeLuminance(argb2);
+        if (l1 < l2) {
+            double tmp = l1;
+            l1 = l2;
+            l2 = tmp;
+        }
+        return (l1 + 0.05) / (l2 + 0.05);
     }
 
     private static Palette buildDarkTinted(BackpackTooltipPalette tp) {

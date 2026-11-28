@@ -87,8 +87,27 @@ class DualUiThemeTest {
             DarkGuiStyling.Palette darkTinted =
                     assertDoesNotThrow(() -> DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.DARK, color));
 
-            assertFalse(vanillaTinted.textShadow(),
-                    "VANILLA tinted backpack GUI must keep unshadowed labels for " + color);
+            // Deeper VANILLA luminance hierarchy: bevelLight > panelBg > slotBg > bevelDark > slotBorderDark
+            double panelLum = DarkGuiStyling.relativeLuminance(vanillaTinted.panelBg());
+            double slotLum = DarkGuiStyling.relativeLuminance(vanillaTinted.slotBg());
+            double bevelLightLum = DarkGuiStyling.relativeLuminance(vanillaTinted.bevelLight());
+            double bevelDarkLum = DarkGuiStyling.relativeLuminance(vanillaTinted.bevelDark());
+            assertTrue(bevelLightLum > panelLum,
+                    "VANILLA bevelLight must be brighter than panelBg for " + color);
+            assertTrue(slotLum < panelLum,
+                    "VANILLA recessed slotBg must be darker than panelBg for " + color);
+            assertTrue(bevelDarkLum < slotLum,
+                    "VANILLA bevelDark must be darker than slotBg for " + color);
+
+            // Contrast & readability on every dyed VANILLA panel and recessed slot
+            assertTrue(DarkGuiStyling.contrastRatio(vanillaTinted.panelBg(), vanillaTinted.text()) >= 4.5,
+                    "VANILLA text contrast on panelBg must be >= 4.5 for " + color);
+            assertTrue(DarkGuiStyling.contrastRatio(vanillaTinted.panelBg(), vanillaTinted.title()) >= 4.5,
+                    "VANILLA title contrast on panelBg must be >= 4.5 for " + color);
+            assertTrue(DarkGuiStyling.contrastRatio(vanillaTinted.slotBg(), 0xFFFFFFFF) >= 4.3,
+                    "White stack numbers must stay readable on VANILLA slotBg for " + color);
+
+            // DARK theme must remain untouched
             assertTrue(darkTinted.textShadow(),
                     "DARK tinted backpack GUI must keep drop-shadowed labels for " + color);
             assertEquals(DarkGuiStyling.PALETTE_DARK.slotBg(), darkTinted.slotBg(),
@@ -113,33 +132,29 @@ class DualUiThemeTest {
                     "DARK tooltip palette border gradient should be distinct for " + color);
             assertTrue(vanillaTp.borderStart() != vanillaTp.borderEnd(),
                     "VANILLA tooltip palette border gradient should be distinct for " + color);
-
-            // VANILLA tinted UI must remain clearly lighter than DARK with crisp dark-text contrast
-            double panelLuma = relativeLuma(vanillaTinted.panelBg());
-            double darkPanelLuma = relativeLuma(darkTinted.panelBg());
-            double titleLuma = relativeLuma(vanillaTinted.title());
-            assertTrue(panelLuma >= 120.0,
-                    "VANILLA tinted panel must stay in light mid-tone range for " + color + " (luma=" + panelLuma + ")");
-            assertTrue(panelLuma - darkPanelLuma >= 35.0,
-                    "VANILLA tinted panel must be clearly lighter than DARK panel for " + color);
-            assertTrue(panelLuma - titleLuma >= 90.0,
-                    "VANILLA title must maintain crisp contrast against light panel for " + color);
-
-            // VANILLA tooltip background and inner panel must be rich mid-tone light, while DARK stays dark
-            assertTrue(relativeLuma(vanillaTp.tooltipBgStart()) >= 110.0,
-                    "VANILLA tooltip bg start must stay clearly light for " + color);
-            assertTrue(relativeLuma(vanillaTp.panelBg()) >= 120.0,
-                    "VANILLA tooltip inner panel must stay clearly light for " + color);
+            assertEquals(vanillaTinted.panelBg(), vanillaTp.panelBg(),
+                    "VANILLA tooltip panelBg must match VANILLA GUI panelBg for " + color);
             assertTrue(relativeLuma(darkTp.tooltipBgStart()) < 50.0,
                     "DARK tooltip bg start must stay dark for " + color);
+            assertTrue(relativeLuma(vanillaTp.tooltipBgStart()) < 50.0,
+                    "VANILLA dyed tooltip text backdrop must stay dark-tinted for crisp text readability for " + color);
         }
 
-        // Vibrant chroma checks (no pale/washed-out pastel dilution)
+        // Deep saturated Cyan check matching the Shulker-Box-Tooltip reference tone
+        DarkGuiStyling.Palette cyanVanilla =
+                DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.CYAN);
+        assertEquals(0xFF1E7979, cyanVanilla.panelBg());
+        assertEquals(0xFF155555, cyanVanilla.slotBg());
+        assertEquals(0xFF269C9C, cyanVanilla.bevelLight());
+        assertEquals(0xFF0D3434, cyanVanilla.bevelDark());
+        assertEquals(0xFF082222, cyanVanilla.slotBorderDark());
+
+        // Vibrant chroma checks (deep saturated dye tones rather than pale pastel dilution)
         DarkGuiStyling.Palette orangeVanilla =
                 DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.ORANGE);
         int orangeR = (orangeVanilla.panelBg() >> 16) & 0xFF;
         int orangeB = orangeVanilla.panelBg() & 0xFF;
-        assertTrue(orangeR - orangeB >= 100,
+        assertTrue(orangeR - orangeB >= 120,
                 "Orange VANILLA panel should have rich warm saturation (R=" + orangeR + ", B=" + orangeB + ")");
 
         DarkGuiStyling.Palette magentaVanilla =
@@ -147,7 +162,7 @@ class DualUiThemeTest {
         int magR = (magentaVanilla.panelBg() >> 16) & 0xFF;
         int magG = (magentaVanilla.panelBg() >> 8) & 0xFF;
         int magB = magentaVanilla.panelBg() & 0xFF;
-        assertTrue(magR - magG >= 80 && magB - magG >= 75,
+        assertTrue(magR - magG >= 90 && magB - magG >= 85,
                 "Magenta VANILLA panel should be rich vivid magenta rather than pale pastel (R=" + magR + ", G=" + magG + ", B=" + magB + ")");
     }
 
@@ -170,14 +185,13 @@ class DualUiThemeTest {
                 "DARK theme tooltip must keep dark slot palette");
         assertSame(DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.ORANGE),
                 vanillaTooltip.slotPalette(),
-                "VANILLA theme tooltip must use light tinted slot palette");
+                "VANILLA theme tooltip must use rich tinted slot palette");
 
         assertTrue(relativeLuma(darkTooltip.palette().tooltipBgStart()) < 50.0,
                 "DARK tooltip background must remain dark");
-        assertTrue(relativeLuma(vanillaTooltip.palette().tooltipBgStart()) >= 120.0,
-                "VANILLA tooltip background must be rich mid-tone light");
-        assertTrue(relativeLuma(vanillaTooltip.palette().panelBg()) > relativeLuma(darkTooltip.palette().panelBg()),
-                "VANILLA tooltip panel must be lighter than DARK tooltip panel");
+        assertEquals(DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.ORANGE).panelBg(),
+                vanillaTooltip.palette().panelBg(),
+                "VANILLA tooltip inner panel must match VANILLA GUI panel");
 
         // Unpainted backpack tooltips also respect DARK vs VANILLA
         BackpackTooltipPalette unpaintedDark = BackpackTooltipPalette.resolve(
