@@ -1,15 +1,19 @@
 package com.stackultra.essentials.network;
 
 import com.stackultra.essentials.CreateEssentials;
+import com.stackultra.essentials.content.backpack.BackpackSounds;
 import com.stackultra.essentials.content.backpack.IBackpackMenu;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.backpack.PortableToolboxInventory;
+import com.stackultra.essentials.content.backpack.PortableToolboxMenu;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import javax.annotation.Nullable;
@@ -20,7 +24,9 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
         EQUIP_COMPARTMENT,
         RETURN_HELD,
         TOGGLE_RESTOCK,
-        REQUEST_SYNC;
+        REQUEST_SYNC,
+        OPEN_SCREEN,
+        DISPOSE_ALL;
 
         private static final Action[] VALUES = values();
 
@@ -58,6 +64,14 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
         return new BackpackToolboxPayload(Action.REQUEST_SYNC.ordinal(), 0, 0);
     }
 
+    public static BackpackToolboxPayload openScreen() {
+        return new BackpackToolboxPayload(Action.OPEN_SCREEN.ordinal(), 0, 0);
+    }
+
+    public static BackpackToolboxPayload disposeAll() {
+        return new BackpackToolboxPayload(Action.DISPOSE_ALL.ordinal(), 0, 0);
+    }
+
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
@@ -87,6 +101,24 @@ public record BackpackToolboxPayload(int actionId, int compartment, int hotbarSl
                     menu.setRestockEnabled(!menu.isRestockEnabled(), player);
                 }
                 case REQUEST_SYNC -> PortableToolboxHandler.handleSyncRequest(player);
+                case OPEN_SCREEN -> {
+                    ItemStack backpack = PortableToolboxHandler.findPortableToolboxBackpack(player);
+                    if (backpack.isEmpty())
+                        return;
+                    PortableToolboxInventory tb = PortableToolboxInventory.forStack(backpack);
+                    if (player.openMenu(new SimpleMenuProvider(
+                                    (id, inv, p) -> PortableToolboxMenu.create(id, inv, backpack),
+                                    backpack.getHoverName()),
+                            buf -> PortableToolboxMenu.writeOpenData(buf, player, backpack, tb)).isPresent()) {
+                        BackpackSounds.playOpenSound(player);
+                    }
+                }
+                case DISPOSE_ALL -> {
+                    if (player.containerMenu instanceof PortableToolboxMenu toolboxMenu
+                            && toolboxMenu.stillValid(player)) {
+                        toolboxMenu.disposeMatchingFromPlayer(player);
+                    }
+                }
             }
         });
     }

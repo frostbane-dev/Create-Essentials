@@ -3,6 +3,7 @@ package com.stackultra.essentials.registry;
 import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.backpack.BackpackMenu;
 import com.stackultra.essentials.content.backpack.MagneticBackpackMenu;
+import com.stackultra.essentials.content.backpack.PortableToolboxMenu;
 import com.stackultra.essentials.content.magnet.RotationalMagnetMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
@@ -26,6 +27,10 @@ public class AllMenus {
     public static final DeferredHolder<MenuType<?>, MenuType<MagneticBackpackMenu>> MAGNETIC_BACKPACK =
             MENUS.register("magnetic_backpack", () ->
                     IMenuTypeExtension.create(MagneticBackpackMenu::new));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<PortableToolboxMenu>> PORTABLE_TOOLBOX =
+            MENUS.register("portable_toolbox", () ->
+                    IMenuTypeExtension.create(PortableToolboxMenu::new));
 
     public static void register(IEventBus bus) {
         MENUS.register(bus);

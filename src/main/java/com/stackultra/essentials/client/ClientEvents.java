@@ -2,8 +2,6 @@ package com.stackultra.essentials.client;
 
 import com.mojang.datafixers.util.Either;
 import com.simibubi.create.AllKeys;
-import com.simibubi.create.content.equipment.toolbox.ToolboxBlockEntity;
-import com.simibubi.create.content.equipment.toolbox.ToolboxHandler;
 import com.stackultra.essentials.CreateEssentials;
 import com.stackultra.essentials.content.GogglesHelper;
 import com.stackultra.essentials.content.backpack.BackpackScreen;
@@ -17,6 +15,7 @@ import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
 import com.stackultra.essentials.content.magnet.RotationalMagnetRenderer;
 import com.stackultra.essentials.content.magnet.RotationalMagnetScreen;
 import com.stackultra.essentials.content.magnet.RotationalMagnetVisual;
+import com.stackultra.essentials.network.BackpackToolboxPayload;
 import com.stackultra.essentials.network.OpenBackpackPayload;
 import com.stackultra.essentials.network.OpenMagnetPayload;
 import com.stackultra.essentials.network.RotationalMagnetTogglePayload;
@@ -103,6 +102,7 @@ public class ClientEvents {
         event.register(AllMenus.ROTATIONAL_MAGNET.get(), RotationalMagnetScreen::new);
         event.register(AllMenus.BACKPACK.get(), BackpackScreen::new);
         event.register(AllMenus.MAGNETIC_BACKPACK.get(), MagneticBackpackScreen::new);
+        event.register(AllMenus.PORTABLE_TOOLBOX.get(), PortableToolboxScreen::new);
     }
 
     @SubscribeEvent
@@ -214,8 +214,6 @@ public class ClientEvents {
         if (backpack.isEmpty())
             return;
 
-        List<ToolboxBlockEntity> worldToolboxes =
-                ToolboxHandler.getNearest(minecraft.level, minecraft.player, 8);
-        minecraft.setScreen(new PortableToolboxRadialScreen(backpack, worldToolboxes));
+        PacketDistributor.sendToServer(BackpackToolboxPayload.openScreen());
     }
 }
