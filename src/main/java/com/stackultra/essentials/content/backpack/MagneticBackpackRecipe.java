@@ -8,6 +8,8 @@ import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
 import com.stackultra.essentials.registry.AllDataComponents;
 import com.stackultra.essentials.registry.AllRecipeSerializers;
 import com.stackultra.essentials.registry.ExtraDataComponents;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -19,6 +21,8 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 
 public class MagneticBackpackRecipe extends ShapedRecipe {
 
@@ -33,6 +37,9 @@ public class MagneticBackpackRecipe extends ShapedRecipe {
     @Override
     public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         ItemStack output = super.assemble(input, registries);
+        ItemEnchantments.Mutable mergedEnchantments = new ItemEnchantments.Mutable(
+                output.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY));
+
         for (int i = 0; i < input.size(); i++) {
             ItemStack stack = input.getItem(i);
             if (stack.isEmpty())
@@ -53,16 +60,40 @@ public class MagneticBackpackRecipe extends ShapedRecipe {
                     output.set(ExtraDataComponents.BACKPACK_COLOR, stack.get(ExtraDataComponents.BACKPACK_COLOR));
                 if (stack.has(DataComponents.DYED_COLOR))
                     output.set(DataComponents.DYED_COLOR, stack.get(DataComponents.DYED_COLOR));
+                if (stack.has(DataComponents.CUSTOM_NAME))
+                    output.set(DataComponents.CUSTOM_NAME, stack.get(DataComponents.CUSTOM_NAME));
+                mergeEnchantmentsFrom(stack, mergedEnchantments);
             } else if (stack.getItem() instanceof RotationalMagnetItem magnet && magnet.getTier() == MagnetTier.TIER_2) {
                 ItemContainerContents filters =
                         stack.getOrDefault(AllDataComponents.MAGNET_FILTERS, ItemContainerContents.EMPTY);
                 output.set(AllDataComponents.BACKPACK_FILTERS, filters);
                 if (stack.has(ExtraDataComponents.BLACKLIST))
                     output.set(ExtraDataComponents.BLACKLIST, stack.get(ExtraDataComponents.BLACKLIST));
+                mergeEnchantmentsFrom(stack, mergedEnchantments);
             }
+        }
+        ItemEnchantments finalEnchantments = mergedEnchantments.toImmutable();
+        if (!finalEnchantments.isEmpty()) {
+            output.set(DataComponents.ENCHANTMENTS, finalEnchantments);
         }
         output.set(AllDataComponents.CHARGE, 0);
         return output;
+    }
+
+    static void mergeEnchantmentsFrom(ItemStack source, ItemEnchantments.Mutable target) {
+        mergeComponent(source.get(DataComponents.ENCHANTMENTS), target);
+        mergeComponent(source.get(DataComponents.STORED_ENCHANTMENTS), target);
+    }
+
+    private static void mergeComponent(ItemEnchantments enchantments, ItemEnchantments.Mutable target) {
+        if (enchantments == null || enchantments.isEmpty())
+            return;
+        for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
+            int level = entry.getIntValue();
+            if (level > target.getLevel(entry.getKey())) {
+                target.set(entry.getKey(), level);
+            }
+        }
     }
 
     @Override

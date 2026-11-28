@@ -30,11 +30,29 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
     private static final int FULL_PANEL_H = PAD + GRID_H + SECTION_GAP + SLOT_SIZE + PAD;
 
     private final BackpackTooltipData data;
+    private final ClientConfig.UiTheme theme;
     private final BackpackTooltipPalette palette;
+    private final DarkGuiStyling.Palette slotPalette;
 
     public ClientBackpackTooltip(BackpackTooltipData data) {
+        this(data, ClientConfig.getUiTheme());
+    }
+
+    ClientBackpackTooltip(BackpackTooltipData data, ClientConfig.UiTheme theme) {
         this.data = data;
-        this.palette = BackpackTooltipPalette.resolve(data.tier(), data.dyeColor(), data.customRgb());
+        this.theme = theme == ClientConfig.UiTheme.DARK ? ClientConfig.UiTheme.DARK : ClientConfig.UiTheme.VANILLA;
+        this.palette = BackpackTooltipPalette.resolve(data.tier(), data.dyeColor(), data.customRgb(), this.theme);
+        this.slotPalette = this.theme == ClientConfig.UiTheme.DARK
+                ? DarkGuiStyling.PALETTE_DARK
+                : DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, data.dyeColor());
+    }
+
+    BackpackTooltipPalette palette() {
+        return palette;
+    }
+
+    DarkGuiStyling.Palette slotPalette() {
+        return slotPalette;
     }
 
     @Override
@@ -51,7 +69,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
     public void renderImage(Font font, int x, int y, GuiGraphics graphics) {
         int panelH = data.hasToolboxData() ? FULL_PANEL_H : BASE_PANEL_H;
 
-        // Minimalist beveled dark gray (or per-color tinted) panel matching all mod GUIs
+        // Minimalist beveled panel matching the active UI theme (DARK or VANILLA) and backpack dye color
         graphics.fill(x, y, x + PANEL_W, y + panelH, palette.panelOutline());
         graphics.fill(x + 1, y + 1, x + PANEL_W - 1, y + panelH - 1, palette.panelBevelLight());
         graphics.fill(x + 1, y + panelH - 2, x + PANEL_W - 1, y + panelH - 1, palette.panelBevelDark());
@@ -66,7 +84,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
                 int itemX = x + PAD + col * SLOT_SIZE + 1;
                 int itemY = y + PAD + row * SLOT_SIZE + 1;
 
-                DarkGuiStyling.drawDarkSlot(graphics, itemX, itemY);
+                DarkGuiStyling.drawSlot(graphics, itemX, itemY, slotPalette);
 
                 if (index < slots.size()) {
                     ItemStack stack = slots.get(index);
@@ -91,7 +109,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
             for (int c = 0; c < TOOLBOX_COLS; c++) {
                 int itemX = toolboxStartX + c * SLOT_SIZE + 1;
                 int itemY = toolboxY + 1;
-                DarkGuiStyling.drawDarkSlot(graphics, itemX, itemY);
+                DarkGuiStyling.drawSlot(graphics, itemX, itemY, slotPalette);
 
                 if (c < tbSlots.size()) {
                     BackpackTooltipData.ToolboxSlotEntry entry = tbSlots.get(c);
@@ -100,7 +118,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
                         graphics.renderItemDecorations(font, entry.displayStack(), itemX, itemY, "");
                         DarkGuiStyling.drawCompactCount(graphics, font, entry.count(), itemX, itemY);
                     } else if (!entry.displayStack().isEmpty()) {
-                        DarkGuiStyling.drawDarkGhostItem(graphics, entry.displayStack(), itemX, itemY, 0.40F);
+                        DarkGuiStyling.drawGhostItem(graphics, entry.displayStack(), itemX, itemY, 0.40F, slotPalette);
                     }
                 }
             }

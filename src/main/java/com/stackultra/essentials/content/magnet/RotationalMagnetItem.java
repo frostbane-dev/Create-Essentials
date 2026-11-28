@@ -73,7 +73,7 @@ public class RotationalMagnetItem extends BlockItem {
 
     @Override
     public boolean isFoil(ItemStack stack) {
-        return stack.getOrDefault(AllDataComponents.ENABLED, true);
+        return stack.getOrDefault(AllDataComponents.ENABLED, true) || super.isFoil(stack);
     }
 
     @Override

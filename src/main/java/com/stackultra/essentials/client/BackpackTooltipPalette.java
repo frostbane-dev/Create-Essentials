@@ -36,7 +36,18 @@ public record BackpackTooltipPalette(
             DEFAULT_BG_START,
             DEFAULT_BG_END);
 
+    private static final BackpackTooltipPalette UNPAINTED_VANILLA = new BackpackTooltipPalette(
+            0xFFC6C6C6,
+            0xFFFFFFFF,
+            0xFF555555,
+            0xFF3A3A3A,
+            0xFF8C8C96,
+            0xFF5E5E68,
+            0xF2DCDCE2,
+            0xF2C6C6CE);
+
     private static final Map<DyeColor, BackpackTooltipPalette> DYE_PALETTES = new EnumMap<>(DyeColor.class);
+    private static final Map<DyeColor, BackpackTooltipPalette> VANILLA_DYE_PALETTES = new EnumMap<>(DyeColor.class);
 
     static {
         putDye(DyeColor.WHITE, 0xFF92929C, 0xFFC2C2CE, 0xFF5A5A64, 0xFFEBEBF4, 0xFF8F8F9C);
@@ -59,31 +70,64 @@ public record BackpackTooltipPalette(
 
     private static void putDye(DyeColor color, int panelBg, int bevelLight, int bevelDark,
                                int borderStart, int borderEnd) {
-        DYE_PALETTES.put(color, new BackpackTooltipPalette(
+        BackpackTooltipPalette dark = new BackpackTooltipPalette(
                 panelBg, bevelLight, bevelDark, DEFAULT_OUTLINE,
-                borderStart, borderEnd, DEFAULT_BG_START, DEFAULT_BG_END));
+                borderStart, borderEnd, DEFAULT_BG_START, DEFAULT_BG_END);
+        DYE_PALETTES.put(color, dark);
+        VANILLA_DYE_PALETTES.put(color, buildVanillaFromDark(dark));
     }
 
     public static BackpackTooltipPalette resolve(BackpackTooltipData.Tier tier,
                                                  @Nullable DyeColor dyeColor,
                                                  int customRgb) {
+        return resolve(tier, dyeColor, customRgb, ClientConfig.getUiTheme());
+    }
+
+    public static BackpackTooltipPalette resolve(BackpackTooltipData.Tier tier,
+                                                 @Nullable DyeColor dyeColor,
+                                                 int customRgb,
+                                                 @Nullable ClientConfig.UiTheme theme) {
+        boolean isDark = theme == ClientConfig.UiTheme.DARK;
         if (dyeColor != null) {
-            BackpackTooltipPalette palette = DYE_PALETTES.get(dyeColor);
+            BackpackTooltipPalette palette = isDark
+                    ? DYE_PALETTES.get(dyeColor)
+                    : VANILLA_DYE_PALETTES.get(dyeColor);
             if (palette != null)
                 return palette;
         }
         if (customRgb != BackpackTooltipData.NO_CUSTOM_RGB) {
-            return fromCustomRgb(customRgb);
+            BackpackTooltipPalette dark = fromCustomRgb(customRgb);
+            return isDark ? dark : buildVanillaFromDark(dark);
         }
-        return UNPAINTED_DEFAULT;
+        return isDark ? UNPAINTED_DEFAULT : UNPAINTED_VANILLA;
     }
 
     @Nullable
     public static BackpackTooltipPalette resolveForStack(ItemStack stack) {
+        return resolveForStack(stack, ClientConfig.getUiTheme());
+    }
+
+    @Nullable
+    public static BackpackTooltipPalette resolveForStack(ItemStack stack,
+                                                         @Nullable ClientConfig.UiTheme theme) {
         BackpackTooltipData.Tier tier = BackpackTooltipData.resolveTier(stack);
         if (tier == null)
             return null;
-        return resolve(tier, BackpackTooltipData.resolveDyeColor(stack), BackpackTooltipData.resolveCustomRgb(stack));
+        return resolve(tier, BackpackTooltipData.resolveDyeColor(stack), BackpackTooltipData.resolveCustomRgb(stack), theme);
+    }
+
+    private static BackpackTooltipPalette buildVanillaFromDark(BackpackTooltipPalette dark) {
+        int panelBg = blendArgb(0xFFD6D6D6, dark.borderStart(), 0.52);
+        int panelBevelLight = blendArgb(0xFFFFFFFF, dark.borderStart(), 0.32);
+        int panelBevelDark = blendArgb(0xFF555555, dark.borderEnd(), 0.68);
+        int panelOutline = blendArgb(0xFF1C1C20, dark.panelBevelDark(), 0.55);
+        int borderStart = blendArgb(dark.borderStart(), dark.panelBg(), 0.22);
+        int borderEnd = dark.borderEnd();
+        int tooltipBgStart = withAlpha(0xF2, blendArgb(0xFFDEDEE4, dark.borderStart(), 0.26));
+        int tooltipBgEnd = withAlpha(0xF2, blendArgb(0xFFC6C6CE, dark.borderStart(), 0.32));
+        return new BackpackTooltipPalette(
+                panelBg, panelBevelLight, panelBevelDark, panelOutline,
+                borderStart, borderEnd, tooltipBgStart, tooltipBgEnd);
     }
 
     private static BackpackTooltipPalette fromCustomRgb(int rgb) {
@@ -101,6 +145,23 @@ public record BackpackTooltipPalette(
         return new BackpackTooltipPalette(
                 panelBg, bevelLight, bevelDark, DEFAULT_OUTLINE,
                 borderStart, borderEnd, DEFAULT_BG_START, DEFAULT_BG_END);
+    }
+
+    private static int blendArgb(int base, int accent, double weight) {
+        int br = (base >> 16) & 0xFF;
+        int bg = (base >> 8) & 0xFF;
+        int bb = base & 0xFF;
+        int ar = (accent >> 16) & 0xFF;
+        int ag = (accent >> 8) & 0xFF;
+        int ab = accent & 0xFF;
+        return pack(
+                blend(ar, br, weight),
+                blend(ag, bg, weight),
+                blend(ab, bb, weight));
+    }
+
+    private static int withAlpha(int alpha, int argb) {
+        return ((alpha & 0xFF) << 24) | (argb & 0x00FFFFFF);
     }
 
     private static int blend(int color, int base, double weight) {

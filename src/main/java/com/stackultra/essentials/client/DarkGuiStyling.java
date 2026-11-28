@@ -141,7 +141,8 @@ public final class DarkGuiStyling {
             BackpackTooltipPalette tp = BackpackTooltipPalette.resolve(
                     com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
                     color,
-                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB);
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
+                    ClientConfig.UiTheme.DARK);
             VANILLA_TINTED.put(color, buildVanillaTinted(tp));
             DARK_TINTED.put(color, buildDarkTinted(tp));
         }
@@ -151,21 +152,22 @@ public final class DarkGuiStyling {
     }
 
     private static Palette buildVanillaTinted(BackpackTooltipPalette tp) {
-        int panelBg = blendArgb(PALETTE_VANILLA.panelBg(), tp.borderStart(), 0.28);
-        int bevelLight = blendArgb(PALETTE_VANILLA.bevelLight(), tp.borderStart(), 0.16);
-        int bevelDark = blendArgb(PALETTE_VANILLA.bevelDark(), tp.panelBevelDark(), 0.50);
-        int borderDark = blendArgb(PALETTE_VANILLA.borderDark(), tp.panelBevelDark(), 0.35);
-        int slotBg = blendArgb(PALETTE_VANILLA.slotBg(), tp.panelBg(), 0.12);
-        int slotBorderLight = blendArgb(PALETTE_VANILLA.slotBorderLight(), tp.borderStart(), 0.14);
-        int title = blendArgb(0xFF222226, tp.panelBevelDark(), 0.55);
-        int text = blendArgb(PALETTE_VANILLA.text(), tp.panelBevelDark(), 0.32);
+        int panelBg = blendArgb(0xFFD6D6D6, tp.borderStart(), 0.52);
+        int bevelLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.32);
+        int bevelDark = blendArgb(PALETTE_VANILLA.bevelDark(), tp.borderEnd(), 0.68);
+        int borderDark = blendArgb(0xFF1C1C20, tp.panelBevelDark(), 0.55);
+        int slotBg = blendArgb(0xFF969696, tp.borderStart(), 0.20);
+        int slotBorderDark = blendArgb(PALETTE_VANILLA.slotBorderDark(), tp.panelBevelDark(), 0.45);
+        int slotBorderLight = blendArgb(0xFFFFFFFF, tp.borderStart(), 0.28);
+        int title = blendArgb(0xFF1E1E24, tp.panelBevelDark(), 0.65);
+        int text = blendArgb(0xFF2C2C32, tp.panelBevelDark(), 0.45);
         return new Palette(
                 panelBg,
                 bevelLight,
                 bevelDark,
                 borderDark,
                 slotBg,
-                PALETTE_VANILLA.slotBorderDark(),
+                slotBorderDark,
                 slotBorderLight,
                 slotBg,
                 text,

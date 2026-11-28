@@ -98,12 +98,97 @@ class DualUiThemeTest {
             assertTrue(darkTinted.panelBg() != DarkGuiStyling.PALETTE_DARK.panelBg(),
                     "DARK tinted panel should visibly shift from default dark gray for " + color);
 
-            BackpackTooltipPalette tp = BackpackTooltipPalette.resolve(
+            BackpackTooltipPalette darkTp = BackpackTooltipPalette.resolve(
                     com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
                     color,
-                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB);
-            assertTrue(tp.borderStart() != tp.borderEnd(),
-                    "Tooltip palette border gradient should be distinct for " + color);
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
+                    ClientConfig.UiTheme.DARK);
+            BackpackTooltipPalette vanillaTp = BackpackTooltipPalette.resolve(
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
+                    color,
+                    com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
+                    ClientConfig.UiTheme.VANILLA);
+
+            assertTrue(darkTp.borderStart() != darkTp.borderEnd(),
+                    "DARK tooltip palette border gradient should be distinct for " + color);
+            assertTrue(vanillaTp.borderStart() != vanillaTp.borderEnd(),
+                    "VANILLA tooltip palette border gradient should be distinct for " + color);
+
+            // VANILLA tinted UI must remain unmistakably light (high luminance) with crisp dark text
+            double panelLuma = relativeLuma(vanillaTinted.panelBg());
+            double titleLuma = relativeLuma(vanillaTinted.title());
+            assertTrue(panelLuma >= 150.0,
+                    "VANILLA tinted panel must stay unmistakably light for " + color + " (luma=" + panelLuma + ")");
+            assertTrue(panelLuma - titleLuma >= 90.0,
+                    "VANILLA title must maintain crisp contrast against light panel for " + color);
+
+            // VANILLA tooltip background and inner panel must be light, while DARK stays dark
+            assertTrue(relativeLuma(vanillaTp.tooltipBgStart()) >= 170.0,
+                    "VANILLA tooltip bg start must be light for " + color);
+            assertTrue(relativeLuma(vanillaTp.panelBg()) >= 150.0,
+                    "VANILLA tooltip inner panel must be light for " + color);
+            assertTrue(relativeLuma(darkTp.tooltipBgStart()) < 50.0,
+                    "DARK tooltip bg start must stay dark for " + color);
         }
+
+        // Orange light UI should have noticeably vibrant warm chroma (R clearly > B)
+        DarkGuiStyling.Palette orangeVanilla =
+                DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.ORANGE);
+        int orangeR = (orangeVanilla.panelBg() >> 16) & 0xFF;
+        int orangeB = orangeVanilla.panelBg() & 0xFF;
+        assertTrue(orangeR - orangeB >= 70,
+                "Orange VANILLA panel should have lively warm saturation (R=" + orangeR + ", B=" + orangeB + ")");
+    }
+
+    @Test
+    void backpackContentTooltipSwitchesBetweenDarkAndVanillaThemes() {
+        com.stackultra.essentials.content.backpack.BackpackTooltipData data =
+                new com.stackultra.essentials.content.backpack.BackpackTooltipData(
+                        com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MAGNETIC,
+                        net.minecraft.world.item.DyeColor.ORANGE,
+                        com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
+                        java.util.List.of(),
+                        0,
+                        java.util.List.of(),
+                        false);
+
+        ClientBackpackTooltip darkTooltip = new ClientBackpackTooltip(data, ClientConfig.UiTheme.DARK);
+        ClientBackpackTooltip vanillaTooltip = new ClientBackpackTooltip(data, ClientConfig.UiTheme.VANILLA);
+
+        assertSame(DarkGuiStyling.PALETTE_DARK, darkTooltip.slotPalette(),
+                "DARK theme tooltip must keep dark slot palette");
+        assertSame(DarkGuiStyling.tintedPalette(ClientConfig.UiTheme.VANILLA, net.minecraft.world.item.DyeColor.ORANGE),
+                vanillaTooltip.slotPalette(),
+                "VANILLA theme tooltip must use light tinted slot palette");
+
+        assertTrue(relativeLuma(darkTooltip.palette().tooltipBgStart()) < 50.0,
+                "DARK tooltip background must remain dark");
+        assertTrue(relativeLuma(vanillaTooltip.palette().tooltipBgStart()) >= 170.0,
+                "VANILLA tooltip background must be light");
+        assertTrue(relativeLuma(vanillaTooltip.palette().panelBg()) > relativeLuma(darkTooltip.palette().panelBg()),
+                "VANILLA tooltip panel must be lighter than DARK tooltip panel");
+
+        // Unpainted backpack tooltips also respect DARK vs VANILLA
+        BackpackTooltipPalette unpaintedDark = BackpackTooltipPalette.resolve(
+                com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
+                null,
+                com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
+                ClientConfig.UiTheme.DARK);
+        BackpackTooltipPalette unpaintedVanilla = BackpackTooltipPalette.resolve(
+                com.stackultra.essentials.content.backpack.BackpackTooltipData.Tier.MECHANICAL,
+                null,
+                com.stackultra.essentials.content.backpack.BackpackTooltipData.NO_CUSTOM_RGB,
+                ClientConfig.UiTheme.VANILLA);
+        assertEquals(DarkGuiStyling.COLOR_PANEL, unpaintedDark.panelBg());
+        assertEquals(DarkGuiStyling.PALETTE_VANILLA.panelBg(), unpaintedVanilla.panelBg());
+        assertTrue(relativeLuma(unpaintedVanilla.tooltipBgStart()) >= 180.0);
+        assertTrue(relativeLuma(unpaintedDark.tooltipBgStart()) < 50.0);
+    }
+
+    private static double relativeLuma(int argb) {
+        int r = (argb >> 16) & 0xFF;
+        int g = (argb >> 8) & 0xFF;
+        int b = argb & 0xFF;
+        return 0.299 * r + 0.587 * g + 0.114 * b;
     }
 }
