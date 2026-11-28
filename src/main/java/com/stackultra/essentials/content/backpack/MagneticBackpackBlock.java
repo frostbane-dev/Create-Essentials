@@ -42,10 +42,10 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
 
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
-    private static final VoxelShape SHAPE_NORTH = Block.box(2.0, 0.0, 2.0, 14.0, 16.0, 12.0);
-    private static final VoxelShape SHAPE_SOUTH = Block.box(2.0, 0.0, 4.0, 14.0, 16.0, 14.0);
-    private static final VoxelShape SHAPE_EAST = Block.box(4.0, 0.0, 2.0, 14.0, 16.0, 14.0);
-    private static final VoxelShape SHAPE_WEST = Block.box(2.0, 0.0, 2.0, 12.0, 16.0, 14.0);
+    private static final VoxelShape SHAPE_NORTH = Block.box(2.0, 0.0, 3.0, 14.0, 16.0, 12.0);
+    private static final VoxelShape SHAPE_SOUTH = Block.box(2.0, 0.0, 4.0, 14.0, 16.0, 13.0);
+    private static final VoxelShape SHAPE_EAST = Block.box(4.0, 0.0, 2.0, 13.0, 16.0, 14.0);
+    private static final VoxelShape SHAPE_WEST = Block.box(3.0, 0.0, 2.0, 12.0, 16.0, 14.0);
 
     public MagneticBackpackBlock(Properties properties) {
         super(properties);

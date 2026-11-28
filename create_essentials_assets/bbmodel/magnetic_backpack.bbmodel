@@ -5,7 +5,7 @@
     "box_uv": false
   },
   "name": "magnetic_backpack",
-  "model_identifier": "createessentials:block/magnetic_backpack",
+  "model_identifier": "magnetic_backpack",
   "visible_box": [
     1,
     1,
@@ -32,87 +32,6 @@
       ],
       "to": [
         13,
-        13,
-        11
-      ],
-      "autouv": 0,
-      "color": 0,
-      "origin": [
-        8,
-        8,
-        8
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            0,
-            0,
-            10,
-            13
-          ],
-          "texture": 0
-        },
-        "east": {
-          "uv": [
-            20,
-            0,
-            26,
-            13
-          ],
-          "texture": 0
-        },
-        "south": {
-          "uv": [
-            10,
-            0,
-            20,
-            13
-          ],
-          "texture": 0
-        },
-        "west": {
-          "uv": [
-            26,
-            0,
-            32,
-            13
-          ],
-          "texture": 0
-        },
-        "up": {
-          "uv": [
-            32,
-            0,
-            42,
-            6
-          ],
-          "texture": 0
-        },
-        "down": {
-          "uv": [
-            42,
-            0,
-            52,
-            6
-          ],
-          "texture": 0
-        }
-      },
-      "type": "cube",
-      "uuid": "529def0a-cb4b-5d23-afeb-b4941ab5087d"
-    },
-    {
-      "name": "top_flap_cap",
-      "box_uv": false,
-      "rescale": false,
-      "locked": false,
-      "from": [
-        3,
-        13,
-        5
-      ],
-      "to": [
-        13,
         14,
         11
       ],
@@ -126,61 +45,61 @@
       "faces": {
         "north": {
           "uv": [
-            44,
-            15,
-            54,
-            16
+            0,
+            0,
+            10,
+            14
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            29,
-            19,
-            35,
-            20
+            20,
+            0,
+            26,
+            14
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            44,
-            16,
-            54,
-            17
+            10,
+            0,
+            20,
+            14
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            44,
-            19,
-            50,
-            20
+            26,
+            0,
+            32,
+            14
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            52,
-            0,
-            62,
-            6
+            10,
+            14,
+            20,
+            20
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            32,
-            6,
-            42,
-            12
+            0,
+            14,
+            10,
+            20
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "e9342bd3-939d-5606-931e-8e7bbd146944"
+      "uuid": "665bd3a9-09f1-5b5e-acbd-b2d6b74f2fdf"
     },
     {
       "name": "front_flap",
@@ -189,7 +108,7 @@
       "locked": false,
       "from": [
         3,
-        9,
+        10,
         4
       ],
       "to": [
@@ -207,142 +126,61 @@
       "faces": {
         "north": {
           "uv": [
-            42,
-            6,
-            52,
-            11
-          ],
-          "texture": 0
-        },
-        "east": {
-          "uv": [
-            51,
-            19,
-            52,
-            24
-          ],
-          "texture": 0
-        },
-        "south": {
-          "uv": [
-            52,
-            6,
-            62,
-            11
-          ],
-          "texture": 0
-        },
-        "west": {
-          "uv": [
-            52,
-            19,
-            53,
-            24
-          ],
-          "texture": 0
-        },
-        "up": {
-          "uv": [
-            44,
-            17,
-            54,
+            40,
+            14,
+            50,
             18
           ],
           "texture": 0
         },
-        "down": {
-          "uv": [
-            44,
-            18,
-            54,
-            19
-          ],
-          "texture": 0
-        }
-      },
-      "type": "cube",
-      "uuid": "b155ad8a-99a3-53d5-bfff-3e5cd7b6e49b"
-    },
-    {
-      "name": "top_kinetic_shaft",
-      "box_uv": false,
-      "rescale": false,
-      "locked": false,
-      "from": [
-        6,
-        14,
-        6
-      ],
-      "to": [
-        10,
-        16,
-        10
-      ],
-      "autouv": 0,
-      "color": 0,
-      "origin": [
-        8,
-        14,
-        8
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            25,
-            17,
-            29,
-            19
-          ],
-          "texture": 0
-        },
         "east": {
           "uv": [
-            8,
-            19,
-            12,
-            21
+            60,
+            14,
+            61,
+            18
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            12,
-            19,
-            16,
-            21
+            50,
+            14,
+            60,
+            18
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            16,
-            19,
-            20,
-            21
+            61,
+            14,
+            62,
+            18
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            30,
-            15,
-            34,
-            19
+            44,
+            20,
+            54,
+            21
           ],
           "texture": 0
         },
         "down": {
           "uv": [
             34,
-            15,
-            38,
-            19
+            20,
+            44,
+            21
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "d398137d-ab3c-5b7a-8ccc-73f6ec61b067"
+      "uuid": "2e12fe9e-befc-5549-816d-fd4a202fd50e"
     },
     {
       "name": "pocket_west",
@@ -356,7 +194,7 @@
       ],
       "to": [
         3,
-        7,
+        10,
         10
       ],
       "autouv": 0,
@@ -369,61 +207,61 @@
       "faces": {
         "north": {
           "uv": [
-            35,
-            19,
-            36,
-            25
+            62,
+            0,
+            63,
+            9
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            58,
-            11,
-            62,
-            17
+            52,
+            0,
+            56,
+            9
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            36,
-            19,
-            37,
-            25
+            63,
+            0,
+            64,
+            9
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            8,
-            13,
-            12,
-            19
+            56,
+            0,
+            60,
+            9
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            61,
-            19,
-            62,
-            23
+            1,
+            20,
+            2,
+            24
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            4,
+            0,
             20,
-            5,
+            1,
             24
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "30704531-83c5-5528-ae37-31280b1d48a5"
+      "uuid": "78aa13fb-7e95-52d7-ac6e-368f64b0b7e8"
     },
     {
       "name": "pocket_east",
@@ -437,7 +275,7 @@
       ],
       "to": [
         14,
-        7,
+        10,
         10
       ],
       "autouv": 0,
@@ -450,61 +288,61 @@
       "faces": {
         "north": {
           "uv": [
-            37,
-            19,
-            38,
-            25
+            60,
+            0,
+            61,
+            9
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            12,
-            13,
-            16,
-            19
+            44,
+            0,
+            48,
+            9
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            50,
-            19,
-            51,
-            25
+            61,
+            0,
+            62,
+            9
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            16,
-            13,
-            20,
-            19
+            48,
+            0,
+            52,
+            9
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            5,
-            20,
-            6,
-            24
+            63,
+            14,
+            64,
+            18
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            6,
-            20,
-            7,
-            24
+            62,
+            14,
+            63,
+            18
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "7601531f-7e0e-5a8f-9c43-6038f20da585"
+      "uuid": "1f621990-c645-5cbc-b4d2-0ed3e083171d"
     },
     {
       "name": "toolbox_body",
@@ -515,87 +353,6 @@
         4,
         1,
         3
-      ],
-      "to": [
-        12,
-        5,
-        5
-      ],
-      "autouv": 0,
-      "color": 0,
-      "origin": [
-        8,
-        8,
-        8
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            42,
-            11,
-            50,
-            15
-          ],
-          "texture": 0
-        },
-        "east": {
-          "uv": [
-            25,
-            19,
-            27,
-            23
-          ],
-          "texture": 0
-        },
-        "south": {
-          "uv": [
-            50,
-            11,
-            58,
-            15
-          ],
-          "texture": 0
-        },
-        "west": {
-          "uv": [
-            27,
-            19,
-            29,
-            23
-          ],
-          "texture": 0
-        },
-        "up": {
-          "uv": [
-            22,
-            13,
-            30,
-            15
-          ],
-          "texture": 0
-        },
-        "down": {
-          "uv": [
-            22,
-            15,
-            30,
-            17
-          ],
-          "texture": 0
-        }
-      },
-      "type": "cube",
-      "uuid": "e7004b08-f821-523f-9bc7-e6395aa96688"
-    },
-    {
-      "name": "toolbox_lid",
-      "box_uv": false,
-      "rescale": false,
-      "locked": false,
-      "from": [
-        4,
-        5,
-        2
       ],
       "to": [
         12,
@@ -612,61 +369,61 @@
       "faces": {
         "north": {
           "uv": [
-            54,
-            18,
-            62,
+            20,
+            14,
+            28,
             19
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            22,
-            20,
-            25,
-            21
+            36,
+            14,
+            38,
+            19
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            0,
-            19,
-            8,
-            20
+            28,
+            14,
+            36,
+            19
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            29,
-            20,
-            32,
-            21
+            38,
+            14,
+            40,
+            19
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            32,
-            12,
-            40,
-            15
+            26,
+            20,
+            34,
+            22
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            0,
-            13,
-            8,
-            16
+            18,
+            20,
+            26,
+            22
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "7246da0d-ddef-57f5-814f-3f843120dc4b"
+      "uuid": "8a29bf0a-2e6c-5f0e-b18d-c6c3b96ac6ef"
     },
     {
       "name": "toolbox_handle",
@@ -693,61 +450,61 @@
       "faces": {
         "north": {
           "uv": [
-            57,
-            17,
-            61,
-            18
+            58,
+            20,
+            62,
+            21
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            57,
-            15,
-            58,
-            16
+            12,
+            25,
+            13,
+            26
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            53,
-            19,
-            57,
-            20
+            0,
+            24,
+            4,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            57,
-            16,
-            58,
-            17
+            13,
+            25,
+            14,
+            26
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            57,
-            19,
-            61,
-            20
+            4,
+            24,
+            8,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            0,
+            54,
             20,
-            4,
+            58,
             21
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "53c837a8-65b0-56df-9835-5c87f61c07fb"
+      "uuid": "2f46d9ec-2fe0-5a11-9bbe-85ebd1b2ef90"
     },
     {
       "name": "back_strap_left",
@@ -774,61 +531,61 @@
       "faces": {
         "north": {
           "uv": [
-            62,
+            32,
             0,
-            64,
+            34,
             12
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            38,
-            15,
-            39,
-            27
+            40,
+            0,
+            41,
+            12
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            40,
-            12,
-            42,
-            24
+            34,
+            0,
+            36,
+            12
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            39,
-            15,
-            40,
-            27
+            41,
+            0,
+            42,
+            12
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            30,
-            13,
-            32,
-            14
+            22,
+            24,
+            24,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            30,
-            14,
-            32,
-            15
+            20,
+            24,
+            22,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "3331e324-382d-517d-8fc3-a5ba134cb379"
+      "uuid": "6ffb37be-bc8c-5b34-89ee-23d593cc92e6"
     },
     {
       "name": "back_strap_right",
@@ -855,61 +612,61 @@
       "faces": {
         "north": {
           "uv": [
-            62,
-            12,
-            64,
-            24
+            36,
+            0,
+            38,
+            12
           ],
           "texture": 0
         },
         "east": {
           "uv": [
             42,
-            15,
+            0,
             43,
-            27
+            12
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            20,
-            13,
-            22,
-            25
+            38,
+            0,
+            40,
+            12
           ],
           "texture": 0
         },
         "west": {
           "uv": [
             43,
-            15,
+            0,
             44,
-            27
+            12
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            57,
-            20,
-            59,
-            21
+            26,
+            24,
+            28,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            59,
-            20,
-            61,
-            21
+            24,
+            24,
+            26,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "effb92ae-dc83-56a4-ba97-c2e4d93af61d"
+      "uuid": "560c5d44-f956-5f9a-9a31-05f8182057d3"
     },
     {
       "name": "rear_gear_upper_body",
@@ -936,61 +693,61 @@
       "faces": {
         "north": {
           "uv": [
-            54,
-            15,
-            57,
-            18
+            8,
+            20,
+            11,
+            23
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            6,
             16,
-            7,
-            19
+            20,
+            17,
+            23
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            0,
-            16,
-            3,
-            19
+            11,
+            20,
+            14,
+            23
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            7,
-            16,
-            8,
-            19
+            17,
+            20,
+            18,
+            23
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            32,
+            17,
+            24,
             20,
-            35,
-            21
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            44,
-            20,
-            47,
-            21
+            14,
+            24,
+            17,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "3e6535c9-5de7-525f-b678-5acf5674e553"
+      "uuid": "63294667-e388-5e9d-a4cd-49d2abb58930"
     },
     {
       "name": "rear_gear_upper_tooth_n",
@@ -1017,61 +774,61 @@
       "faces": {
         "north": {
           "uv": [
-            29,
-            17,
-            30,
-            18
+            60,
+            24,
+            61,
+            25
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            61,
-            17,
-            62,
-            18
+            59,
+            24,
+            60,
+            25
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            29,
-            18,
-            30,
-            19
+            61,
+            24,
+            62,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            0,
-            21,
-            1,
-            22
+            63,
+            24,
+            64,
+            25
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            1,
-            21,
-            2,
-            22
+            62,
+            24,
+            63,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            2,
-            21,
-            3,
-            22
+            58,
+            24,
+            59,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "9445f418-f03b-59e7-aa1b-9177fc7d9576"
+      "uuid": "5e6add5e-3544-5b7e-b413-afacc4e63dff"
     },
     {
       "name": "rear_gear_upper_tooth_s",
@@ -1098,61 +855,61 @@
       "faces": {
         "north": {
           "uv": [
+            2,
+            25,
             3,
-            21,
-            4,
-            22
+            26
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            8,
-            21,
-            9,
-            22
+            1,
+            25,
+            2,
+            26
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            9,
-            21,
-            10,
-            22
+            3,
+            25,
+            4,
+            26
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            10,
-            21,
-            11,
-            22
+            5,
+            25,
+            6,
+            26
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            11,
-            21,
-            12,
-            22
+            4,
+            25,
+            5,
+            26
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            12,
-            21,
-            13,
-            22
+            0,
+            25,
+            1,
+            26
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "523cef6e-bcba-59a3-9cfb-971c5ee56a1f"
+      "uuid": "6e074886-09b0-5f06-aba7-800f51acfd3e"
     },
     {
       "name": "rear_gear_upper_tooth_w",
@@ -1179,61 +936,61 @@
       "faces": {
         "north": {
           "uv": [
-            13,
-            21,
-            14,
-            22
+            8,
+            25,
+            9,
+            26
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            14,
-            21,
-            15,
-            22
+            7,
+            25,
+            8,
+            26
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            15,
-            21,
-            16,
-            22
+            9,
+            25,
+            10,
+            26
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            16,
-            21,
-            17,
-            22
+            11,
+            25,
+            12,
+            26
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            17,
-            21,
-            18,
-            22
+            10,
+            25,
+            11,
+            26
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            18,
-            21,
-            19,
-            22
+            6,
+            25,
+            7,
+            26
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "71f41c7c-e68d-5e9b-8e30-b4220b535be2"
+      "uuid": "1e078543-870c-57b0-8a3b-7cb32cc1a97b"
     },
     {
       "name": "rear_gear_upper_tooth_e",
@@ -1260,61 +1017,61 @@
       "faces": {
         "north": {
           "uv": [
-            19,
-            21,
-            20,
-            22
+            54,
+            24,
+            55,
+            25
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            22,
-            21,
-            23,
-            22
+            53,
+            24,
+            54,
+            25
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            23,
-            21,
+            55,
             24,
-            22
+            56,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
+            57,
             24,
-            21,
-            25,
-            22
+            58,
+            25
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            29,
-            21,
-            30,
-            22
+            56,
+            24,
+            57,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            30,
-            21,
-            31,
-            22
+            52,
+            24,
+            53,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "b878626f-b1b6-5b76-9cb8-f941ac1a8061"
+      "uuid": "0d8be1a7-1ac9-518b-aa58-8bff098b85af"
     },
     {
       "name": "rear_gear_lower_body",
@@ -1341,61 +1098,61 @@
       "faces": {
         "north": {
           "uv": [
-            3,
-            16,
-            6,
-            19
+            2,
+            20,
+            5,
+            23
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            7,
+            14,
             20,
-            8,
+            15,
             23
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            22,
-            17,
-            25,
-            20
+            5,
+            20,
+            8,
+            23
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            56,
+            15,
             20,
-            57,
+            16,
             23
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            47,
-            20,
-            50,
-            21
+            11,
+            24,
+            14,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            53,
-            20,
-            56,
-            21
+            8,
+            24,
+            11,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "90d3208b-859b-59b9-8a94-07025d634561"
+      "uuid": "da11c874-104d-5d7c-8f14-7dfd5478ef10"
     },
     {
       "name": "rear_gear_lower_tooth_n",
@@ -1422,61 +1179,61 @@
       "faces": {
         "north": {
           "uv": [
-            31,
-            21,
-            32,
-            22
+            36,
+            24,
+            37,
+            25
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            32,
-            21,
-            33,
-            22
+            35,
+            24,
+            36,
+            25
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            33,
-            21,
-            34,
-            22
+            37,
+            24,
+            38,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            34,
-            21,
-            35,
-            22
+            39,
+            24,
+            40,
+            25
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            44,
-            21,
-            45,
-            22
+            38,
+            24,
+            39,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            45,
-            21,
-            46,
-            22
+            34,
+            24,
+            35,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "b31138dc-9d9a-5265-8ba3-f25d902497a3"
+      "uuid": "a46f4732-beb6-5a09-9823-6ec17613b936"
     },
     {
       "name": "rear_gear_lower_tooth_s",
@@ -1503,61 +1260,61 @@
       "faces": {
         "north": {
           "uv": [
-            46,
-            21,
-            47,
-            22
+            42,
+            24,
+            43,
+            25
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            47,
-            21,
-            48,
-            22
+            41,
+            24,
+            42,
+            25
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            48,
-            21,
-            49,
-            22
+            43,
+            24,
+            44,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            49,
-            21,
-            50,
-            22
+            45,
+            24,
+            46,
+            25
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            53,
-            21,
-            54,
-            22
+            44,
+            24,
+            45,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            54,
-            21,
-            55,
-            22
+            40,
+            24,
+            41,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "5a250b70-b86b-5f90-851e-3c23315a5412"
+      "uuid": "1ea8b8d0-9e96-5e64-af7a-c9ba946142e6"
     },
     {
       "name": "rear_gear_lower_tooth_w",
@@ -1584,61 +1341,61 @@
       "faces": {
         "north": {
           "uv": [
-            55,
-            21,
-            56,
-            22
+            48,
+            24,
+            49,
+            25
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            57,
-            21,
-            58,
-            22
+            47,
+            24,
+            48,
+            25
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            58,
-            21,
-            59,
-            22
+            49,
+            24,
+            50,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            59,
-            21,
-            60,
-            22
+            51,
+            24,
+            52,
+            25
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            60,
-            21,
-            61,
-            22
+            50,
+            24,
+            51,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            0,
-            22,
-            1,
-            23
+            46,
+            24,
+            47,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "271e6be0-02dc-5890-b583-4e1eb3da41ce"
+      "uuid": "c389dcf3-da05-51b9-adf0-be92c107aa44"
     },
     {
       "name": "rear_gear_lower_tooth_e",
@@ -1665,61 +1422,142 @@
       "faces": {
         "north": {
           "uv": [
-            1,
-            22,
-            2,
-            23
+            30,
+            24,
+            31,
+            25
           ],
           "texture": 0
         },
         "east": {
           "uv": [
-            2,
-            22,
-            3,
-            23
+            29,
+            24,
+            30,
+            25
           ],
           "texture": 0
         },
         "south": {
           "uv": [
-            3,
-            22,
-            4,
-            23
+            31,
+            24,
+            32,
+            25
           ],
           "texture": 0
         },
         "west": {
           "uv": [
-            8,
-            22,
-            9,
-            23
+            33,
+            24,
+            34,
+            25
           ],
           "texture": 0
         },
         "up": {
           "uv": [
-            9,
-            22,
-            10,
-            23
+            32,
+            24,
+            33,
+            25
           ],
           "texture": 0
         },
         "down": {
           "uv": [
-            10,
-            22,
-            11,
-            23
+            28,
+            24,
+            29,
+            25
           ],
           "texture": 0
         }
       },
       "type": "cube",
-      "uuid": "3949d4db-ff99-58a6-8645-9ab793aa73fd"
+      "uuid": "e43ce3ed-8947-5afb-bd0d-fe1d27344ebc"
+    },
+    {
+      "name": "top_kinetic_shaft",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        6,
+        14,
+        6
+      ],
+      "to": [
+        10,
+        16,
+        10
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            27,
+            16,
+            29
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            8,
+            27,
+            12,
+            29
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            16,
+            27,
+            20,
+            29
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            20,
+            27,
+            24,
+            29
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            4,
+            27,
+            8,
+            31
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            27,
+            4,
+            31
+          ],
+          "texture": 0
+        }
+      },
+      "type": "cube",
+      "uuid": "cd37cc4b-7b5b-577b-b8d0-21c46f666dc0"
     }
   ],
   "outliner": [
@@ -1731,7 +1569,7 @@
         8
       ],
       "color": 0,
-      "uuid": "88f74419-21c6-5b2e-94c7-2772f71ea9e6",
+      "uuid": "f82b2167-f540-5b56-9a0e-10cdefe3e1a4",
       "export": true,
       "mirror_uv": false,
       "isOpen": true,
@@ -1739,28 +1577,8 @@
       "visibility": true,
       "autouv": 0,
       "children": [
-        "529def0a-cb4b-5d23-afeb-b4941ab5087d",
-        "e9342bd3-939d-5606-931e-8e7bbd146944",
-        "b155ad8a-99a3-53d5-bfff-3e5cd7b6e49b"
-      ]
-    },
-    {
-      "name": "rotating_shaft",
-      "origin": [
-        8,
-        14,
-        8
-      ],
-      "color": 0,
-      "uuid": "51323ca6-e731-53d9-afc7-34dde6f2dd17",
-      "export": true,
-      "mirror_uv": false,
-      "isOpen": true,
-      "locked": false,
-      "visibility": true,
-      "autouv": 0,
-      "children": [
-        "d398137d-ab3c-5b7a-8ccc-73f6ec61b067"
+        "665bd3a9-09f1-5b5e-acbd-b2d6b74f2fdf",
+        "2e12fe9e-befc-5549-816d-fd4a202fd50e"
       ]
     },
     {
@@ -1771,7 +1589,7 @@
         8
       ],
       "color": 0,
-      "uuid": "7803b646-618e-5bf3-8edb-dd29000ddb5c",
+      "uuid": "60927bda-2d3a-566d-898c-5e3900f51289",
       "export": true,
       "mirror_uv": false,
       "isOpen": true,
@@ -1779,8 +1597,8 @@
       "visibility": true,
       "autouv": 0,
       "children": [
-        "30704531-83c5-5528-ae37-31280b1d48a5",
-        "7601531f-7e0e-5a8f-9c43-6038f20da585"
+        "78aa13fb-7e95-52d7-ac6e-368f64b0b7e8",
+        "1f621990-c645-5cbc-b4d2-0ed3e083171d"
       ]
     },
     {
@@ -1791,7 +1609,7 @@
         8
       ],
       "color": 0,
-      "uuid": "0054f704-f820-52cc-858e-0b4ac9cc4d36",
+      "uuid": "e07de7e0-7594-56e7-b4da-eff6f4ce49f8",
       "export": true,
       "mirror_uv": false,
       "isOpen": true,
@@ -1799,9 +1617,8 @@
       "visibility": true,
       "autouv": 0,
       "children": [
-        "e7004b08-f821-523f-9bc7-e6395aa96688",
-        "7246da0d-ddef-57f5-814f-3f843120dc4b",
-        "53c837a8-65b0-56df-9835-5c87f61c07fb"
+        "8a29bf0a-2e6c-5f0e-b18d-c6c3b96ac6ef",
+        "2f46d9ec-2fe0-5a11-9bbe-85ebd1b2ef90"
       ]
     },
     {
@@ -1812,7 +1629,7 @@
         8
       ],
       "color": 0,
-      "uuid": "e2cb8ab5-0d99-5b26-b74a-9128d68e050d",
+      "uuid": "d7586eff-e7ad-5ec5-8a19-fbb9e3341bb7",
       "export": true,
       "mirror_uv": false,
       "isOpen": true,
@@ -1820,8 +1637,8 @@
       "visibility": true,
       "autouv": 0,
       "children": [
-        "3331e324-382d-517d-8fc3-a5ba134cb379",
-        "effb92ae-dc83-56a4-ba97-c2e4d93af61d"
+        "6ffb37be-bc8c-5b34-89ee-23d593cc92e6",
+        "560c5d44-f956-5f9a-9a31-05f8182057d3"
       ]
     },
     {
@@ -1832,7 +1649,7 @@
         8
       ],
       "color": 0,
-      "uuid": "bf1bf924-9a5e-5016-9e4b-9f8ff6437201",
+      "uuid": "bc802ff0-cf20-56bc-9824-43293575ba6d",
       "export": true,
       "mirror_uv": false,
       "isOpen": true,
@@ -1840,16 +1657,35 @@
       "visibility": true,
       "autouv": 0,
       "children": [
-        "3e6535c9-5de7-525f-b678-5acf5674e553",
-        "9445f418-f03b-59e7-aa1b-9177fc7d9576",
-        "523cef6e-bcba-59a3-9cfb-971c5ee56a1f",
-        "71f41c7c-e68d-5e9b-8e30-b4220b535be2",
-        "b878626f-b1b6-5b76-9cb8-f941ac1a8061",
-        "90d3208b-859b-59b9-8a94-07025d634561",
-        "b31138dc-9d9a-5265-8ba3-f25d902497a3",
-        "5a250b70-b86b-5f90-851e-3c23315a5412",
-        "271e6be0-02dc-5890-b583-4e1eb3da41ce",
-        "3949d4db-ff99-58a6-8645-9ab793aa73fd"
+        "63294667-e388-5e9d-a4cd-49d2abb58930",
+        "5e6add5e-3544-5b7e-b413-afacc4e63dff",
+        "6e074886-09b0-5f06-aba7-800f51acfd3e",
+        "1e078543-870c-57b0-8a3b-7cb32cc1a97b",
+        "0d8be1a7-1ac9-518b-aa58-8bff098b85af",
+        "da11c874-104d-5d7c-8f14-7dfd5478ef10",
+        "a46f4732-beb6-5a09-9823-6ec17613b936",
+        "1ea8b8d0-9e96-5e64-af7a-c9ba946142e6",
+        "c389dcf3-da05-51b9-adf0-be92c107aa44",
+        "e43ce3ed-8947-5afb-bd0d-fe1d27344ebc"
+      ]
+    },
+    {
+      "name": "top_shaft",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 0,
+      "uuid": "99d6863c-543d-5d91-a548-5f4ca7da7db8",
+      "export": true,
+      "mirror_uv": false,
+      "isOpen": true,
+      "locked": false,
+      "visibility": true,
+      "autouv": 0,
+      "children": [
+        "cd37cc4b-7b5b-577b-b8d0-21c46f666dc0"
       ]
     }
   ],
@@ -1868,8 +1704,8 @@
       "visible": true,
       "mode": "bitmap",
       "saved": true,
-      "uuid": "0d6dbc09-faf3-5fcc-9f70-7e58421a1c2d",
-      "source": "data:image/png;base64,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"
+      "uuid": "72e2acb7-429c-56e9-842d-bbfd23ed4f0c",
+      "source": "data:image/png;base64,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"
     }
   ],
   "display": {
