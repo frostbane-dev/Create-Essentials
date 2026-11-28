@@ -1,7 +1,6 @@
 package com.stackultra.essentials.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.AllKeys;
@@ -10,14 +9,12 @@ import com.simibubi.create.content.equipment.toolbox.ToolboxBlockEntity;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.utility.CreateLang;
+import com.stackultra.essentials.content.backpack.BackpackHelper;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.backpack.PortableToolboxInventory;
 import com.stackultra.essentials.network.BackpackToolboxPayload;
-import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.catnip.gui.AbstractSimiScreen;
-import net.createmod.catnip.gui.element.GuiGameElement;
-import net.createmod.catnip.math.AngleHelper;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
@@ -35,7 +32,9 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 /**
- * Exact visual clone of Create 6.0.9's {@link RadialToolboxMenu} backed by our
+ * Exact visual clone of Create 6.0.9's {@code ToolboxScreen} ({@link AllGuiTextures#TOOLBOX}
+ * golden header bar, dark brown patterned interior, 8 full-size circular slots, and central
+ * toolbox return button) used as the compact {@code Alt} quick-select popup backed by our
  * server-authoritative portable backpack toolbox sync ({@link PortableToolboxOverlay},
  * {@link BackpackToolboxPayload}, and Curios/inventory lookup).
  */
@@ -46,17 +45,50 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
     private static final int WORLD_TOOLBOXES = -7;
     private static final int UNEQUIP = -5;
 
+    // Exact Create 6.0.9 AllGuiTextures.TOOLBOX panel slice (golden header + dark brown body + full 4-sided border)
+    private static final int PANEL_WIDTH = 180;
+    private static final int PANEL_HEIGHT = 142;
+
+    // Exact Create ToolboxScreen header text offset & ink color (5841956 == 0x592424)
+    private static final int TITLE_X = 15;
+    private static final int TITLE_Y = 4;
+    private static final int TITLE_MAX_WIDTH = 150;
+    private static final int TITLE_COLOR = 0x592424;
+
+    // Exact Create ToolboxMenu circular 16x16 item slot offsets relative to AllGuiTextures.TOOLBOX (0, 0)
+    // Each slot sits dead-center inside a 24x24 recessed grey well at (SLOT_X[i] - 4, SLOT_Y[i] - 4).
+    private static final int[] SLOT_X = { 49, 82, 115, 121, 115, 82, 49, 43 };
+    private static final int[] SLOT_Y = { 37, 31,  37,  70, 103, 109, 103, 70 };
+    private static final int SLOT_WELL_OFFSET = 4;
+    private static final int SLOT_WELL_SIZE = 24;
+
+    // Exact Create ToolboxScreen central IconButton (AllIcons.I_TOOLBOX) offset relative to AllGuiTextures.TOOLBOX
+    private static final int CENTER_BTN_X = 81;
+    private static final int CENTER_BTN_Y = 69;
+    private static final int CENTER_BTN_SIZE = 18;
+    private static final int CIRCLE_CENTER_X = CENTER_BTN_X + CENTER_BTN_SIZE / 2; // 90
+    private static final int CIRCLE_CENTER_Y = CENTER_BTN_Y + CENTER_BTN_SIZE / 2; // 78
+
+    // Right-side Create world-toolbox switcher button aligned cleanly outside the panel's right border
+    private static final int SWITCHER_X = PANEL_WIDTH + 6;
+    private static final int SWITCHER_Y = CIRCLE_CENTER_Y - 11;
+    private static final int SWITCHER_SIZE = 22;
+
+    private final Component headerTitle;
     private final List<ToolboxBlockEntity> nearbyWorldToolboxes;
     private final PortableToolboxInventory fallbackSnapshot;
 
     private int ticksOpen;
-    private int hoveredSlot = -1;
+    private int hoveredSlot = UNEQUIP;
     private boolean scrollMode;
     private int scrollSlot = 0;
     private boolean actionCommitted = false;
+    private double lastMouseX = Double.NaN;
+    private double lastMouseY = Double.NaN;
 
     public PortableToolboxRadialScreen(ItemStack backpackStack, List<ToolboxBlockEntity> nearbyWorldToolboxes) {
-        super();
+        super(backpackStack.getHoverName());
+        this.headerTitle = backpackStack.getHoverName();
         this.nearbyWorldToolboxes = nearbyWorldToolboxes;
         this.fallbackSnapshot = PortableToolboxInventory.forStack(backpackStack);
     }
@@ -66,6 +98,14 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
         super.init();
         // Immediately request fresh authoritative state from server in case Curios/inventory changed
         PacketDistributor.sendToServer(BackpackToolboxPayload.requestSync());
+    }
+
+    private int panelX() {
+        return width / 2 - CIRCLE_CENTER_X;
+    }
+
+    private int panelY() {
+        return height / 2 - CIRCLE_CENTER_Y;
     }
 
     private void switchToWorldToolboxes() {
@@ -105,81 +145,72 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
     protected void renderWindow(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         float fade = Mth.clamp((ticksOpen + AnimationTickHolder.getPartialTicks()) / 10f, 1 / 512f, 1);
 
-        hoveredSlot = -1;
-        Window window = getMinecraft().getWindow();
-        float hoveredX = mouseX - window.getGuiScaledWidth() / 2f;
-        float hoveredY = mouseY - window.getGuiScaledHeight() / 2f;
+        int px = panelX();
+        int py = panelY();
 
-        float distance = hoveredX * hoveredX + hoveredY * hoveredY;
-        if (distance > 25 && distance < 10000) {
-            hoveredSlot = (Mth.floor((AngleHelper.deg(Mth.atan2(hoveredY, hoveredX)) + 360 + 180 - 22.5f)) % 360) / 45;
-        }
-        if (scrollMode && distance > 150) {
+        if (!Double.isNaN(lastMouseX) && (Math.abs(mouseX - lastMouseX) > 2.0 || Math.abs(mouseY - lastMouseY) > 2.0)) {
             scrollMode = false;
         }
-        if (distance <= 150) {
-            hoveredSlot = UNEQUIP;
-        }
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
 
-        PoseStack ms = graphics.pose();
-        ms.pushPose();
-        ms.translate(width / 2f, height / 2f, 0);
+        if (!scrollMode) {
+            hoveredSlot = resolveHover(mouseX, mouseY, px, py);
+        }
+        int active = activeSlot();
+
+        // 1. Render Create's exact AllGuiTextures.TOOLBOX panel (golden header + dark brown patterned interior)
+        graphics.blit(AllGuiTextures.TOOLBOX.location, px, py, 0, 0, PANEL_WIDTH, PANEL_HEIGHT);
+
+        // 2. Render backpack name in Create ToolboxScreen's exact header style & position (truncated if needed)
+        String truncatedTitle = BackpackHelper.truncateTitle(
+                headerTitle.getString(), TITLE_MAX_WIDTH, font::width, font::plainSubstrByWidth);
+        graphics.drawString(font, truncatedTitle, px + TITLE_X, py + TITLE_Y, TITLE_COLOR, false);
+
         Component tip = null;
 
-        // Exact Create right-side action slot (switches to nearby placed Create Toolboxes if present)
-        if (!nearbyWorldToolboxes.isEmpty()) {
-            if (hoveredX > 60 && hoveredX < 100 && hoveredY > -20 && hoveredY < 20) {
-                hoveredSlot = WORLD_TOOLBOXES;
-            }
-            ms.pushPose();
-            ms.translate(80 + -5 * (1 - fade) * (1 - fade), 0, 0);
-            AllGuiTextures.TOOLBELT_SLOT.render(graphics, -12, -12);
-            ms.translate(-0.5, 0.5, 0);
-            AllIcons.I_TOOLBOX.render(graphics, -9, -9);
-            ms.translate(0.5, -0.5, 0);
-            if (!scrollMode && hoveredSlot == WORLD_TOOLBOXES) {
-                AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, -13, -13);
-                tip = Component.translatable("createessentials.gui.world_toolboxes", nearbyWorldToolboxes.size())
-                        .withStyle(ChatFormatting.GOLD);
-            }
-            ms.popPose();
-        }
-
-        // Exact Create 8-slot radial wheel layout, ease-out animation, textures, and item rendering
+        // 3. Render all 8 full-size circular Create Toolbox slots
         for (int slot = 0; slot < COMPARTMENTS; slot++) {
-            ms.pushPose();
-            TransformStack.of(ms)
-                    .rotateZDegrees(slot * 45 - 45)
-                    .translate(0, -40 + 10 * (1 - fade) * (1 - fade), 0)
-                    .rotateZDegrees(-slot * 45 + 45);
-            ms.translate(-12, -12, 0);
+            int itemX = px + SLOT_X[slot];
+            int itemY = py + SLOT_Y[slot];
+            int wellX = itemX - SLOT_WELL_OFFSET;
+            int wellY = itemY - SLOT_WELL_OFFSET;
+            boolean selected = active == slot;
 
             ItemStack display = getLiveDisplayItem(slot);
-            if (!display.isEmpty()) {
-                boolean empty = getLiveCount(slot) <= 0;
-                (empty ? AllGuiTextures.TOOLBELT_INACTIVE_SLOT : AllGuiTextures.TOOLBELT_SLOT)
-                        .render(graphics, 0, 0);
-                GuiGameElement.of(display)
-                        .at(3, 3)
-                        .render(graphics);
+            int count = getLiveCount(slot);
 
-                if (slot == (scrollMode ? scrollSlot : hoveredSlot) && !empty) {
-                    AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, -1, -1);
-                    tip = display.getHoverName();
-                }
-            } else {
-                AllGuiTextures.TOOLBELT_EMPTY_SLOT.render(graphics, 0, 0);
+            if (count > 0 && !display.isEmpty()) {
+                graphics.renderItem(display, itemX, itemY);
+                graphics.renderItemDecorations(font, display, itemX, itemY, "");
+                DarkGuiStyling.drawCompactCount(graphics, font, count, itemX, itemY);
+            } else if (!display.isEmpty()) {
+                DarkGuiStyling.drawGhostItem(graphics, display, itemX, itemY, 0.40F);
             }
 
-            ms.popPose();
+            if (selected) {
+                graphics.fill(itemX - 1, itemY - 1, itemX + 17, itemY + 17, 0x38FFFFFF);
+                AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, wellX, wellY);
+                if (count > 0 && !display.isEmpty()) {
+                    tip = Component.literal(display.getHoverName().getString() + " (" + count + ")")
+                            .withStyle(ChatFormatting.WHITE);
+                } else if (!display.isEmpty()) {
+                    tip = Component.literal(display.getHoverName().getString() + " (0)")
+                            .withStyle(ChatFormatting.GRAY);
+                } else {
+                    tip = Component.translatable("createessentials.tooltip.backpack_empty")
+                            .withStyle(ChatFormatting.GRAY);
+                }
+            }
         }
 
-        // Exact Create center unequip / return slot
-        ms.pushPose();
-        AllGuiTextures.TOOLBELT_SLOT.render(graphics, -12, -12);
-        (scrollMode ? AllIcons.I_REFRESH : AllIcons.I_FLIP).render(graphics, -9, -9);
-        if (!scrollMode && hoveredSlot == UNEQUIP) {
-            AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, -13, -13);
+        // 4. Render Create ToolboxScreen's exact central 18x18 toolbox return button
+        int btnX = px + CENTER_BTN_X;
+        int btnY = py + CENTER_BTN_Y;
+        boolean centerSelected = active == UNEQUIP;
+        (centerSelected ? AllGuiTextures.BUTTON_HOVER : AllGuiTextures.BUTTON).render(graphics, btnX, btnY);
+        AllIcons.I_TOOLBOX.render(graphics, btnX + 1, btnY + 1);
+        if (centerSelected) {
             ItemStack mainHand = minecraft != null && minecraft.player != null
                     ? minecraft.player.getMainHandItem()
                     : ItemStack.EMPTY;
@@ -188,29 +219,92 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
                     : Component.translatable("createessentials.gui.radial_return_desc"))
                     .withStyle(ChatFormatting.GOLD);
         }
-        ms.popPose();
 
-        ms.popPose();
-
-        // Exact Create bottom label fade-in
-        if (tip != null) {
-            int i1 = (int) (fade * 255.0F);
-            if (i1 > 255) {
-                i1 = 255;
+        // 5. Render right-side world-toolbox switcher aligned cleanly outside the panel when nearby
+        if (!nearbyWorldToolboxes.isEmpty()) {
+            int swX = px + SWITCHER_X;
+            int swY = py + SWITCHER_Y;
+            boolean swSelected = active == WORLD_TOOLBOXES;
+            AllGuiTextures.TOOLBELT_SLOT.render(graphics, swX, swY);
+            AllIcons.I_TOOLBOX.render(graphics, swX + 3, swY + 3);
+            if (swSelected) {
+                AllGuiTextures.TOOLBELT_SLOT_HIGHLIGHT.render(graphics, swX - 1, swY - 1);
+                tip = Component.translatable("createessentials.gui.world_toolboxes", nearbyWorldToolboxes.size())
+                        .withStyle(ChatFormatting.GOLD);
             }
-            if (i1 > 8) {
+        }
+
+        // 6. Clean hover label centered directly below the panel
+        if (tip != null) {
+            int alpha = Math.min(255, (int) (fade * 255.0F));
+            if (alpha > 8) {
+                PoseStack ms = graphics.pose();
                 ms.pushPose();
-                ms.translate(width / 2f, height - 68, 0);
                 RenderSystem.enableBlend();
                 RenderSystem.defaultBlendFunc();
-                int k1 = 0xFFFFFF;
-                int k = i1 << 24 & 0xFF000000;
-                int l = font.width(tip);
-                graphics.drawString(font, tip, Math.round(-l / 2f), -4, k1 | k, false);
+                int textW = font.width(tip);
+                int color = 0xFFFFFF | ((alpha << 24) & 0xFF000000);
+                graphics.drawString(font, tip, px + PANEL_WIDTH / 2 - textW / 2, py + PANEL_HEIGHT + 6, color, true);
                 RenderSystem.disableBlend();
                 ms.popPose();
             }
         }
+    }
+
+    private int resolveHover(int mouseX, int mouseY, int px, int py) {
+        // 1. Direct hit on right-side world-toolbox switcher
+        if (!nearbyWorldToolboxes.isEmpty()) {
+            int swX = px + SWITCHER_X;
+            int swY = py + SWITCHER_Y;
+            if (mouseX >= swX - 2 && mouseX <= swX + SWITCHER_SIZE + 2
+                    && mouseY >= swY - 2 && mouseY <= swY + SWITCHER_SIZE + 2) {
+                return WORLD_TOOLBOXES;
+            }
+        }
+
+        // 2. Direct hit on central 18x18 toolbox return button
+        int btnX = px + CENTER_BTN_X;
+        int btnY = py + CENTER_BTN_Y;
+        if (mouseX >= btnX && mouseX < btnX + CENTER_BTN_SIZE
+                && mouseY >= btnY && mouseY < btnY + CENTER_BTN_SIZE) {
+            return UNEQUIP;
+        }
+
+        // 3. Direct hit on any of the 8 circular 24x24 slot wells
+        for (int slot = 0; slot < COMPARTMENTS; slot++) {
+            int wellX = px + SLOT_X[slot] - SLOT_WELL_OFFSET;
+            int wellY = py + SLOT_Y[slot] - SLOT_WELL_OFFSET;
+            if (mouseX >= wellX && mouseX < wellX + SLOT_WELL_SIZE
+                    && mouseY >= wellY && mouseY < wellY + SLOT_WELL_SIZE) {
+                return slot;
+            }
+        }
+
+        // 4. Radial direction fallback for quick Alt-flicks around the panel center
+        double cx = px + CIRCLE_CENTER_X;
+        double cy = py + CIRCLE_CENTER_Y;
+        double dx = mouseX - cx;
+        double dy = mouseY - cy;
+        double distSq = dx * dx + dy * dy;
+        if (distSq <= 169.0) {
+            return UNEQUIP;
+        }
+        if (distSq < 14400.0) {
+            int bestSlot = -1;
+            double bestDistSq = Double.MAX_VALUE;
+            for (int slot = 0; slot < COMPARTMENTS; slot++) {
+                double sx = px + SLOT_X[slot] + 8.0;
+                double sy = py + SLOT_Y[slot] + 8.0;
+                double d = (mouseX - sx) * (mouseX - sx) + (mouseY - sy) * (mouseY - sy);
+                if (d < bestDistSq) {
+                    bestDistSq = d;
+                    bestSlot = slot;
+                }
+            }
+            return bestSlot;
+        }
+
+        return -1;
     }
 
     private int activeSlot() {
@@ -246,22 +340,17 @@ public class PortableToolboxRadialScreen extends AbstractSimiScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        Window window = getMinecraft().getWindow();
-        double hoveredX = mouseX - window.getGuiScaledWidth() / 2.0;
-        double hoveredY = mouseY - window.getGuiScaledHeight() / 2.0;
-        double distance = hoveredX * hoveredX + hoveredY * hoveredY;
-        if (distance <= 150.0) {
-            scrollMode = true;
-            scrollSlot = (((int) (scrollSlot - scrollY)) + COMPARTMENTS) % COMPARTMENTS;
-            for (int i = 0; i < 10; i++) {
-                if (!getLiveDisplayItem(scrollSlot).isEmpty() && getLiveCount(scrollSlot) > 0) {
-                    break;
-                }
-                scrollSlot = (scrollSlot - Mth.sign(scrollY) + COMPARTMENTS) % COMPARTMENTS;
+        if (scrollY == 0)
+            return false;
+        scrollMode = true;
+        scrollSlot = (((int) (scrollSlot - Mth.sign(scrollY))) + COMPARTMENTS) % COMPARTMENTS;
+        for (int i = 0; i < COMPARTMENTS; i++) {
+            if (!getLiveDisplayItem(scrollSlot).isEmpty() && getLiveCount(scrollSlot) > 0) {
+                break;
             }
-            return true;
+            scrollSlot = (scrollSlot - Mth.sign(scrollY) + COMPARTMENTS) % COMPARTMENTS;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return true;
     }
 
     @Override
