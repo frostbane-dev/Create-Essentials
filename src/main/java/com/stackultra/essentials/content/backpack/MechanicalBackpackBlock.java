@@ -42,10 +42,10 @@ public class MechanicalBackpackBlock extends Block implements EntityBlock, IWren
     public static final BooleanProperty NETHERITE = BooleanProperty.create("netherite");
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    private static final VoxelShape SHAPE_NORTH = Block.box(1.0, 0.0, 1.0, 15.0, 15.5, 13.5);
-    private static final VoxelShape SHAPE_SOUTH = Block.box(1.0, 0.0, 2.5, 15.0, 15.5, 15.0);
-    private static final VoxelShape SHAPE_EAST = Block.box(2.5, 0.0, 1.0, 15.0, 15.5, 15.0);
-    private static final VoxelShape SHAPE_WEST = Block.box(1.0, 0.0, 1.0, 13.5, 15.5, 15.0);
+    private static final VoxelShape SHAPE_NORTH = Block.box(2.0, 0.0, 2.0, 14.0, 16.0, 12.0);
+    private static final VoxelShape SHAPE_SOUTH = Block.box(2.0, 0.0, 4.0, 14.0, 16.0, 14.0);
+    private static final VoxelShape SHAPE_EAST = Block.box(4.0, 0.0, 2.0, 14.0, 16.0, 14.0);
+    private static final VoxelShape SHAPE_WEST = Block.box(2.0, 0.0, 2.0, 12.0, 16.0, 14.0);
 
     public MechanicalBackpackBlock(Properties properties) {
         super(properties);
