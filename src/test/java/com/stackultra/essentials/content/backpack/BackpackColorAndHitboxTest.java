@@ -230,4 +230,53 @@ class BackpackColorAndHitboxTest {
                 new ItemStack(Items.DIAMOND_CHESTPLATE)));
         assertFalse(com.stackultra.essentials.client.WornBackpackRenderer.isBackpack(ItemStack.EMPTY));
     }
+
+    @Test
+    void dyedBreakingParticlesResolveColorAndPreserveNonShadowingLighting() {
+        MechanicalBackpackBlock mech = AllBlocks.MECHANICAL_BACKPACK.get();
+        MagneticBackpackBlock mag = AllBlocks.MAGNETIC_BACKPACK.get();
+
+        // Default unpainted particle texture fallback
+        assertEquals("createessentials:block/backpack_leather_particle",
+                BackpackColorHelper.particleTexture(null).toString());
+
+        for (DyeColor color : DyeColor.values()) {
+            BlockState mechState = mech.defaultBlockState().setValue(MechanicalBackpackBlock.COLOR, color);
+            BlockState magState = mag.defaultBlockState().setValue(MagneticBackpackBlock.COLOR, color);
+
+            assertEquals(color, BackpackColorHelper.resolveBlockColor(mechState));
+            assertEquals(color, BackpackColorHelper.resolveBlockColor(magState));
+            assertEquals("createessentials:block/backpack/backpack_leather_particle_" + color.getName(),
+                    BackpackColorHelper.particleTexture(color).toString());
+            assertTrue(BackpackColorHelper.particleLeatherRgb(color) > 0,
+                    "Particle RGB must be non-zero for " + color);
+
+            // Preserve .noOcclusion() and non-shadowing lighting across all 16 dyed states
+            assertFalse(mechState.canOcclude());
+            assertFalse(magState.canOcclude());
+            assertEquals(1.0F, mechState.getShadeBrightness(EmptyBlockGetter.INSTANCE, BlockPos.ZERO), 1e-6F);
+            assertEquals(1.0F, magState.getShadeBrightness(EmptyBlockGetter.INSTANCE, BlockPos.ZERO), 1e-6F);
+            assertTrue(mechState.propagatesSkylightDown(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
+            assertTrue(magState.propagatesSkylightDown(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
+            assertEquals(0, mechState.getLightBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
+            assertEquals(0, magState.getLightBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
+        }
+
+        // Verify BE-backed color resolution overrides default BROWN blockstate when dispatching destroy particles
+        BlockState defaultMech = mech.defaultBlockState();
+        ItemStack cyanStack = new ItemStack(AllItems.MECHANICAL_BACKPACK.get());
+        BackpackColorHelper.setDyeColor(cyanStack, DyeColor.CYAN);
+        MechanicalBackpackBlockEntity mechBe = new MechanicalBackpackBlockEntity(BlockPos.ZERO, defaultMech);
+        mechBe.loadFromStack(cyanStack);
+        BlockState resolvedMech = BackpackColorHelper.withResolvedBlockColor(defaultMech, mechBe);
+        assertEquals(DyeColor.CYAN, resolvedMech.getValue(MechanicalBackpackBlock.COLOR));
+
+        BlockState defaultMag = mag.defaultBlockState();
+        ItemStack redStack = new ItemStack(AllItems.MAGNETIC_BACKPACK.get());
+        BackpackColorHelper.setDyeColor(redStack, DyeColor.RED);
+        MagneticBackpackBlockEntity magBe = new MagneticBackpackBlockEntity(BlockPos.ZERO, defaultMag);
+        magBe.loadFromStack(redStack);
+        BlockState resolvedMag = BackpackColorHelper.withResolvedBlockColor(defaultMag, magBe);
+        assertEquals(DyeColor.RED, resolvedMag.getValue(MagneticBackpackBlock.COLOR));
+    }
 }

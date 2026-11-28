@@ -1,6 +1,7 @@
 {
   "parent": "createessentials:block/netherite_backpack",
   "textures": {
-    "0": "createessentials:block/backpack/netherite_backpack_green"
+    "0": "createessentials:block/backpack/netherite_backpack_green",
+    "particle": "createessentials:block/backpack/backpack_leather_particle_green"
   }
 }

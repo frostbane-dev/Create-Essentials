@@ -201,6 +201,12 @@ public class MagneticBackpackBlock extends KineticBlock implements IBE<MagneticB
     }
 
     @Override
+    protected void spawnDestroyParticles(Level level, Player player, BlockPos pos, BlockState state) {
+        BlockState particleState = BackpackColorHelper.withResolvedBlockColor(state, level.getBlockEntity(pos));
+        super.spawnDestroyParticles(level, player, pos, particleState);
+    }
+
+    @Override
     public void playerDestroy(Level level, Player player, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity, ItemStack tool) {
         if (level.isClientSide())
             return;

@@ -1,6 +1,7 @@
 {
   "parent": "createessentials:block/mechanical_backpack",
   "textures": {
-    "0": "createessentials:block/backpack/mechanical_backpack_cyan"
+    "0": "createessentials:block/backpack/mechanical_backpack_cyan",
+    "particle": "createessentials:block/backpack/backpack_leather_particle_cyan"
   }
 }
