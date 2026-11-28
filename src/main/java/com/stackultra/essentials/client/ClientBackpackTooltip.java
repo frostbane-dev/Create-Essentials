@@ -66,7 +66,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
                 int itemX = x + PAD + col * SLOT_SIZE + 1;
                 int itemY = y + PAD + row * SLOT_SIZE + 1;
 
-                DarkGuiStyling.drawSlot(graphics, itemX, itemY);
+                DarkGuiStyling.drawDarkSlot(graphics, itemX, itemY);
 
                 if (index < slots.size()) {
                     ItemStack stack = slots.get(index);
@@ -91,7 +91,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
             for (int c = 0; c < TOOLBOX_COLS; c++) {
                 int itemX = toolboxStartX + c * SLOT_SIZE + 1;
                 int itemY = toolboxY + 1;
-                DarkGuiStyling.drawSlot(graphics, itemX, itemY);
+                DarkGuiStyling.drawDarkSlot(graphics, itemX, itemY);
 
                 if (c < tbSlots.size()) {
                     BackpackTooltipData.ToolboxSlotEntry entry = tbSlots.get(c);
@@ -100,7 +100,7 @@ public class ClientBackpackTooltip implements ClientTooltipComponent {
                         graphics.renderItemDecorations(font, entry.displayStack(), itemX, itemY, "");
                         DarkGuiStyling.drawCompactCount(graphics, font, entry.count(), itemX, itemY);
                     } else if (!entry.displayStack().isEmpty()) {
-                        DarkGuiStyling.drawGhostItem(graphics, entry.displayStack(), itemX, itemY, 0.40F);
+                        DarkGuiStyling.drawDarkGhostItem(graphics, entry.displayStack(), itemX, itemY, 0.40F);
                     }
                 }
             }

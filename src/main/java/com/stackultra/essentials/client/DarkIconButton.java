@@ -23,13 +23,6 @@ public class DarkIconButton extends AbstractWidget {
         TEXT_BADGE
     }
 
-    private static final int COLOR_OUTLINE = 0xFF1A1A1A;
-    private static final int COLOR_FILL = 0xFF5A5A5A;
-    private static final int COLOR_FILL_HOVER = 0xFF6A6A6A;
-    private static final int COLOR_LIGHT = 0xFF828282;
-    private static final int COLOR_LIGHT_HOVER = 0xFF969696;
-    private static final int COLOR_DARK = 0xFF323232;
-
     private static final int COLOR_GREEN = 0xFF55FF55;
     private static final int COLOR_GREEN_SHADOW = 0xFF1A421A;
     private static final int COLOR_RED = 0xFFFF5555;
@@ -71,18 +64,19 @@ public class DarkIconButton extends AbstractWidget {
 
     @Override
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
         int x = getX();
         int y = getY();
         int w = getWidth();
         int h = getHeight();
         boolean hovered = isHoveredOrFocused();
-        int fill = hovered ? COLOR_FILL_HOVER : COLOR_FILL;
-        int light = hovered ? COLOR_LIGHT_HOVER : COLOR_LIGHT;
+        int fill = hovered ? p.buttonFillHover() : p.buttonFill();
+        int light = hovered ? p.buttonLightHover() : p.buttonLight();
 
-        graphics.fill(x, y, x + w, y + h, COLOR_OUTLINE);
+        graphics.fill(x, y, x + w, y + h, p.buttonOutline());
         graphics.fill(x + 1, y + 1, x + w - 1, y + h - 1, light);
-        graphics.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, COLOR_DARK);
-        graphics.fill(x + w - 2, y + 1, x + w - 1, y + h - 1, COLOR_DARK);
+        graphics.fill(x + 1, y + h - 2, x + w - 1, y + h - 1, p.buttonDark());
+        graphics.fill(x + w - 2, y + 1, x + w - 1, y + h - 1, p.buttonDark());
         graphics.fill(x + 2, y + 2, x + w - 2, y + h - 2, fill);
 
         int ix = x + 2;

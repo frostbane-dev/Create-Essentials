@@ -49,11 +49,6 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
     private static final int RESTOCK_BTN_Y = 111;
     private static final int DIVIDER_PLAYER_Y = 148;
 
-    private static final int COLOR_BLACKLIST = 0xFFD66BFF;
-    private static final int COLOR_WHITELIST = 0xFF78B8FF;
-    private static final int COLOR_CHARGE_LOW = 0xFFF2C24C;
-    private static final int COLOR_CHARGE_CRITICAL = 0xFFE05A5A;
-
     public MagneticBackpackScreen(MagneticBackpackMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
     }
@@ -92,7 +87,7 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
                             Component.translatable(enabled ? "createessentials.gui.on" : "createessentials.gui.off")
                                     .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED));
                 },
-                () -> DarkGuiStyling.COLOR_TEXT,
+                () -> DarkGuiStyling.activePalette().buttonText(),
                 () -> {
                     menu.setEnabledClient(!menu.isEnabled());
                     PacketDistributor.sendToServer(togglePayload());
@@ -101,7 +96,10 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
         DarkTextButton blacklist = new DarkTextButton(leftPos + BUTTON_RIGHT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> Component.translatable(menu.isBlacklist()
                         ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
-                () -> menu.isBlacklist() ? COLOR_BLACKLIST : COLOR_WHITELIST,
+                () -> {
+                    DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
+                    return menu.isBlacklist() ? p.blacklistText() : p.whitelistText();
+                },
                 () -> {
                     menu.setBlacklistClient(!menu.isBlacklist());
                     PacketDistributor.sendToServer(blacklistPayload());
@@ -149,7 +147,7 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
         int charge = Math.max(0, menu.getCharge());
         int maxCharge = Math.max(1, menu.getMaxCharge());
         float ratio = Math.clamp((float) charge / (float) maxCharge, 0.0F, 1.0F);
-        int barColor = chargeBarColor(ratio);
+        int barColor = chargeBarColor(ratio, DarkGuiStyling.activePalette());
         DarkGuiStyling.drawHorizontalBar(graphics, leftPos + GRID_LEFT, topPos + CHARGE_BAR_Y,
                 GRID_WIDTH, CHARGE_BAR_H, ratio, barColor);
     }
@@ -169,14 +167,16 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
 
     @Override
     protected void renderExtraForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
         int charge = Math.max(0, menu.getCharge());
         int seconds = charge / 20;
         String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);
         Component timeText = Component.translatable("createessentials.gui.time_remaining", remaining);
         int textColor = menu.isCharging()
-                ? DarkGuiStyling.COLOR_BAR
-                : (charge <= 0 ? COLOR_CHARGE_CRITICAL : DarkGuiStyling.COLOR_TEXT);
-        graphics.drawCenteredString(font, timeText, leftPos + imageWidth / 2, topPos + CHARGE_TEXT_Y, textColor);
+                ? p.chargingText()
+                : (charge <= 0 ? p.emptyChargeText() : p.text());
+        DarkGuiStyling.drawCenteredText(graphics, font, timeText, leftPos + imageWidth / 2,
+                topPos + CHARGE_TEXT_Y, textColor, p.textShadow());
     }
 
     @Override
@@ -196,11 +196,11 @@ public class MagneticBackpackScreen extends AbstractBackpackScreen<MagneticBackp
                 && mouseY >= topPos + CHARGE_TEXT_Y - 1 && mouseY <= topPos + CHARGE_BAR_Y + CHARGE_BAR_H + 1;
     }
 
-    private static int chargeBarColor(float ratio) {
+    private static int chargeBarColor(float ratio, DarkGuiStyling.Palette p) {
         if (ratio <= 0.05F)
-            return COLOR_CHARGE_CRITICAL;
+            return p.barCritical();
         if (ratio <= 0.20F)
-            return COLOR_CHARGE_LOW;
-        return DarkGuiStyling.COLOR_BAR;
+            return p.barLow();
+        return p.barNormal();
     }
 }

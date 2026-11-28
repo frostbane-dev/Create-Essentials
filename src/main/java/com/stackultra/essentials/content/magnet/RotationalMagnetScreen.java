@@ -37,9 +37,6 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
     private static final int TIMER_Y = 80;
     private static final int DIVIDER_Y = 94;
 
-    private static final int COLOR_BLACKLIST = 0xFFD66BFF;
-    private static final int COLOR_WHITELIST = 0xFF78B8FF;
-
     public RotationalMagnetScreen(RotationalMagnetMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
     }
@@ -56,7 +53,7 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
                             Component.translatable(enabled ? "createessentials.gui.on" : "createessentials.gui.off")
                                     .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED));
                 },
-                () -> DarkGuiStyling.COLOR_TEXT,
+                () -> DarkGuiStyling.activePalette().buttonText(),
                 () -> {
                     menu.setEnabledClient(!menu.isEnabled());
                     PacketDistributor.sendToServer(togglePayload());
@@ -65,7 +62,10 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
         DarkTextButton blacklist = new DarkTextButton(leftPos + BUTTON_RIGHT_X, topPos + BUTTON_Y, BUTTON_W, BUTTON_H,
                 () -> Component.translatable(menu.isBlacklist()
                         ? "createessentials.gui.blacklist" : "createessentials.gui.whitelist"),
-                () -> menu.isBlacklist() ? COLOR_BLACKLIST : COLOR_WHITELIST,
+                () -> {
+                    DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
+                    return menu.isBlacklist() ? p.blacklistText() : p.whitelistText();
+                },
                 () -> {
                     menu.setBlacklistClient(!menu.isBlacklist());
                     PacketDistributor.sendToServer(blacklistPayload());
@@ -109,27 +109,28 @@ public class RotationalMagnetScreen extends AbstractSimiContainerScreen<Rotation
 
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
         String titleText = title.getString();
         int maxTitle = imageWidth - 16;
         if (font.width(titleText) > maxTitle)
             titleText = font.plainSubstrByWidth(titleText, maxTitle - font.width("...")) + "...";
-        graphics.drawCenteredString(font, titleText, leftPos + imageWidth / 2, topPos + TITLE_Y,
-                DarkGuiStyling.COLOR_TITLE);
+        DarkGuiStyling.drawCenteredText(graphics, font, titleText, leftPos + imageWidth / 2, topPos + TITLE_Y,
+                p.title(), p.textShadow());
 
         Component filterHeader = Component.translatable("createessentials.gui.item_filter");
-        graphics.drawCenteredString(font, filterHeader, leftPos + imageWidth / 2, topPos + FILTER_LABEL_Y,
-                DarkGuiStyling.COLOR_TITLE);
+        DarkGuiStyling.drawCenteredText(graphics, font, filterHeader, leftPos + imageWidth / 2,
+                topPos + FILTER_LABEL_Y, p.title(), p.textShadow());
 
         int seconds = Math.max(0, menu.getCharge()) / 20;
         String remaining = String.format("%02dm %02ds", seconds / 60, seconds % 60);
         Component timeText = Component.translatable("createessentials.gui.time_remaining", remaining);
-        graphics.drawCenteredString(font, timeText, leftPos + imageWidth / 2, topPos + TIMER_Y,
-                DarkGuiStyling.COLOR_TEXT);
+        DarkGuiStyling.drawCenteredText(graphics, font, timeText, leftPos + imageWidth / 2, topPos + TIMER_Y,
+                p.text(), p.textShadow());
 
         int playerStart = menu.slots.size() - 36;
         int playerLabelY = menu.slots.get(playerStart).y - 11;
         graphics.drawString(font, playerInventoryTitle, leftPos + 8, topPos + playerLabelY,
-                DarkGuiStyling.COLOR_TEXT_DIM, true);
+                p.textDim(), p.textShadow());
 
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }

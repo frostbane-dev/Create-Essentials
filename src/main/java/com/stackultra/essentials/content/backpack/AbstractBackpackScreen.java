@@ -146,7 +146,7 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
                             Component.translatable(on ? "createessentials.gui.on" : "createessentials.gui.off")
                                     .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED));
                 },
-                () -> DarkGuiStyling.COLOR_TEXT,
+                () -> DarkGuiStyling.activePalette().buttonText(),
                 () -> PacketDistributor.sendToServer(BackpackToolboxPayload.toggleRestock()));
         addRenderableWidget(restockButton);
     }
@@ -184,21 +184,22 @@ public abstract class AbstractBackpackScreen<T extends AbstractBackpackMenu> ext
 
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        DarkGuiStyling.Palette p = DarkGuiStyling.activePalette();
         int maxTitleWidth = utilityButtons.isEmpty()
                 ? (imageWidth - 16)
                 : (UTILITY_START_X - 8 - 4);
         String titleText = BackpackHelper.truncateTitle(
                 title.getString(), maxTitleWidth, font::width, font::plainSubstrByWidth);
-        graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, DarkGuiStyling.COLOR_TITLE, true);
+        graphics.drawString(font, titleText, leftPos + 8, topPos + TITLE_Y, p.title(), p.textShadow());
 
         renderExtraForeground(graphics, mouseX, mouseY, partialTicks);
 
         graphics.drawString(font, Component.translatable("createessentials.gui.toolbox"),
-                leftPos + TOOLBOX_TITLE_X, topPos + getToolboxTitleY(), DarkGuiStyling.COLOR_TITLE, true);
+                leftPos + TOOLBOX_TITLE_X, topPos + getToolboxTitleY(), p.title(), p.textShadow());
 
         Slot playerSlot = menu.slots.get(menu.getPlayerSlotStart());
         graphics.drawString(font, playerInventoryTitle, leftPos + playerSlot.x, topPos + playerSlot.y - 11,
-                DarkGuiStyling.COLOR_TEXT_DIM, true);
+                p.textDim(), p.textShadow());
 
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
     }
