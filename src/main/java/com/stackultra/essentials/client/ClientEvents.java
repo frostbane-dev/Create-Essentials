@@ -9,7 +9,9 @@ import com.stackultra.essentials.content.GogglesHelper;
 import com.stackultra.essentials.content.backpack.BackpackScreen;
 import com.stackultra.essentials.content.backpack.BackpackTooltipData;
 import com.stackultra.essentials.content.backpack.MagneticBackpackItem;
+import com.stackultra.essentials.content.backpack.MagneticBackpackRenderer;
 import com.stackultra.essentials.content.backpack.MagneticBackpackScreen;
+import com.stackultra.essentials.content.backpack.MagneticBackpackVisual;
 import com.stackultra.essentials.content.backpack.PortableToolboxHandler;
 import com.stackultra.essentials.content.magnet.RotationalMagnetItem;
 import com.stackultra.essentials.content.magnet.RotationalMagnetRenderer;
@@ -80,15 +82,20 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() ->
-                SimpleBlockEntityVisualizer.builder(AllBlockEntities.ROTATIONAL_MAGNET.get())
-                        .factory(RotationalMagnetVisual::new)
-                        .apply());
+        event.enqueueWork(() -> {
+            SimpleBlockEntityVisualizer.builder(AllBlockEntities.ROTATIONAL_MAGNET.get())
+                    .factory(RotationalMagnetVisual::new)
+                    .apply();
+            SimpleBlockEntityVisualizer.builder(AllBlockEntities.MAGNETIC_BACKPACK.get())
+                    .factory(MagneticBackpackVisual::new)
+                    .apply();
+        });
     }
 
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(AllBlockEntities.ROTATIONAL_MAGNET.get(), RotationalMagnetRenderer::new);
+        event.registerBlockEntityRenderer(AllBlockEntities.MAGNETIC_BACKPACK.get(), MagneticBackpackRenderer::new);
     }
 
     @SubscribeEvent
